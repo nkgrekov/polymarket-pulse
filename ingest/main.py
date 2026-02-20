@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import execute_batch
@@ -28,10 +29,31 @@ def _as_list(x):
         return [s]
     return [x]
 
-def fetch_yes_no_token_ids(market_id: str) -> tuple[str | None, str | None]:
-    r = requests.get(GAMMA_MARKET_BY_ID.format(market_id), timeout=30)
-    r.raise_for_status()
-    m = r.json()
+def fetch_yes_no_token_ids(market_id: str) -> tuple[str | None, str | None, int | None]:
+    max_attempts = 3
+    backoff_sec = 1.0
+    for attempt in range(1, max_attempts + 1):
+        try:
+            r = requests.get(GAMMA_MARKET_BY_ID.format(market_id), timeout=30)
+            if r.status_code == 404:
+                return None, None, 404
+            r.raise_for_status()
+            m = r.json()
+            break
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            is_retryable = status is not None and 500 <= status < 600 and attempt < max_attempts
+            if is_retryable:
+                time.sleep(backoff_sec)
+                backoff_sec *= 2
+                continue
+            raise
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            if attempt < max_attempts:
+                time.sleep(backoff_sec)
+                backoff_sec *= 2
+                continue
+            raise
 
     outcomes = _as_list(m.get("outcomes"))
     token_ids = _as_list(m.get("clobTokenIds") or m.get("clob_token_ids") or m.get("clobTokenIDs"))
@@ -56,7 +78,7 @@ def fetch_yes_no_token_ids(market_id: str) -> tuple[str | None, str | None]:
         if no_token is None:
             no_token = str(token_ids[1])
 
-    return yes_token, no_token
+    return yes_token, no_token, None
 
 def fetch_best_bid_ask(token_ids: list[str], chunk_tokens: int = 40) -> dict[str, dict[str, float | None]]:
     """
@@ -169,13 +191,30 @@ def main():
     # --- Layer II: resolve YES/NO token ids for each market ---
     mid_to_tokens = {}
     all_tokens = []
+    resolved_count = 0
+    skipped_404 = 0
+    skipped_other_errors = 0
 
     for m in mkts:
         mid = str(m["market_id"])
-        yes_tid, no_tid = fetch_yes_no_token_ids(mid)
+        try:
+            yes_tid, no_tid, status = fetch_yes_no_token_ids(mid)
+        except requests.exceptions.RequestException as e:
+            skipped_other_errors += 1
+            print(f"SKIP market {mid}: token id fetch failed ({type(e).__name__})")
+            continue
+
+        if status == 404:
+            skipped_404 += 1
+            continue
+
         if yes_tid and no_tid:
             mid_to_tokens[mid] = (yes_tid, no_tid)
             all_tokens.extend([yes_tid, no_tid])
+            resolved_count += 1
+        else:
+            skipped_other_errors += 1
+            print(f"SKIP market {mid}: missing YES/NO token ids")
 
     # --- Layer II: fetch best bid/ask for all tokens in one batch ---
     prices = fetch_best_bid_ask(list(dict.fromkeys(all_tokens)))
@@ -224,7 +263,10 @@ def main():
     conn.commit()
     conn.close()
 
-    print(f"OK: wrote {len(mkts)} markets at bucket {bucket.isoformat()}")
+    print(
+        f"OK: wrote {len(mkts)} markets at bucket {bucket.isoformat()} "
+        f"(resolved={resolved_count}, skipped_404={skipped_404}, skipped_other={skipped_other_errors})"
+    )
 
 if __name__ == "__main__":
     main()
