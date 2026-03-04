@@ -111,7 +111,9 @@ Key derived views:
 
 top_movers_latest  
 portfolio_snapshot_latest  
+watchlist_snapshot_latest  
 alerts_latest  
+watchlist_alerts_latest  
 alerts_inbox_latest
 
 These views power signal generation.
@@ -138,6 +140,10 @@ The movers mode reads from:
 
 top_movers_latest
 
+The watchlist mode reads from:
+
+watchlist_snapshot_latest
+
 The bot does not call Polymarket API directly.
 
 All data comes from the database layer.
@@ -162,7 +168,7 @@ Live market data and movers engine with Telegram delivery.
 
 Current limitation:
 
-portfolio alerts remain empty until user positions intersect with market_universe.
+portfolio and watchlist alerts remain empty when selected markets have no usable live midpoint data in the latest and previous buckets.
 
 Operational note:
 

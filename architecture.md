@@ -59,7 +59,9 @@ Examples:
 
 top_movers_latest  
 portfolio_snapshot_latest  
+watchlist_snapshot_latest  
 alerts_latest  
+watchlist_alerts_latest  
 alerts_inbox_latest
 
 These views produce:
@@ -131,6 +133,15 @@ market_snapshots
 → market_universe  
 → top_movers_latest  
 → /movers command
+
+Watchlist flow:
+
+market_snapshots
+→ market_universe
+→ watchlist_snapshot_latest
+→ watchlist_alerts_latest
+→ alerts_inbox_latest
+→ /watchlist and push
 
 ---
 

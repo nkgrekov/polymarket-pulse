@@ -66,53 +66,17 @@ limit %s;
 """
 
 SQL_WATCHLIST_MOVERS = """
-with lb as (
-  select last_bucket
-  from public.global_bucket_latest
-),
-prev as (
-  select max(ms.ts_bucket) as prev_bucket
-  from public.market_snapshots ms
-  join lb on true
-  where ms.ts_bucket < lb.last_bucket
-),
-wl as (
-  select distinct market_id
-  from public.user_watchlist
-  where user_id = %s
-),
-last_rows as (
-  select
-    ms.market_id,
-    max(((ms.yes_bid + ms.yes_ask) / 2::numeric)) as yes_mid_now
-  from public.market_snapshots ms
-  join lb on ms.ts_bucket = lb.last_bucket
-  join wl on wl.market_id = ms.market_id
-  group by ms.market_id
-),
-prev_rows as (
-  select
-    ms.market_id,
-    max(((ms.yes_bid + ms.yes_ask) / 2::numeric)) as yes_mid_prev
-  from public.market_snapshots ms
-  join prev on ms.ts_bucket = prev.prev_bucket
-  join wl on wl.market_id = ms.market_id
-  group by ms.market_id
-)
 select
-  l.market_id,
-  m.question,
-  (select last_bucket from lb) as last_bucket,
-  (select prev_bucket from prev) as prev_bucket,
-  l.yes_mid_now,
-  p.yes_mid_prev,
-  (l.yes_mid_now - p.yes_mid_prev) as delta_yes
-from last_rows l
-join prev_rows p using (market_id)
-join public.markets m on m.market_id = l.market_id
-where l.yes_mid_now is not null
-  and p.yes_mid_prev is not null
-order by abs(l.yes_mid_now - p.yes_mid_prev) desc nulls last
+  market_id,
+  question,
+  last_bucket,
+  prev_bucket,
+  mid_now as yes_mid_now,
+  mid_prev as yes_mid_prev,
+  delta_mid as delta_yes
+from public.watchlist_snapshot_latest
+where user_id = %s
+order by abs(delta_mid) desc nulls last
 limit %s;
 """
 
