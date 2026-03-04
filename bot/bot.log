@@ -1,0 +1,4 @@
+2026-02-17 21:19:05,550 INFO polymarket_pulse_bot: Starting bot polling for @polymarket_pulse_bot
+2026-02-17 21:19:05,792 INFO httpx: HTTP Request: POST https://api.telegram.org/bot8510100621:AAFNbkl2_p2c8RQO5K4fy7bjREGJJpm3yqQ/getMe "HTTP/1.1 200 OK"
+2026-02-17 21:19:05,871 INFO httpx: HTTP Request: POST https://api.telegram.org/bot8510100621:AAFNbkl2_p2c8RQO5K4fy7bjREGJJpm3yqQ/deleteWebhook "HTTP/1.1 200 OK"
+2026-02-17 21:19:05,875 INFO telegram.ext.Application: Application started
