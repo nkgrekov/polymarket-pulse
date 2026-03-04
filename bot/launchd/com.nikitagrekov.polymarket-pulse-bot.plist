@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nikitagrekov.polymarket-pulse-bot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nikitagrekov/polymarket-pulse/bot/.venv/bin/python</string>
+    <string>-u</string>
+    <string>/Users/nikitagrekov/polymarket-pulse/bot/main.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/nikitagrekov/polymarket-pulse/bot</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nikitagrekov/polymarket-pulse/bot/launchd.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nikitagrekov/polymarket-pulse/bot/launchd.stderr.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

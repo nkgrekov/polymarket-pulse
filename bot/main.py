@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -18,6 +19,10 @@ DEFAULT_USER_ID = os.environ.get("USER_ID", "nikita")
 DEFAULT_TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 PUSH_INTERVAL_SECONDS = int(os.environ.get("PUSH_INTERVAL_SECONDS", "300"))
 PUSH_FETCH_LIMIT = int(os.environ.get("PUSH_FETCH_LIMIT", "20"))
+DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "10"))
+DB_RETRY_ATTEMPTS = int(os.environ.get("DB_RETRY_ATTEMPTS", "3"))
+DB_RETRY_SLEEP_SECONDS = float(os.environ.get("DB_RETRY_SLEEP_SECONDS", "1.5"))
+PUSH_INITIAL_DELAY_SECONDS = int(os.environ.get("PUSH_INITIAL_DELAY_SECONDS", "20"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -132,26 +137,51 @@ on conflict (user_id, market_id, alert_type, last_bucket) do nothing;
 """
 
 
+def run_db_query(query: str, params: tuple[Any, ...], *, row_factory=None):
+    last_error = None
+    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+        try:
+            with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
+                with conn.cursor(row_factory=row_factory) as cur:
+                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(query, params)
+                    return cur.fetchall()
+        except Exception as exc:
+            last_error = exc
+            if attempt == DB_RETRY_ATTEMPTS:
+                raise
+            log.warning("db query retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            time.sleep(DB_RETRY_SLEEP_SECONDS)
+    raise last_error
+
+
+def execute_db_write(query: str, params: tuple[Any, ...]) -> None:
+    last_error = None
+    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+        try:
+            with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(query, params)
+                conn.commit()
+                return
+        except Exception as exc:
+            last_error = exc
+            if attempt == DB_RETRY_ATTEMPTS:
+                raise
+            log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            time.sleep(DB_RETRY_SLEEP_SECONDS)
+    raise last_error
+
+
 def fetch_inbox(user_id: str, limit: int = 10) -> list[dict]:
-    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_INBOX, (user_id, limit))
-            return cur.fetchall()
+    return run_db_query(SQL_INBOX, (user_id, limit), row_factory=dict_row)
 
 def fetch_top_movers(limit: int = 3) -> list[dict]:
-    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_TOP_MOVERS, (limit,))
-            return cur.fetchall()
+    return run_db_query(SQL_TOP_MOVERS, (limit,), row_factory=dict_row)
 
 def fetch_watchlist_movers(user_id: str, limit: int = 10) -> list[dict]:
-    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_WATCHLIST_MOVERS, (user_id, limit))
-            return cur.fetchall()
+    return run_db_query(SQL_WATCHLIST_MOVERS, (user_id, limit), row_factory=dict_row)
 
 
 async def fetch_inbox_async(user_id: str, limit: int = 10, timeout_sec: float = 10.0) -> list[dict]:
@@ -208,19 +238,12 @@ def fmt_mover_row(row: dict) -> str:
 
 
 def is_alert_sent(user_id: str, market_id: str, alert_type: str, last_bucket: Any) -> bool:
-    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
-        with conn.cursor() as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_SENT_ALERT_EXISTS, (user_id, market_id, alert_type, last_bucket))
-            return cur.fetchone() is not None
+    rows = run_db_query(SQL_SENT_ALERT_EXISTS, (user_id, market_id, alert_type, last_bucket))
+    return bool(rows)
 
 
 def mark_alert_sent(user_id: str, market_id: str, alert_type: str, last_bucket: Any) -> None:
-    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
-        with conn.cursor() as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_SENT_ALERT_INSERT, (user_id, market_id, alert_type, last_bucket))
-        conn.commit()
+    execute_db_write(SQL_SENT_ALERT_INSERT, (user_id, market_id, alert_type, last_bucket))
 
 
 async def is_alert_sent_async(row: dict) -> bool:
@@ -284,6 +307,8 @@ async def push_loop(application: Application) -> None:
         DEFAULT_TELEGRAM_CHAT_ID,
         PUSH_INTERVAL_SECONDS,
     )
+    if PUSH_INITIAL_DELAY_SECONDS > 0:
+        await asyncio.sleep(PUSH_INITIAL_DELAY_SECONDS)
     while True:
         try:
             await dispatch_push_alerts(application)
@@ -304,7 +329,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Commands:\n"
         "/inbox - latest alerts (10)\n"
         "/inbox20 - latest alerts (20)\n"
-        "/movers - top 3 live movers\n"
+        "/movers - top live movers (up to 3)\n"
         "/watchlist - live changes for your watchlist"
     )
 
@@ -364,7 +389,7 @@ async def movers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not rows:
         await update.message.reply_text("Сейчас нет live movers: не накопилась пара bucket для market_universe.")
         return
-    text = "Top 3 live movers:\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows)
+    text = "Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows)
     await update.message.reply_text(text)
 
 async def watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -404,7 +429,7 @@ async def on_post_init(application: Application):
             BotCommand("start", "Show help"),
             BotCommand("inbox", "Latest alerts (10)"),
             BotCommand("inbox20", "Latest alerts (20)"),
-            BotCommand("movers", "Top 3 live movers"),
+            BotCommand("movers", "Top live movers (up to 3)"),
             BotCommand("watchlist", "Live changes for your watchlist"),
         ]
     )
