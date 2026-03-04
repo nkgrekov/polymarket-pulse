@@ -40,7 +40,8 @@ Stores:
 markets  
 market_snapshots  
 market_universe  
-user_positions
+user_positions  
+user_watchlist
 
 Derived views compute analytics.
 
@@ -74,7 +75,9 @@ Reads alerts from database.
 Commands:
 
 /inbox  
-/inbox20
+/inbox20  
+/movers  
+/watchlist
 
 Future:
 
@@ -88,10 +91,17 @@ Universe defines markets actively tracked.
 
 Sources:
 
-auto — top liquidity markets  
-position — user portfolio markets
+manual — explicit user watchlist markets  
+position — user portfolio markets  
+auto — live liquid markets with both latest and previous buckets
 
 Universe ensures ingest coverage.
+
+Current forced list in ingest:
+
+manual watchlist  
+market universe  
+user positions
 
 ---
 
@@ -108,6 +118,13 @@ market_snapshots
 → alerts_latest  
 → alerts_inbox_latest  
 → bot
+
+Live movers flow:
+
+market_snapshots  
+→ market_universe  
+→ top_movers_latest  
+→ /movers command
 
 ---
 

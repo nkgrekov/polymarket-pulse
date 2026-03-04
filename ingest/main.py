@@ -310,9 +310,12 @@ def fetch_position_market_ids(conn, user_id: str) -> list[str]:
         )
         return [str(r[0]) for r in cur.fetchall()]
 
-def refresh_market_universe(conn, limit: int) -> int:
+def refresh_market_universe(conn, limit: int, manual_ids: list[str], position_ids: list[str]) -> int:
     with conn.cursor() as cur:
-        cur.execute("select public.refresh_market_universe(%s)", (limit,))
+        cur.execute(
+            "select public.refresh_market_universe(%s, %s, %s)",
+            (limit, manual_ids, position_ids),
+        )
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
@@ -532,7 +535,7 @@ def main():
                     no_ask  = excluded.no_ask,
                     liquidity = excluded.liquidity;
             """, snapshot_rows, page_size=200)
-            refreshed_universe = refresh_market_universe(conn, AUTO_WL_LIMIT)
+            refreshed_universe = refresh_market_universe(conn, AUTO_WL_LIMIT, manual_ids, position_ids)
         conn.commit()
     finally:
         conn.close()

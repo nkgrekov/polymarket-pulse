@@ -34,6 +34,8 @@ market_universe
 
 user_positions
 
+user_watchlist
+
 sent_alerts_log
 
 ---
@@ -74,13 +76,15 @@ Defines active markets tracked by the system.
 
 Sources:
 
-auto — top markets by liquidity  
+manual — user-selected live markets  
 position — markets from user positions  
+auto — live liquid markets with both latest and previous buckets  
 
 Universe guarantees:
 
 • ingest coverage  
-• consistent analytics scope
+• consistent analytics scope  
+• live-only movers surface for the bot
 
 ---
 
@@ -117,10 +121,16 @@ Commands:
 /start  
 /inbox  
 /inbox20  
+/movers  
+/watchlist  
 
 The bot reads signals from:
 
 alerts_inbox_latest
+
+The movers mode reads from:
+
+top_movers_latest
 
 The bot does not call Polymarket API directly.
 
@@ -142,7 +152,11 @@ Polymarket API
 
 The project currently operates as:
 
-Live market alert engine.
+Live market data and movers engine with Telegram delivery.
+
+Current limitation:
+
+portfolio alerts remain empty until user positions intersect with market_universe.
 
 ---
 
