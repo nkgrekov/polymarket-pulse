@@ -12,6 +12,15 @@ declare
     v_limit integer := greatest(coalesce(p_limit, 200), 1);
     v_count integer := 0;
 begin
+    create temporary table if not exists market_universe_desired (
+        market_id text primary key,
+        source text not null,
+        weight numeric
+    ) on commit drop;
+
+    truncate market_universe_desired;
+
+    insert into market_universe_desired (market_id, source, weight)
     with latest_bucket as (
         select max(ts_bucket) as ts_bucket
         from public.market_snapshots
@@ -22,32 +31,33 @@ begin
         join latest_bucket lb on true
         where ms.ts_bucket < lb.ts_bucket
     ),
-    ranked_auto as (
+    last_rows as (
         select
             ms.market_id,
             max(ms.liquidity) as weight
         from public.market_snapshots ms
         join latest_bucket lb on lb.ts_bucket = ms.ts_bucket
-        join public.markets m on m.market_id = ms.market_id
-        join prev_bucket pb on pb.ts_bucket is not null
         where ms.yes_bid is not null
           and ms.yes_ask is not null
-          and coalesce(m.status, 'active') = 'active'
-          and exists (
-              select 1
-              from public.market_snapshots ms_prev
-              where ms_prev.market_id = ms.market_id
-                and ms_prev.ts_bucket = pb.ts_bucket
-                and ms_prev.yes_bid is not null
-                and ms_prev.yes_ask is not null
-          )
         group by ms.market_id
-        order by max(ms.liquidity) desc nulls last, ms.market_id
-        limit v_limit
     ),
-    liquidity_lookup as (
-        select market_id, weight
-        from ranked_auto
+    prev_rows as (
+        select distinct ms.market_id
+        from public.market_snapshots ms
+        join prev_bucket pb on pb.ts_bucket = ms.ts_bucket
+        where ms.yes_bid is not null
+          and ms.yes_ask is not null
+    ),
+    ranked_auto as (
+        select
+            l.market_id,
+            l.weight
+        from last_rows l
+        join prev_rows p using (market_id)
+        join public.markets m on m.market_id = l.market_id
+        where coalesce(m.status, 'active') = 'active'
+        order by l.weight desc nulls last, l.market_id
+        limit v_limit
     ),
     desired_raw as (
         select unnest(coalesce(p_manual_ids, array[]::text[])) as market_id, 'manual'::text as source, 1 as priority
@@ -61,20 +71,26 @@ begin
         select distinct on (dr.market_id)
             dr.market_id,
             dr.source,
-            ll.weight
+            ra.weight
         from desired_raw dr
-        left join liquidity_lookup ll using (market_id)
+        left join ranked_auto ra using (market_id)
         where dr.market_id is not null
           and dr.market_id <> ''
         order by dr.market_id, dr.priority
     )
+    select
+        market_id,
+        source,
+        weight
+    from desired;
+
     insert into public.market_universe as mu (market_id, source, weight, updated_at)
     select
         d.market_id,
         d.source,
         d.weight,
         now() as updated_at
-    from desired d
+    from market_universe_desired d
     on conflict (market_id) do update
     set source = excluded.source,
         weight = excluded.weight,
@@ -83,54 +99,8 @@ begin
     delete from public.market_universe mu
     where not exists (
         select 1
-        from (
-            with latest_bucket as (
-                select max(ts_bucket) as ts_bucket
-                from public.market_snapshots
-            ),
-            prev_bucket as (
-                select max(ms.ts_bucket) as ts_bucket
-                from public.market_snapshots ms
-                join latest_bucket lb on true
-                where ms.ts_bucket < lb.ts_bucket
-            ),
-            ranked_auto as (
-                select
-                    ms.market_id,
-                    max(ms.liquidity) as weight
-                from public.market_snapshots ms
-                join latest_bucket lb on lb.ts_bucket = ms.ts_bucket
-                join public.markets m on m.market_id = ms.market_id
-                join prev_bucket pb on pb.ts_bucket is not null
-                where ms.yes_bid is not null
-                  and ms.yes_ask is not null
-                  and coalesce(m.status, 'active') = 'active'
-                  and exists (
-                      select 1
-                      from public.market_snapshots ms_prev
-                      where ms_prev.market_id = ms.market_id
-                        and ms_prev.ts_bucket = pb.ts_bucket
-                        and ms_prev.yes_bid is not null
-                        and ms_prev.yes_ask is not null
-                  )
-                group by ms.market_id
-                order by max(ms.liquidity) desc nulls last, ms.market_id
-                limit v_limit
-            ),
-            desired_raw as (
-                select unnest(coalesce(p_manual_ids, array[]::text[])) as market_id, 1 as priority
-                union all
-                select unnest(coalesce(p_position_ids, array[]::text[])) as market_id, 2 as priority
-                union all
-                select market_id, 3 as priority
-                from ranked_auto
-            )
-            select distinct market_id
-            from desired_raw
-            where market_id is not null
-              and market_id <> ''
-        ) desired_now
-        where desired_now.market_id = mu.market_id
+        from market_universe_desired d
+        where d.market_id = mu.market_id
     );
 
     select count(*)

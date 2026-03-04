@@ -27,6 +27,10 @@ Responsibilities:
 • write snapshots  
 • maintain universe coverage
 
+Snapshot writes are the critical path.
+
+Universe refresh runs after snapshot commit and is allowed to fail without failing the whole ingest run.
+
 Runs periodically.
 
 ---
@@ -102,6 +106,8 @@ Current forced list in ingest:
 manual watchlist  
 market universe  
 user positions
+
+Universe refresh is a post-write step with its own timeout budget.
 
 ---
 

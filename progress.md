@@ -86,6 +86,12 @@ Universe guarantees:
 • consistent analytics scope  
 • live-only movers surface for the bot
 
+Universe refresh is best-effort:
+
+• snapshot writes commit first  
+• universe refresh runs after that  
+• refresh timeout must not fail the whole ingest run
+
 ---
 
 # Live Market Detection
@@ -157,6 +163,10 @@ Live market data and movers engine with Telegram delivery.
 Current limitation:
 
 portfolio alerts remain empty until user positions intersect with market_universe.
+
+Operational note:
+
+market_universe refresh can be slower than snapshot writes and is treated as non-fatal for ingest stability.
 
 ---
 

@@ -3,6 +3,7 @@ import requests
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import execute_batch
+from psycopg2 import Error as PsycopgError
 
 import time
 from requests.adapters import HTTPAdapter
@@ -319,6 +320,21 @@ def refresh_market_universe(conn, limit: int, manual_ids: list[str], position_id
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
 
+def try_refresh_market_universe(pg_conn: str, limit: int, manual_ids: list[str], position_ids: list[str]) -> tuple[bool, int | None, str | None]:
+    timeout_ms = int(os.environ.get("UNIVERSE_REFRESH_TIMEOUT_MS", "15000"))
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = %s", (str(timeout_ms),))
+            refreshed = refresh_market_universe(conn, limit, manual_ids, position_ids)
+        conn.commit()
+        return (True, refreshed, None)
+    except PsycopgError as e:
+        conn.rollback()
+        return (False, None, f"{type(e).__name__}: {e}")
+    finally:
+        conn.close()
+
 def fetch_stored_market_rows(conn, market_ids: list[str]) -> list[dict]:
     if not market_ids:
         return []
@@ -478,6 +494,10 @@ def main():
         return
 
 
+    refreshed_universe = None
+    refresh_ok = False
+    refresh_error = None
+
     conn = psycopg2.connect(pg)
     try:
         with conn.cursor() as cur:
@@ -535,14 +555,26 @@ def main():
                     no_ask  = excluded.no_ask,
                     liquidity = excluded.liquidity;
             """, snapshot_rows, page_size=200)
-            refreshed_universe = refresh_market_universe(conn, AUTO_WL_LIMIT, manual_ids, position_ids)
         conn.commit()
     finally:
         conn.close()
 
+    refresh_ok, refreshed_universe, refresh_error = try_refresh_market_universe(
+        pg,
+        AUTO_WL_LIMIT,
+        manual_ids,
+        position_ids,
+    )
+
+    if not refresh_ok:
+        print(f"WARN: market_universe refresh skipped: {refresh_error}")
+
     print(
         f"OK: wrote mkts={len(mkts)} forced={len(forced_ids)} "
-        f"snapshots={len(snapshot_rows)} universe_auto={refreshed_universe} bucket={bucket.isoformat()}"
+        f"snapshots={len(snapshot_rows)} "
+        f"universe_refresh={'ok' if refresh_ok else 'skipped'} "
+        f"universe_total={refreshed_universe if refreshed_universe is not None else 'n/a'} "
+        f"bucket={bucket.isoformat()}"
     )
 
 if __name__ == "__main__":
