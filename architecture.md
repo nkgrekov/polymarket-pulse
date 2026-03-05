@@ -126,6 +126,7 @@ Site + Email API:
 • landing includes Telegram onboarding steps + FAQ conversion blocks
 • site funnel event tracking in `app.site_events`
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
+• Resend mail-auth DNS hosted in Cloudflare on `resend.polymarketpulse.app`
 
 ---
 
