@@ -118,6 +118,7 @@ Site + Email API:
 • FastAPI app in `api/main.py`  
 • waitlist form + double opt-in  
 • daily digest worker in `api/digest_job.py` via Resend
+• geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
 
 ---
 

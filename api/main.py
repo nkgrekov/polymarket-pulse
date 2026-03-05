@@ -2,11 +2,12 @@ import os
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 import psycopg
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
 
@@ -26,6 +27,41 @@ app = FastAPI(title="Polymarket Pulse Site API")
 class WaitlistRequest(BaseModel):
     email: EmailStr
     source: str = "site"
+
+
+def detect_lang(request: Request, explicit: str | None = None) -> Literal["ru", "en"]:
+    if explicit in {"ru", "en"}:
+        return explicit
+
+    q_lang = (request.query_params.get("lang") or "").strip().lower()
+    if q_lang in {"ru", "en"}:
+        return q_lang
+
+    country_headers = [
+        "cf-ipcountry",
+        "x-vercel-ip-country",
+        "x-geo-country",
+        "x-country-code",
+    ]
+    for h in country_headers:
+        country = (request.headers.get(h) or "").strip().upper()
+        if country == "RU":
+            return "ru"
+        if country:
+            return "en"
+
+    accept_lang = (request.headers.get("accept-language") or "").lower()
+    if "ru" in accept_lang:
+        return "ru"
+    return "en"
+
+
+def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
+    localized = WEB_DIR / f"{base_name}.{lang}.html"
+    if localized.exists():
+        return localized.read_text(encoding="utf-8")
+    fallback = WEB_DIR / f"{base_name}.html"
+    return fallback.read_text(encoding="utf-8")
 
 
 def send_email(to_email: str, subject: str, html: str) -> None:
@@ -82,36 +118,57 @@ def healthz() -> JSONResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
-def index() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "index.html").read_text(encoding="utf-8"))
+def index(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("index", lang))
 
 
 @app.get("/privacy", response_class=HTMLResponse)
-def privacy() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "privacy.html").read_text(encoding="utf-8"))
+def privacy(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("privacy", lang))
 
 
 @app.get("/terms", response_class=HTMLResponse)
-def terms() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "terms.html").read_text(encoding="utf-8"))
+def terms(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("terms", lang))
 
 
 @app.post("/api/waitlist")
-def waitlist(data: WaitlistRequest) -> JSONResponse:
-    token = upsert_waitlist(data.email, data.source)
+def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
+    req_lang = detect_lang(request)
+    source = data.source.strip() if data.source else "site"
+    if source == "site":
+        source = f"site_{req_lang}"
+
+    token = upsert_waitlist(data.email, source)
     confirm_link = f"{APP_BASE_URL.rstrip('/')}/confirm?token={token}"
 
-    html = (
-        "<h2>Confirm your email</h2>"
-        "<p>Click to confirm your subscription to Polymarket Pulse updates:</p>"
-        f"<p><a href=\"{confirm_link}\">Confirm email</a></p>"
-    )
-    send_email(data.email, "Confirm your Polymarket Pulse subscription", html)
-    return JSONResponse({"ok": True, "message": "Confirmation email sent"})
+    if req_lang == "ru":
+        html = (
+            "<h2>Подтвердите email</h2>"
+            "<p>Нажмите, чтобы подтвердить подписку на обновления Polymarket Pulse:</p>"
+            f"<p><a href=\"{confirm_link}\">Подтвердить email</a></p>"
+        )
+        subject = "Подтвердите подписку Polymarket Pulse"
+        message = "Письмо для подтверждения отправлено"
+    else:
+        html = (
+            "<h2>Confirm your email</h2>"
+            "<p>Click to confirm your subscription to Polymarket Pulse updates:</p>"
+            f"<p><a href=\"{confirm_link}\">Confirm email</a></p>"
+        )
+        subject = "Confirm your Polymarket Pulse subscription"
+        message = "Confirmation email sent"
+
+    send_email(data.email, subject, html)
+    return JSONResponse({"ok": True, "message": message})
 
 
 @app.get("/confirm", response_class=HTMLResponse)
-def confirm(token: str) -> HTMLResponse:
+def confirm(token: str, request: Request) -> HTMLResponse:
+    req_lang = detect_lang(request)
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
 
@@ -133,10 +190,20 @@ def confirm(token: str) -> HTMLResponse:
         conn.commit()
 
     if not row:
+        if req_lang == "ru":
+            return HTMLResponse("<h3>Токен недействителен или истёк.</h3>", status_code=400)
         return HTMLResponse("<h3>Invalid or expired confirmation token.</h3>", status_code=400)
 
     email = row[0]
     unsub = f"{APP_BASE_URL.rstrip('/')}/unsubscribe?token={token}"
+    if req_lang == "ru":
+        send_email(
+            email,
+            "Добро пожаловать в Polymarket Pulse",
+            "<h2>Добро пожаловать</h2><p>Подписка подтверждена. Ежедневный дайджест включён.</p>"
+            f"<p><a href=\"{unsub}\">Отписаться</a></p>",
+        )
+        return HTMLResponse("<h3>Email подтверждён. Ежедневный дайджест включён.</h3>")
     send_email(
         email,
         "Welcome to Polymarket Pulse",
@@ -147,7 +214,8 @@ def confirm(token: str) -> HTMLResponse:
 
 
 @app.get("/unsubscribe", response_class=HTMLResponse)
-def unsubscribe(token: str) -> HTMLResponse:
+def unsubscribe(token: str, request: Request) -> HTMLResponse:
+    req_lang = detect_lang(request)
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
 
@@ -169,6 +237,10 @@ def unsubscribe(token: str) -> HTMLResponse:
         conn.commit()
 
     if not row:
+        if req_lang == "ru":
+            return HTMLResponse("<h3>Токен не найден или уже отписан.</h3>", status_code=400)
         return HTMLResponse("<h3>Token not found or already unsubscribed.</h3>", status_code=400)
 
+    if req_lang == "ru":
+        return HTMLResponse("<h3>Вы успешно отписались.</h3>")
     return HTMLResponse("<h3>You have been unsubscribed.</h3>")

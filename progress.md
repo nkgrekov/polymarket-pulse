@@ -219,6 +219,7 @@ Site/email status:
 • Resend integration for confirmation/welcome  
 • `api/digest_job.py` sends daily digest from `bot.alert_events`
 • `.github/workflows/digest.yml` runs digest daily (and supports manual trigger)
+• Landing is localized (`RU`/`EN`) with auto-detection by geo/lang headers
 
 ---
 
