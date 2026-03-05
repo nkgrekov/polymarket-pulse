@@ -225,6 +225,7 @@ Site/email status:
 • SEO baseline added: `robots.txt`, `sitemap.xml`, `og-card.svg`
 • Added browser favicon (`/favicon.svg`) and Telegram CTA on landing
 • Added site event endpoint (`/api/events`) for `page_view` and `tg_click`
+• Added landing onboarding section (“How to start in Telegram”) and FAQ (RU/EN)
 • `site` sender configured to use `welcome@polymarketpulse.app` (Resend from-address)
 • Production custom domain active: `https://polymarketpulse.app`
 • `www.polymarketpulse.app` redirects to apex via Cloudflare page rule

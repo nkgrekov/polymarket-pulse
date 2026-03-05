@@ -230,6 +230,8 @@ def terms(request: Request) -> HTMLResponse:
 @app.post("/api/events")
 def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     req_lang = detect_lang(request)
+    detail_lang = (data.details or {}).get("lang") if isinstance(data.details, dict) else None
+    event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
     allowed = {"tg_click", "page_view"}
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
@@ -238,7 +240,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     log_site_event(
         event_type=event_type,
         request=request,
-        lang=req_lang,
+        lang=event_lang,
         source=(data.source or "site").strip()[:64] or "site",
         details=data.details or {},
     )

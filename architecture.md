@@ -123,6 +123,7 @@ Site + Email API:
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
 • site telemetry endpoint: `/api/events` (`page_view`, `tg_click`)
+• landing includes Telegram onboarding steps + FAQ conversion blocks
 • site funnel event tracking in `app.site_events`
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 
