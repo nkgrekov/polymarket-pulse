@@ -31,7 +31,13 @@ Snapshot writes are the critical path.
 
 Universe refresh runs after snapshot commit and is allowed to fail without failing the whole ingest run.
 
-Runs periodically.
+Runs as:
+
+• GitHub Actions scheduled job (backup)
+• Railway worker loop (`ingest/worker.py`) for stable cadence
+
+Worker interval is controlled by `INGEST_INTERVAL_SECONDS`.
+GitHub backup schedule is hourly.
 
 ---
 
@@ -45,7 +51,16 @@ markets
 market_snapshots  
 market_universe  
 user_positions  
-user_watchlist
+user_watchlist  
+app.users  
+app.identities  
+app.subscriptions  
+app.email_subscribers  
+bot.profiles  
+bot.user_settings  
+bot.watchlist  
+bot.alert_events  
+bot.sent_alerts_log
 
 Derived views compute analytics.
 
@@ -76,18 +91,33 @@ These views produce:
 
 Telegram bot.
 
-Reads alerts from database.
+Reads alerts from `bot` analytics views only.
 
 Commands:
 
+/start  
+/help  
+/plan  
+/threshold  
 /inbox  
 /inbox20  
 /movers  
-/watchlist
+/watchlist  
+/watchlist_list  
+/watchlist_add  
+/watchlist_remove  
+/admin_stats
 
-Future:
+Also runs:
 
-push alerts.
+• scheduled push loop  
+• freemium enforcement (watchlist + daily alert caps)
+
+Site + Email API:
+
+• FastAPI app in `api/main.py`  
+• waitlist form + double opt-in  
+• daily digest worker in `api/digest_job.py` via Resend
 
 ---
 
@@ -105,7 +135,7 @@ Universe ensures ingest coverage.
 
 Current forced list in ingest:
 
-manual watchlist  
+manual watchlist (`public.user_watchlist` + `bot.watchlist`)  
 market universe  
 user positions
 
@@ -117,14 +147,14 @@ Universe refresh is a post-write step with its own timeout budget.
 
 Alerts are generated when:
 
-probability change exceeds threshold.
+probability change exceeds per-user threshold.
 
 Alert flow:
 
 market_snapshots  
-→ analytics views  
-→ alerts_latest  
-→ alerts_inbox_latest  
+→ bot.portfolio_snapshot_latest / bot.watchlist_snapshot_latest  
+→ bot.portfolio_alerts_latest / bot.watchlist_alerts_latest  
+→ bot.alerts_inbox_latest  
 → bot
 
 Live movers flow:
@@ -138,10 +168,20 @@ Watchlist flow:
 
 market_snapshots
 → market_universe
-→ watchlist_snapshot_latest
-→ watchlist_alerts_latest
-→ alerts_inbox_latest
+→ bot.watchlist_snapshot_latest
+→ bot.watchlist_alerts_latest
+→ bot.alerts_inbox_latest
 → /watchlist and push
+
+Email flow:
+
+site form / bot opt-in
+→ app.email_subscribers (confirm_token)
+→ /confirm (double opt-in)
+→ bot.alert_events aggregation
+→ api/digest_job.py
+→ bot.sent_alerts_log (channel=email)
+→ subscriber inbox
 
 ---
 

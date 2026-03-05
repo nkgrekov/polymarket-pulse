@@ -36,7 +36,15 @@ user_positions
 
 user_watchlist
 
-sent_alerts_log
+app.users  
+app.identities  
+app.subscriptions  
+app.email_subscribers  
+bot.profiles  
+bot.user_settings  
+bot.watchlist  
+bot.alert_events  
+bot.sent_alerts_log
 
 ---
 
@@ -92,6 +100,13 @@ Universe refresh is best-effort:
 • universe refresh runs after that  
 • refresh timeout must not fail the whole ingest run
 
+Forced ingest coverage now merges:
+
+• `public.user_watchlist` legacy manual list  
+• `bot.watchlist` multi-user manual list  
+• `public.market_universe` auto live scope  
+• `public.user_positions` markets
+
 ---
 
 # Live Market Detection
@@ -122,31 +137,49 @@ These views power signal generation.
 
 # Telegram Bot MVP
 
-Minimal Telegram bot implemented.
+Telegram bot upgraded to multi-user with native onboarding.
 
 Commands:
 
 /start  
+/help  
+/plan  
+/threshold  
 /inbox  
 /inbox20  
 /movers  
 /watchlist  
+/watchlist_list  
+/watchlist_add  
+/watchlist_remove  
+/admin_stats  
 
-The bot reads signals from:
+Bot reads signals from:
 
-alerts_inbox_latest
+bot.alerts_inbox_latest
 
-The movers mode reads from:
+Movers mode reads from:
 
 top_movers_latest
 
-The watchlist mode reads from:
+Watchlist mode reads from:
 
-watchlist_snapshot_latest
+bot.watchlist_snapshot_latest
 
 The bot does not call Polymarket API directly.
 
-All data comes from the database layer.
+All signals come from the database layer.
+
+Freemium v1:
+
+• Free: 3 watchlist markets  
+• Free: 20 push alerts/day  
+• Pro: unlimited
+
+Threshold policy:
+
+• Global baseline 0.03  
+• Per-user override in `bot.user_settings.threshold`
 
 ---
 
@@ -156,7 +189,7 @@ Polymarket API
 → ingest pipeline  
 → Supabase database  
 → analytics views  
-→ Telegram alerts
+→ bot + site + email channels
 
 ---
 
@@ -164,24 +197,36 @@ Polymarket API
 
 The project currently operates as:
 
-Live market data and movers engine with Telegram delivery.
+Live market data and movers engine with Telegram + site waitlist + email foundation.
 
 Current limitation:
 
-portfolio and watchlist alerts remain empty when selected markets have no usable live midpoint data in the latest and previous buckets.
+if selected markets have no usable live midpoint data in latest/previous buckets, watchlist and inbox may be empty by design.
 
 Operational note:
 
 market_universe refresh can be slower than snapshot writes and is treated as non-fatal for ingest stability.
 
+Ingest cadence update:
+
+• Added Railway-ready loop runner `ingest/worker.py`  
+• Interval is env-configurable (`INGEST_INTERVAL_SECONDS`)  
+• GitHub Actions ingest moved to hourly backup trigger
+
+Site/email status:
+
+• `api/main.py` provides waitlist submit + confirm + unsubscribe  
+• Resend integration for confirmation/welcome  
+• `api/digest_job.py` sends daily digest from `bot.alert_events`
+
 ---
 
 # Next Milestones
 
-Push alerts (scheduled signals)
+Railway deploy (bot + site)
 
-Multi-user configuration
+Payment integration for `pro`
 
-Billing layer
+Web auth linking to Telegram identity
 
-Hosted infrastructure
+iOS client integration

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import execute_batch
 from psycopg2 import Error as PsycopgError
+from psycopg2 import errors as PsycopgErrors
 
 import time
 from requests.adapters import HTTPAdapter
@@ -286,6 +287,23 @@ def fetch_watchlist_market_ids(conn, user_id: str) -> list[str]:
         )
         return [str(r[0]) for r in cur.fetchall()]
 
+def fetch_bot_watchlist_market_ids(conn, limit: int = 500) -> list[str]:
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select distinct market_id
+                from bot.watchlist
+                order by market_id
+                limit %s
+                """,
+                (limit,),
+            )
+            return [str(r[0]) for r in cur.fetchall()]
+    except PsycopgErrors.UndefinedTable:
+        # Backward compatibility if migration 004 is not applied yet.
+        return []
+
 def fetch_market_universe_ids(conn, limit: int = 60) -> list[str]:
     with conn.cursor() as cur:
         cur.execute(
@@ -413,6 +431,7 @@ def main():
     LIMIT = int(os.environ.get("FETCH_LIMIT", "200"))
     watch_user = os.environ.get("WATCHLIST_USER") or os.environ.get("WL_USER", "nikita")
     AUTO_WL_LIMIT = int(os.environ.get("AUTO_WL_LIMIT", "200"))
+    BOT_WL_LIMIT = int(os.environ.get("BOT_WL_LIMIT", "500"))
 
     mkts = fetch_markets(limit=LIMIT)
 
@@ -420,12 +439,16 @@ def main():
     forced_ids = []
     universe_ids = []
     manual_ids = []
+    manual_legacy_ids = []
+    manual_bot_ids = []
     position_ids = []
 
     # Важно: коннектимся раньше, чтобы прочитать forced lists
     conn = psycopg2.connect(pg)
     try:
-        manual_ids = fetch_watchlist_market_ids(conn, watch_user)
+        manual_legacy_ids = fetch_watchlist_market_ids(conn, watch_user)
+        manual_bot_ids = fetch_bot_watchlist_market_ids(conn, limit=BOT_WL_LIMIT)
+        manual_ids = list(dict.fromkeys([*manual_legacy_ids, *manual_bot_ids]))
         universe_ids = fetch_market_universe_ids(conn, limit=AUTO_WL_LIMIT)
         position_ids = fetch_position_market_ids(conn, watch_user)
     finally:
@@ -435,7 +458,9 @@ def main():
 
     print(
         "INFO: forced ids: "
-        f"manual={len(manual_ids)} universe={len(universe_ids)} positions={len(position_ids)} total={len(forced_ids)}"
+        f"manual_legacy={len(manual_legacy_ids)} manual_bot={len(manual_bot_ids)} "
+        f"manual_total={len(manual_ids)} universe={len(universe_ids)} "
+        f"positions={len(position_ids)} total={len(forced_ids)}"
     )
 
     # догружаем рынки из gamma /markets/{id}
