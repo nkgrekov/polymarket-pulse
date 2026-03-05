@@ -121,6 +121,8 @@ Site + Email API:
 • daily digest worker in `api/digest_job.py` via Resend
 • geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
+• favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
+• site telemetry endpoint: `/api/events` (`page_view`, `tg_click`)
 • site funnel event tracking in `app.site_events`
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 

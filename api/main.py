@@ -30,6 +30,12 @@ class WaitlistRequest(BaseModel):
     source: str = "site"
 
 
+class SiteEventRequest(BaseModel):
+    event_type: str
+    source: str = "site"
+    details: dict | None = None
+
+
 def detect_lang(request: Request, explicit: str | None = None) -> Literal["ru", "en"]:
     if explicit in {"ru", "en"}:
         return explicit
@@ -189,6 +195,20 @@ def og_card() -> Response:
     return Response(content=p.read_text(encoding="utf-8"), media_type="image/svg+xml")
 
 
+@app.get("/favicon.svg")
+def favicon_svg() -> Response:
+    p = WEB_DIR / "favicon.svg"
+    if not p.exists():
+        return Response(status_code=404)
+    return Response(content=p.read_text(encoding="utf-8"), media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico")
+def favicon_ico() -> Response:
+    # Serve SVG fallback for modern browsers that still request /favicon.ico.
+    return favicon_svg()
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     lang = detect_lang(request)
@@ -205,6 +225,24 @@ def privacy(request: Request) -> HTMLResponse:
 def terms(request: Request) -> HTMLResponse:
     lang = detect_lang(request)
     return HTMLResponse(load_page("terms", lang))
+
+
+@app.post("/api/events")
+def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
+    req_lang = detect_lang(request)
+    allowed = {"tg_click", "page_view"}
+    event_type = (data.event_type or "").strip().lower()
+    if event_type not in allowed:
+        raise HTTPException(status_code=400, detail="unsupported event_type")
+
+    log_site_event(
+        event_type=event_type,
+        request=request,
+        lang=req_lang,
+        source=(data.source or "site").strip()[:64] or "site",
+        details=data.details or {},
+    )
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/waitlist")

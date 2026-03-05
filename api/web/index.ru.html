@@ -17,6 +17,8 @@
   <link rel="canonical" href="/" />
   <link rel="alternate" hreflang="en" href="/?lang=en" />
   <link rel="alternate" hreflang="ru" href="/?lang=ru" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.svg" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
     :root {
@@ -94,6 +96,14 @@
     }
     button:hover { background: var(--brand-2); }
     .note { margin-top: 8px; color: var(--muted); font-size: 13px; min-height: 20px; }
+    .cta-row { display:flex; gap:10px; margin-top: 12px; align-items:center; flex-wrap: wrap; }
+    .tg-btn {
+      display:inline-flex; align-items:center; justify-content:center; min-width: 180px;
+      border:1px solid #8eb4e2; border-radius: 12px; padding: 10px 14px; text-decoration:none;
+      font-weight:700; color:#144e8f; background:#eef6ff; transition: background .2s ease, border-color .2s ease;
+    }
+    .tg-btn:hover { background:#deedff; border-color:#6c99d1; }
+    .hint { font-size: 12px; color: var(--muted); }
     .proof { margin-top: 16px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
     .proof .p { border:1px solid var(--line); border-radius: 12px; padding:10px; background: #fff; }
     .proof .n { font-weight: 700; font-size: 14px; }
@@ -152,6 +162,10 @@
             <div style="display:flex; align-items:flex-end;"><button type="submit">Отправить</button></div>
           </form>
           <div id="msg" class="note" role="status" aria-live="polite">Мы отправим письмо для подтверждения.</div>
+          <div class="cta-row">
+            <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_ru">Открыть Telegram-бота</a>
+            <span class="hint">Самый быстрый способ получать live movers и алерты watchlist.</span>
+          </div>
         </div>
       </div>
 
@@ -165,6 +179,23 @@
     const form = document.getElementById('waitlist-form');
     const msg = document.getElementById('msg');
     const emailInput = document.getElementById('email');
+    const tgLink = document.getElementById('tg-link');
+
+    async function trackEvent(eventType, details = {}) {
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_type: eventType, source: 'site', details }),
+          keepalive: true
+        });
+      } catch (_) {}
+    }
+
+    trackEvent('page_view', { lang: 'ru' });
+    tgLink?.addEventListener('click', () => {
+      trackEvent('tg_click', { lang: 'ru', placement: 'hero_panel' });
+    });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = emailInput.value.trim();
