@@ -183,6 +183,11 @@ site form / bot opt-in
 → bot.sent_alerts_log (channel=email)
 → subscriber inbox
 
+Digest orchestration:
+
+• GitHub Actions workflow `.github/workflows/digest.yml` runs daily
+• manual run is available via `workflow_dispatch`
+
 ---
 
 # Future Components

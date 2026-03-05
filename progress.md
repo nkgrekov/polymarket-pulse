@@ -218,6 +218,7 @@ Site/email status:
 • `api/main.py` provides waitlist submit + confirm + unsubscribe  
 • Resend integration for confirmation/welcome  
 • `api/digest_job.py` sends daily digest from `bot.alert_events`
+• `.github/workflows/digest.yml` runs digest daily (and supports manual trigger)
 
 ---
 
