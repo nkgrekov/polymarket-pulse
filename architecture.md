@@ -122,6 +122,7 @@ Site + Email API:
 • geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • site funnel event tracking in `app.site_events`
+• Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 
 ---
 
