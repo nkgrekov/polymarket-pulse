@@ -40,6 +40,7 @@ app.users
 app.identities  
 app.subscriptions  
 app.email_subscribers  
+app.site_events  
 bot.profiles  
 bot.user_settings  
 bot.watchlist  
@@ -216,10 +217,12 @@ Ingest cadence update:
 Site/email status:
 
 • `api/main.py` provides waitlist submit + confirm + unsubscribe  
+• waitslist/confirm/unsubscribe funnel events are logged into `app.site_events`  
 • Resend integration for confirmation/welcome  
 • `api/digest_job.py` sends daily digest from `bot.alert_events`
 • `.github/workflows/digest.yml` runs digest daily (and supports manual trigger)
 • Landing is localized (`RU`/`EN`) with auto-detection by geo/lang headers
+• SEO baseline added: `robots.txt`, `sitemap.xml`, `og-card.svg`
 
 ---
 

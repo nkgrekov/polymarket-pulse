@@ -9,8 +9,14 @@
   <meta property="og:title" content="Polymarket Pulse" />
   <meta property="og:description" content="Signals for live prediction markets." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="/og-card.svg" />
+  <meta name="twitter:title" content="Polymarket Pulse" />
+  <meta name="twitter:description" content="Signals for live prediction markets." />
+  <meta name="twitter:image" content="/og-card.svg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="canonical" href="/" />
+  <link rel="alternate" hreflang="en" href="/?lang=en" />
+  <link rel="alternate" hreflang="ru" href="/?lang=ru" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
     :root {
@@ -171,7 +177,7 @@
         const res = await fetch('/api/waitlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source: 'site_en' })
+          body: JSON.stringify({ email, source: 'site' })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Request failed');

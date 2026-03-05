@@ -8,8 +8,9 @@ import psycopg
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel, EmailStr
+from psycopg.types.json import Jsonb
 
 load_dotenv()
 
@@ -62,6 +63,48 @@ def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
         return localized.read_text(encoding="utf-8")
     fallback = WEB_DIR / f"{base_name}.html"
     return fallback.read_text(encoding="utf-8")
+
+
+def base_url() -> str:
+    return APP_BASE_URL.rstrip("/")
+
+
+def log_site_event(
+    *,
+    event_type: str,
+    request: Request,
+    lang: str,
+    email: str | None = None,
+    source: str | None = None,
+    details: dict | None = None,
+) -> None:
+    if not PG_CONN:
+        return
+    try:
+        with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    insert into app.site_events (
+                      event_type, email, source, lang, path, user_agent, ip, details
+                    )
+                    values (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        event_type,
+                        (email or "").strip().lower() or None,
+                        source,
+                        lang,
+                        request.url.path,
+                        request.headers.get("user-agent"),
+                        request.client.host if request.client else None,
+                        Jsonb(details or {}),
+                    ),
+                )
+            conn.commit()
+    except Exception:
+        # analytics must never break user-facing flow
+        return
 
 
 def send_email(to_email: str, subject: str, html: str) -> None:
@@ -117,6 +160,35 @@ def healthz() -> JSONResponse:
     return JSONResponse({"ok": True, "ts": datetime.now(timezone.utc).isoformat()})
 
 
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots() -> PlainTextResponse:
+    return PlainTextResponse(
+        "User-agent: *\nAllow: /\nSitemap: " + f"{base_url()}/sitemap.xml\n"
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap() -> Response:
+    u = base_url()
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"  <url><loc>{u}/</loc></url>\n"
+        f"  <url><loc>{u}/privacy</loc></url>\n"
+        f"  <url><loc>{u}/terms</loc></url>\n"
+        "</urlset>\n"
+    )
+    return Response(content=content, media_type="application/xml")
+
+
+@app.get("/og-card.svg")
+def og_card() -> Response:
+    p = WEB_DIR / "og-card.svg"
+    if not p.exists():
+        return Response(status_code=404)
+    return Response(content=p.read_text(encoding="utf-8"), media_type="image/svg+xml")
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
     lang = detect_lang(request)
@@ -139,11 +211,16 @@ def terms(request: Request) -> HTMLResponse:
 def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
     req_lang = detect_lang(request)
     source = data.source.strip() if data.source else "site"
-    if source == "site":
-        source = f"site_{req_lang}"
 
     token = upsert_waitlist(data.email, source)
-    confirm_link = f"{APP_BASE_URL.rstrip('/')}/confirm?token={token}"
+    confirm_link = f"{base_url()}/confirm?token={token}"
+    log_site_event(
+        event_type="waitlist_submit",
+        request=request,
+        lang=req_lang,
+        email=data.email,
+        source=source,
+    )
 
     if req_lang == "ru":
         html = (
@@ -162,7 +239,10 @@ def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
         subject = "Confirm your Polymarket Pulse subscription"
         message = "Confirmation email sent"
 
-    send_email(data.email, subject, html)
+    try:
+        send_email(data.email, subject, html)
+    except Exception:
+        return JSONResponse({"ok": True, "message": message + " (email queue delay possible)"})
     return JSONResponse({"ok": True, "message": message})
 
 
@@ -190,26 +270,44 @@ def confirm(token: str, request: Request) -> HTMLResponse:
         conn.commit()
 
     if not row:
+        log_site_event(
+            event_type="confirm_failed",
+            request=request,
+            lang=req_lang,
+            details={"reason": "invalid_or_expired_token"},
+        )
         if req_lang == "ru":
             return HTMLResponse("<h3>Токен недействителен или истёк.</h3>", status_code=400)
         return HTMLResponse("<h3>Invalid or expired confirmation token.</h3>", status_code=400)
 
     email = row[0]
-    unsub = f"{APP_BASE_URL.rstrip('/')}/unsubscribe?token={token}"
+    log_site_event(
+        event_type="confirm_success",
+        request=request,
+        lang=req_lang,
+        email=email,
+    )
+    unsub = f"{base_url()}/unsubscribe?token={token}"
     if req_lang == "ru":
+        try:
+            send_email(
+                email,
+                "Добро пожаловать в Polymarket Pulse",
+                "<h2>Добро пожаловать</h2><p>Подписка подтверждена. Ежедневный дайджест включён.</p>"
+                f"<p><a href=\"{unsub}\">Отписаться</a></p>",
+            )
+        except Exception:
+            pass
+        return HTMLResponse("<h3>Email подтверждён. Ежедневный дайджест включён.</h3>")
+    try:
         send_email(
             email,
-            "Добро пожаловать в Polymarket Pulse",
-            "<h2>Добро пожаловать</h2><p>Подписка подтверждена. Ежедневный дайджест включён.</p>"
-            f"<p><a href=\"{unsub}\">Отписаться</a></p>",
+            "Welcome to Polymarket Pulse",
+            "<h2>Welcome</h2><p>You are confirmed for daily digest updates.</p>"
+            f"<p><a href=\"{unsub}\">Unsubscribe</a></p>",
         )
-        return HTMLResponse("<h3>Email подтверждён. Ежедневный дайджест включён.</h3>")
-    send_email(
-        email,
-        "Welcome to Polymarket Pulse",
-        "<h2>Welcome</h2><p>You are confirmed for daily digest updates.</p>"
-        f"<p><a href=\"{unsub}\">Unsubscribe</a></p>",
-    )
+    except Exception:
+        pass
     return HTMLResponse("<h3>Email confirmed. Daily digest is enabled.</h3>")
 
 
@@ -237,10 +335,22 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
         conn.commit()
 
     if not row:
+        log_site_event(
+            event_type="unsubscribe_failed",
+            request=request,
+            lang=req_lang,
+            details={"reason": "token_not_found_or_already_unsubscribed"},
+        )
         if req_lang == "ru":
             return HTMLResponse("<h3>Токен не найден или уже отписан.</h3>", status_code=400)
         return HTMLResponse("<h3>Token not found or already unsubscribed.</h3>", status_code=400)
 
+    log_site_event(
+        event_type="unsubscribe_success",
+        request=request,
+        lang=req_lang,
+        email=row[0],
+    )
     if req_lang == "ru":
         return HTMLResponse("<h3>Вы успешно отписались.</h3>")
     return HTMLResponse("<h3>You have been unsubscribed.</h3>")

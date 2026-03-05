@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Polymarket Pulse">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f2c50"/>
+      <stop offset="100%" stop-color="#0d6f65"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f69f58"/>
+      <stop offset="100%" stop-color="#ffd280"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g opacity="0.15" stroke="#9ac5ff" stroke-width="2" fill="none">
+    <path d="M0 510 C120 500, 220 450, 360 460 C510 470, 640 410, 820 420 C980 430, 1080 390, 1200 360"/>
+    <path d="M0 430 C120 420, 220 360, 360 370 C510 380, 640 300, 820 310 C980 320, 1080 270, 1200 250"/>
+    <path d="M0 350 C120 340, 220 280, 360 290 C510 300, 640 240, 820 250 C980 260, 1080 220, 1200 200"/>
+  </g>
+  <rect x="72" y="72" width="1056" height="486" rx="26" fill="#ffffff" opacity="0.06"/>
+  <text x="120" y="242" fill="#ffffff" font-family="IBM Plex Sans, Arial, sans-serif" font-size="74" font-weight="700">Polymarket Pulse</text>
+  <text x="120" y="310" fill="#cde3ff" font-family="IBM Plex Sans, Arial, sans-serif" font-size="36" font-weight="500">Signals for live prediction markets</text>
+  <text x="120" y="360" fill="#cde3ff" font-family="IBM Plex Sans, Arial, sans-serif" font-size="30" font-weight="500">Top movers • Watchlist deltas • Portfolio alerts</text>
+  <path d="M120 448 L300 392 L460 428 L620 330 L790 364 L960 276" stroke="url(#line)" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="960" cy="276" r="10" fill="#ffd280"/>
+</svg>

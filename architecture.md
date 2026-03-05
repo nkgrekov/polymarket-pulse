@@ -56,6 +56,7 @@ app.users
 app.identities  
 app.subscriptions  
 app.email_subscribers  
+app.site_events  
 bot.profiles  
 bot.user_settings  
 bot.watchlist  
@@ -119,6 +120,8 @@ Site + Email API:
 • waitlist form + double opt-in  
 • daily digest worker in `api/digest_job.py` via Resend
 • geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
+• SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
+• site funnel event tracking in `app.site_events`
 
 ---
 
