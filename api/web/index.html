@@ -5,106 +5,389 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Polymarket Pulse</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
+
     :root {
-      --bg: #f4f1ea;
-      --fg: #1d1d1b;
-      --brand: #1f6f5f;
-      --accent: #c54f3a;
-      --card: #fffdfa;
-      --line: #d9d3c7;
+      --bg: #0a0a0f;
+      --panel: #10131b;
+      --panel-2: #0c1017;
+      --line: #232a3b;
+      --text: #eaf1ff;
+      --muted: #8f9ab2;
+      --accent: #00ff88;
+      --negative: #ff5577;
+      --positive: #00ff88;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      background: radial-gradient(1200px 700px at 80% -20%, #dce8e2 0%, transparent 60%), var(--bg);
-      color: var(--fg);
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--text);
+      font-family: "Syne", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.1) 0%, transparent 60%),
+        radial-gradient(1000px 700px at -10% 10%, rgba(0, 224, 255, 0.09) 0%, transparent 58%),
+        linear-gradient(180deg, #090a0f 0%, #0a0a0f 60%, #080a11 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.2;
+      animation: drift 14s linear infinite;
+    }
+
+    @keyframes drift {
+      from { transform: translateY(0); }
+      to { transform: translateY(28px); }
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 26px 0 40px;
+      position: relative;
+      z-index: 1;
+    }
+
     .hero {
-      background: var(--card);
       border: 1px solid var(--line);
       border-radius: 20px;
-      padding: 28px;
-      box-shadow: 0 14px 40px rgba(29,29,27,0.08);
-      animation: rise 420ms ease-out;
+      background: linear-gradient(150deg, rgba(18, 24, 38, 0.96) 0%, rgba(11, 14, 22, 0.96) 100%);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      padding: 30px;
     }
-    @keyframes rise { from { opacity: 0; transform: translateY(8px);} to {opacity:1; transform:translateY(0);} }
-    h1 { margin: 0 0 12px; font-size: clamp(28px, 5vw, 52px); line-height: 1.02; }
-    .sub { margin: 0 0 22px; max-width: 680px; color: #3d3d39; font-size: 18px; }
-    .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
-    .panel {
-      border: 1px solid var(--line);
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #9db0ca;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 14px var(--accent);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 860px;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      font-size: clamp(40px, 8vw, 84px);
+      text-transform: uppercase;
+    }
+
+    .sub {
+      margin: 14px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 21px);
+      line-height: 1.45;
+      font-family: "Space Mono", monospace;
+    }
+
+    .scarcity {
+      margin-top: 16px;
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      color: #bfd3ef;
+    }
+
+    .accent { color: var(--accent); }
+
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
       border-radius: 16px;
-      background: #fff;
-      padding: 16px;
-    }
-    .kicker { color: var(--brand); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
-    .form { display: flex; gap: 10px; margin-top: 10px; }
-    input[type="email"] {
-      flex: 1;
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px 14px;
-      font-size: 15px;
-      background: #fff;
+      background: var(--panel-2);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
     }
-    button {
-      border: 0;
+
+    .ticker::before {
+      content: "";
+      position: absolute;
+      top: -40%;
+      left: -40%;
+      width: 50%;
+      height: 180%;
+      background: linear-gradient(110deg, transparent 0%, rgba(0, 255, 136, 0.1) 50%, transparent 100%);
+      animation: scan 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scan {
+      0%, 15% { transform: translateX(-110%); }
+      45%, 100% { transform: translateX(360%); }
+    }
+
+    .card-title {
+      margin: 0;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #8ca2c0;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .rows {
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      border: 1px solid #1f2738;
       border-radius: 12px;
-      padding: 12px 16px;
+      background: rgba(17, 22, 33, 0.9);
+      padding: 12px;
+    }
+
+    .line-1 {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      color: #c9daef;
+    }
+
+    .market {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 72%;
+    }
+
+    .time {
+      color: #7686a2;
+      font-size: 12px;
+    }
+
+    .line-2 {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: "Space Mono", monospace;
+      font-size: 14px;
+    }
+
+    .move { color: #d7e7ff; }
+    .delta-up { color: var(--positive); }
+    .delta-down { color: var(--negative); }
+
+    .cta-panel { background: linear-gradient(175deg, #111725 0%, #0d1220 100%); }
+
+    .cta-label {
+      font-size: 12px;
+      font-family: "Space Mono", monospace;
+      color: #8ca2c0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0;
+    }
+
+    .cta-title {
+      margin: 8px 0 10px;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .cta-copy {
+      margin: 0;
+      font-family: "Space Mono", monospace;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .tg-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      margin-top: 14px;
+      border: 1px solid #00ffa2;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #00ff88 0%, #00d774 100%);
+      color: #07130e;
+      font-family: "Space Mono", monospace;
+      font-size: 16px;
       font-weight: 700;
-      background: var(--brand);
-      color: #fff;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tg-btn:hover { transform: translateY(-1px); box-shadow: 0 0 24px rgba(0, 255, 136, 0.3); }
+
+    .divider {
+      margin: 14px 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, #253149 20%, #253149 80%, transparent 100%);
+    }
+
+    .form { display: grid; gap: 10px; }
+
+    .label {
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #8ca2c0;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="email"] {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #2d3850;
+      border-radius: 11px;
+      padding: 12px;
+      font-family: "Space Mono", monospace;
+      font-size: 14px;
+      color: var(--text);
+      background: #0a101b;
+    }
+
+    button {
+      min-height: 48px;
+      border: 1px solid #2d3850;
+      border-radius: 11px;
+      background: #111a2a;
+      color: #d2def2;
+      font-family: "Space Mono", monospace;
+      font-size: 14px;
+      font-weight: 700;
       cursor: pointer;
     }
-    button:hover { background: #18594d; }
-    .note { font-size: 13px; color: #5c5a55; margin-top: 8px; }
-    .chip {
-      display: inline-block;
-      background: #f6ece8;
-      color: var(--accent);
-      border: 1px solid #e8c1b7;
-      border-radius: 999px;
-      padding: 6px 10px;
-      margin: 0 8px 8px 0;
+
+    .note {
+      margin-top: 8px;
+      min-height: 20px;
+      font-family: "Space Mono", monospace;
       font-size: 12px;
-      font-weight: 700;
+      color: #8fa3c0;
     }
-    footer { margin: 18px 0 2px; font-size: 13px; color: #5c5a55; }
-    a { color: var(--brand); }
-    @media (max-width: 780px) {
+
+    footer {
+      margin-top: 16px;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #70809d;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    footer a {
+      color: #9bb4d5;
+      text-decoration: none;
+    }
+
+    @media (max-width: 900px) {
+      .hero { padding: 22px; }
       .grid { grid-template-columns: 1fr; }
-      .form { flex-direction: column; }
-      button { width: 100%; }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: calc(100% - 20px); }
+      .hero { padding: 16px; border-radius: 16px; }
+      .card { padding: 14px; }
+      h1 { font-size: clamp(34px, 15vw, 56px); }
+      .sub { font-size: 14px; }
+      .market { max-width: 68%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="kicker">Layer II + III</div>
-      <h1>Signals for live prediction markets.</h1>
-      <p class="sub">Polymarket Pulse turns market noise into actionable movers, watchlist deltas, and portfolio alerts across Telegram, site, and future iOS.</p>
+      <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
+      <h1>Markets moved.<br />Did you notice?</h1>
+      <p class="sub">3% swings happen fast. Polymarket Pulse tracks probability shifts, flags real movement, and pushes it to Telegram before noise takes over.</p>
+      <p class="scarcity"><span class="accent">847 traders on waitlist</span> · Telegram bot live now</p>
+
       <div class="grid">
-        <div class="panel">
-          <div class="chip">Top movers</div>
-          <div class="chip">Watchlist deltas</div>
-          <div class="chip">Daily digest</div>
-          <div class="chip">Freemium: 3 markets free</div>
-          <p style="margin: 10px 0 0;">Join waitlist for web + email access. Confirmation required.</p>
-        </div>
-        <div class="panel">
-          <strong>Get early access</strong>
+        <article class="card ticker" aria-label="Top Movers mock">
+          <p class="card-title">Top movers · Last 2h</p>
+          <div class="rows">
+            <div class="row">
+              <div class="line-1"><span class="market">Trump wins 2028 election</span><span class="time">11m ago</span></div>
+              <div class="line-2"><span class="move">34% → 41%</span><span class="delta-up">↑7pp</span></div>
+            </div>
+            <div class="row">
+              <div class="line-1"><span class="market">US recession in 2026</span><span class="time">39m ago</span></div>
+              <div class="line-2"><span class="move">48% → 44%</span><span class="delta-down">↓4pp</span></div>
+            </div>
+            <div class="row">
+              <div class="line-1"><span class="market">Fed cuts by July</span><span class="time">1h ago</span></div>
+              <div class="line-2"><span class="move">29% → 36%</span><span class="delta-up">↑7pp</span></div>
+            </div>
+          </div>
+        </article>
+
+        <aside class="card cta-panel">
+          <p class="cta-label">Fastest way to get value</p>
+          <h2 class="cta-title">Catch the move before everyone else.</h2>
+          <p class="cta-copy">Open the bot now for instant signals. Leave email as backup for launch updates and digest.</p>
+          <a class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
+          <div class="divider"></div>
           <form id="waitlist-form" class="form">
-            <input id="email" name="email" type="email" required placeholder="you@domain.com" />
-            <button type="submit">Join</button>
+            <div>
+              <label class="label" for="email">Waitlist email</label>
+              <input id="email" name="email" type="email" required placeholder="you@domain.com" />
+            </div>
+            <button type="submit">Get Email Access</button>
           </form>
           <div id="msg" class="note">We’ll send a confirmation email.</div>
-        </div>
+        </aside>
       </div>
+
       <footer>
-        <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
+        <span>Signal engine for Polymarket probability shifts</span>
+        <span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
       </footer>
     </section>
   </div>
