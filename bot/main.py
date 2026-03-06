@@ -243,6 +243,17 @@ where user_id = %s::uuid
   and sent_at >= date_trunc('day', now());
 """
 
+SQL_UPGRADE_INTENT_INSERT = """
+insert into app.upgrade_intents (
+  user_id,
+  telegram_id,
+  chat_id,
+  source,
+  details
+)
+values (%s::uuid, %s, %s, %s, %s);
+"""
+
 
 def run_db_query(query: str, params: tuple[Any, ...], *, row_factory=None):
     last_error = None
@@ -323,6 +334,26 @@ def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:
         return f"{prev_bucket} -> {last_bucket} ({mins}m)"
     except Exception:
         return f"{prev_bucket} -> {last_bucket}"
+
+
+def user_limits_block(user_ctx: dict) -> str:
+    plan = str(user_ctx.get("plan") or "free")
+    watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    alerts_today = int(user_ctx.get("alerts_sent_today") or 0)
+    threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    if plan == "pro":
+        return (
+            "План: PRO\n"
+            f"Threshold: {threshold}\n"
+            f"Watchlist: {watchlist_count} (без лимита)\n"
+            f"Alerts today: {alerts_today} (без лимита)"
+        )
+    return (
+        "План: FREE\n"
+        f"Threshold: {threshold}\n"
+        f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+        f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
+    )
 
 
 def resolve_user_context_sync(update: Update) -> dict:
@@ -438,6 +469,33 @@ def upsert_event_sync(user_id: str, row: dict) -> None:
     )
 
 
+def log_upgrade_intent_sync(update: Update, user_ctx: dict) -> None:
+    tg_user = update.effective_user
+    tg_chat = update.effective_chat
+    payload = Jsonb(
+        {
+            "plan": user_ctx.get("plan"),
+            "watchlist_count": user_ctx.get("watchlist_count"),
+            "alerts_sent_today": user_ctx.get("alerts_sent_today"),
+            "threshold": str(user_ctx.get("threshold")),
+            "username": tg_user.username if tg_user else None,
+            "first_name": tg_user.first_name if tg_user else None,
+            "last_name": tg_user.last_name if tg_user else None,
+            "lang": tg_user.language_code if tg_user else None,
+        }
+    )
+    execute_db_write(
+        SQL_UPGRADE_INTENT_INSERT,
+        (
+            user_ctx["user_id"],
+            tg_user.id if tg_user else None,
+            tg_chat.id if tg_chat else None,
+            "telegram_bot",
+            payload,
+        ),
+    )
+
+
 async def dispatch_push_alerts(application: Application) -> None:
     rows = await asyncio.wait_for(
         asyncio.to_thread(lambda: run_db_query(SQL_PUSH_CANDIDATES, (PUSH_FETCH_LIMIT,), row_factory=dict_row)),
@@ -503,16 +561,20 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Профиль активирован.\n\n"
-        "Команды:\n"
-        "/help - список команд\n"
-        "/plan - ваш план и лимиты\n"
-        "/threshold 0.03 - порог алертов\n"
-        "/movers - top live movers\n"
-        "/watchlist_list - ваш watchlist\n"
-        "/watchlist_add <market_id|slug>\n"
-        "/watchlist_remove <market_id|slug>\n"
-        "/watchlist - live изменения watchlist\n"
-        "/inbox - последние алерты"
+        "Что бот делает:\n"
+        "• показывает top live movers\n"
+        "• отслеживает ваши рынки в watchlist\n"
+        "• присылает push по движению вероятностей\n\n"
+        "Быстрый старт за 60 секунд:\n"
+        "1) /movers — посмотреть 3 live движения\n"
+        "2) /watchlist_add <market_id|slug> — добавить рынок\n"
+        "3) /watchlist — увидеть live-дельту по вашему списку\n"
+        "4) /threshold 0.03 — настроить чувствительность\n\n"
+        f"{user_limits_block(user_ctx)}\n\n"
+        "Полезно дальше:\n"
+        "/help — все команды\n"
+        "/limits — текущие лимиты\n"
+        "/upgrade — как перейти на PRO"
     )
     log.info("cmd=/start chat_id=%s tg_user=%s app_user=%s", update.effective_chat.id, update.effective_user.id, user_ctx["user_id"])
 
@@ -521,10 +583,23 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     await update.message.reply_text(
-        "Команды:\n"
-        "/start\n/help\n/plan\n/threshold 0.03\n"
-        "/movers\n/inbox\n/inbox20\n"
-        "/watchlist\n/watchlist_list\n/watchlist_add <market_id|slug>\n/watchlist_remove <market_id|slug>"
+        "Команды бота:\n\n"
+        "Онбординг и план:\n"
+        "/start — активация профиля и быстрый старт\n"
+        "/plan — ваш план, threshold и usage\n"
+        "/limits — лимиты FREE/PRO\n"
+        "/upgrade — переход на PRO\n\n"
+        "Сигналы:\n"
+        "/movers — top 3 live movers\n"
+        "/inbox — последние алерты\n"
+        "/inbox20 — расширенный inbox\n\n"
+        "Watchlist:\n"
+        "/watchlist_list — ваш список рынков\n"
+        "/watchlist_add <market_id|slug>\n"
+        "/watchlist_remove <market_id|slug>\n"
+        "/watchlist — live изменения по вашему списку\n\n"
+        "Настройка чувствительности:\n"
+        "/threshold 0.03"
     )
 
 
@@ -538,12 +613,50 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        "Текущий план:\n"
-        f"plan: {user_ctx['plan']}\n"
-        f"threshold: {_fmt_num(user_ctx['threshold'], 3)}\n"
-        f"watchlist markets: {user_ctx['watchlist_count']}\n"
-        f"alerts sent today: {user_ctx['alerts_sent_today']}\n"
-        f"free limits: {FREE_WATCHLIST_LIMIT} markets, {FREE_DAILY_ALERT_LIMIT} alerts/day"
+        "Текущий статус:\n"
+        f"{user_limits_block(user_ctx)}\n\n"
+        "Изменить порог: /threshold 0.03\n"
+        "Смотреть лимиты: /limits\n"
+        "Переход на PRO: /upgrade"
+    )
+
+
+async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    try:
+        user_ctx = await resolve_user_context(update)
+    except Exception:
+        await update.message.reply_text("Не удалось прочитать лимиты.")
+        return
+
+    await update.message.reply_text(
+        "Лимиты и доступ:\n\n"
+        "FREE:\n"
+        f"• до {FREE_WATCHLIST_LIMIT} рынков в watchlist\n"
+        f"• до {FREE_DAILY_ALERT_LIMIT} push-алертов в день\n\n"
+        "PRO:\n"
+        "• watchlist без лимита\n"
+        "• push-алерты без лимита\n\n"
+        f"Ваш текущий usage:\n{user_limits_block(user_ctx)}\n\n"
+        "Чтобы перейти на PRO: /upgrade"
+    )
+
+
+async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    user_ctx = await resolve_user_context(update)
+    try:
+        await asyncio.to_thread(log_upgrade_intent_sync, update, user_ctx)
+    except Exception:
+        log.exception("/upgrade intent insert failed")
+    await update.message.reply_text(
+        "Переход на PRO:\n"
+        "1) Откройте сайт: https://polymarketpulse.app/?lang=ru\n"
+        "2) Оставьте email в waitlist (если ещё не оставляли)\n"
+        "3) Напишите сюда \"хочу PRO\" — мы активируем доступ на вашем user_id\n\n"
+        "Скоро добавим self-serve оплату прямо в боте."
     )
 
 
@@ -678,7 +791,10 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     if not context.args:
-        await update.message.reply_text("Формат: /watchlist_add <market_id|slug>")
+        await update.message.reply_text(
+            "Формат: /watchlist_add <market_id|slug>\n"
+            "Подсказка: сначала откройте /movers и скопируйте market_id нужного рынка."
+        )
         return
 
     ref = context.args[0].strip()
@@ -699,7 +815,7 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_ctx["plan"] == "free" and int(user_ctx["watchlist_count"]) >= FREE_WATCHLIST_LIMIT:
         await update.message.reply_text(
-            f"Лимит Free: {FREE_WATCHLIST_LIMIT} рынка. Удалите один через /watchlist_remove или перейдите на Pro."
+            f"Лимит FREE: {FREE_WATCHLIST_LIMIT} рынка. Удалите один через /watchlist_remove или перейдите на PRO: /upgrade"
         )
         return
 
@@ -753,7 +869,11 @@ async def cmd_admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-    await update.message.reply_text("Неизвестная команда. Используйте /help")
+    await update.message.reply_text(
+        "Неизвестная команда.\n"
+        "Используйте /help.\n"
+        "Быстрый старт: /movers, /watchlist_add, /watchlist, /inbox"
+    )
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
@@ -766,6 +886,8 @@ async def on_post_init(application: Application):
             BotCommand("start", "Онбординг и профиль"),
             BotCommand("help", "Список команд"),
             BotCommand("plan", "Текущий план и лимиты"),
+            BotCommand("limits", "Лимиты Free/Pro"),
+            BotCommand("upgrade", "Как перейти на Pro"),
             BotCommand("threshold", "Порог алертов"),
             BotCommand("movers", "Top live movers"),
             BotCommand("inbox", "Последние алерты"),
@@ -802,6 +924,8 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("plan", cmd_plan))
+    app.add_handler(CommandHandler("limits", cmd_limits))
+    app.add_handler(CommandHandler("upgrade", cmd_upgrade))
     app.add_handler(CommandHandler("threshold", cmd_threshold))
     app.add_handler(CommandHandler("movers", cmd_movers))
     app.add_handler(CommandHandler("inbox", cmd_inbox10))

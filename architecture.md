@@ -56,6 +56,7 @@ app.users
 app.identities  
 app.subscriptions  
 app.email_subscribers  
+app.upgrade_intents  
 app.site_events  
 bot.profiles  
 bot.user_settings  
@@ -99,6 +100,8 @@ Commands:
 /start  
 /help  
 /plan  
+/limits  
+/upgrade  
 /threshold  
 /inbox  
 /inbox20  
@@ -113,6 +116,8 @@ Also runs:
 
 • scheduled push loop  
 • freemium enforcement (watchlist + daily alert caps)
+• onboarding/plan UX layer (`/start`, `/help`, `/limits`, `/upgrade`) for conversion to paid plan
+• `/upgrade` command writes conversion intent into `app.upgrade_intents`
 
 Site + Email API:
 
@@ -123,11 +128,14 @@ Site + Email API:
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
 • site telemetry endpoint: `/api/events` (`page_view`, `tg_click`)
+• attribution enrichment in telemetry: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 • landing uses dark trading-terminal UI with pain-driven hero, live “Top movers” mock widget, scarcity line, and dual CTA (Telegram primary + email waitlist)
+• landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
-• Resend mail-auth DNS hosted in Cloudflare on `resend.polymarketpulse.app`
+• Resend mail-auth DNS hosted in Cloudflare (`resend._domainkey` + `send.polymarketpulse.app` SPF)
+• Resend domain `polymarketpulse.app` is `verified`
 
 ---
 
@@ -192,6 +200,13 @@ site form / bot opt-in
 → api/digest_job.py
 → bot.sent_alerts_log (channel=email)
 → subscriber inbox
+
+Attribution flow:
+
+landing query params (`utm_*`)
+→ `/api/events` and `/api/waitlist` payload
+→ `app.site_events.details`
+→ funnel analysis split by source/channel
 
 Digest orchestration:
 

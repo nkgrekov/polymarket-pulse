@@ -40,6 +40,7 @@ app.users
 app.identities  
 app.subscriptions  
 app.email_subscribers  
+app.upgrade_intents  
 app.site_events  
 bot.profiles  
 bot.user_settings  
@@ -145,6 +146,8 @@ Commands:
 /start  
 /help  
 /plan  
+/limits  
+/upgrade  
 /threshold  
 /inbox  
 /inbox20  
@@ -181,6 +184,14 @@ Threshold policy:
 
 • Global baseline 0.03  
 • Per-user override in `bot.user_settings.threshold`
+
+Onboarding UX update:
+
+• `/start` now includes “what bot does” + 60-second quick start flow  
+• `/help` reorganized by use-case (plan, signals, watchlist, threshold)  
+• `/limits` shows FREE/PRO constraints and current usage  
+• `/upgrade` provides explicit conversion path to PRO
+• `/upgrade` now logs lead intents into `app.upgrade_intents` for manual sales follow-up
 
 ---
 
@@ -225,14 +236,19 @@ Site/email status:
 • SEO baseline added: `robots.txt`, `sitemap.xml`, `og-card.svg`
 • Added browser favicon (`/favicon.svg`) and Telegram CTA on landing
 • Added site event endpoint (`/api/events`) for `page_view` and `tg_click`
+• `app.site_events.details` now stores attribution payload: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
+• Waitlist flow now forwards attribution into confirm/unsubscribe funnel events
 • Landing fully redesigned (RU/EN): dark trading-terminal aesthetic, pain-driven hero, live mock “Top movers”, dual CTA hierarchy (Telegram primary + email waitlist secondary)
+• Added conversion UX upgrades: “what you get in 60 seconds”, mobile sticky Telegram CTA, and clear CTA hierarchy
+• Added static social-proof block `Historical examples` (Dec–Mar sample cards, explicitly non-live)
 • Google Analytics tag (`G-J901VRQH4G`) embedded in all landing variants (`index.en.html`, `index.ru.html`, `index.html`)
 • `site` sender configured to use `welcome@polymarketpulse.app` (Resend from-address)
-• Resend DNS records configured in Cloudflare (`resend._domainkey`, `resend` MX/TXT)
-• Resend verification currently pending in dashboard (`Restart/Verify` after DNS propagation)
+• Resend DNS records configured in Cloudflare (`resend._domainkey`, `send` MX/TXT)
+• Resend domain status is `verified`; confirmation/welcome flow can send from `welcome@polymarketpulse.app`
 • Production custom domain active: `https://polymarketpulse.app`
 • `www.polymarketpulse.app` redirects to apex via Cloudflare page rule
 • Existing Railway `site` service redeployed from local source root `api/`; production serves redesigned landing
+• Competitive sweep + social distribution plan documented in `docs/growth_sweep_2026-03-06.md`
 
 ---
 

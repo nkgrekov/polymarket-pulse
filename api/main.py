@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlencode
 
 import psycopg
 import requests
@@ -28,6 +29,7 @@ app = FastAPI(title="Polymarket Pulse Site API")
 class WaitlistRequest(BaseModel):
     email: EmailStr
     source: str = "site"
+    details: dict | None = None
 
 
 class SiteEventRequest(BaseModel):
@@ -73,6 +75,34 @@ def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
 
 def base_url() -> str:
     return APP_BASE_URL.rstrip("/")
+
+
+def enrich_details(
+    request: Request,
+    details: dict | None = None,
+    fallback_lang: str | None = None,
+    fallback_placement: str | None = None,
+) -> dict:
+    payload = dict(details or {})
+    qp = request.query_params
+
+    for key in ("utm_source", "utm_medium", "utm_campaign"):
+        if not payload.get(key):
+            v = (qp.get(key) or "").strip()
+            if v:
+                payload[key] = v
+
+    if not payload.get("placement") and fallback_placement:
+        payload["placement"] = fallback_placement
+    if not payload.get("placement"):
+        placement_q = (qp.get("placement") or "").strip()
+        if placement_q:
+            payload["placement"] = placement_q
+
+    if not payload.get("lang") and fallback_lang in {"ru", "en"}:
+        payload["lang"] = fallback_lang
+
+    return payload
 
 
 def log_site_event(
@@ -230,7 +260,8 @@ def terms(request: Request) -> HTMLResponse:
 @app.post("/api/events")
 def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     req_lang = detect_lang(request)
-    detail_lang = (data.details or {}).get("lang") if isinstance(data.details, dict) else None
+    merged_details = enrich_details(request, data.details, fallback_lang=req_lang)
+    detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
     allowed = {"tg_click", "page_view"}
     event_type = (data.event_type or "").strip().lower()
@@ -242,7 +273,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
         request=request,
         lang=event_lang,
         source=(data.source or "site").strip()[:64] or "site",
-        details=data.details or {},
+        details=merged_details,
     )
     return JSONResponse({"ok": True})
 
@@ -251,15 +282,22 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
 def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
     req_lang = detect_lang(request)
     source = data.source.strip() if data.source else "site"
+    details = enrich_details(request, data.details, fallback_lang=req_lang, fallback_placement="waitlist_form")
 
     token = upsert_waitlist(data.email, source)
-    confirm_link = f"{base_url()}/confirm?token={token}"
+    confirm_q = {"token": token}
+    for key in ("utm_source", "utm_medium", "utm_campaign", "placement", "lang"):
+        value = details.get(key)
+        if value:
+            confirm_q[key] = value
+    confirm_link = f"{base_url()}/confirm?{urlencode(confirm_q)}"
     log_site_event(
         event_type="waitlist_submit",
         request=request,
         lang=req_lang,
         email=data.email,
         source=source,
+        details=details,
     )
 
     if req_lang == "ru":
@@ -289,6 +327,7 @@ def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
 @app.get("/confirm", response_class=HTMLResponse)
 def confirm(token: str, request: Request) -> HTMLResponse:
     req_lang = detect_lang(request)
+    details = enrich_details(request, fallback_lang=req_lang, fallback_placement="email_confirm")
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
 
@@ -314,7 +353,7 @@ def confirm(token: str, request: Request) -> HTMLResponse:
             event_type="confirm_failed",
             request=request,
             lang=req_lang,
-            details={"reason": "invalid_or_expired_token"},
+            details={**details, "reason": "invalid_or_expired_token"},
         )
         if req_lang == "ru":
             return HTMLResponse("<h3>Токен недействителен или истёк.</h3>", status_code=400)
@@ -326,6 +365,7 @@ def confirm(token: str, request: Request) -> HTMLResponse:
         request=request,
         lang=req_lang,
         email=email,
+        details=details,
     )
     unsub = f"{base_url()}/unsubscribe?token={token}"
     if req_lang == "ru":
@@ -354,6 +394,7 @@ def confirm(token: str, request: Request) -> HTMLResponse:
 @app.get("/unsubscribe", response_class=HTMLResponse)
 def unsubscribe(token: str, request: Request) -> HTMLResponse:
     req_lang = detect_lang(request)
+    details = enrich_details(request, fallback_lang=req_lang, fallback_placement="email_unsubscribe")
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
 
@@ -379,7 +420,7 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
             event_type="unsubscribe_failed",
             request=request,
             lang=req_lang,
-            details={"reason": "token_not_found_or_already_unsubscribed"},
+            details={**details, "reason": "token_not_found_or_already_unsubscribed"},
         )
         if req_lang == "ru":
             return HTMLResponse("<h3>Токен не найден или уже отписан.</h3>", status_code=400)
@@ -390,6 +431,7 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
         request=request,
         lang=req_lang,
         email=row[0],
+        details=details,
     )
     if req_lang == "ru":
         return HTMLResponse("<h3>Вы успешно отписались.</h3>")

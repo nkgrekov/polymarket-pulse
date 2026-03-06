@@ -300,6 +300,24 @@
       line-height: 1.5;
     }
 
+    .speedlist {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #c9d8ef;
+    }
+
+    .speedlist li {
+      border: 1px solid #223149;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: rgba(12, 19, 31, 0.75);
+    }
+
     .tg-btn {
       display: inline-flex;
       align-items: center;
@@ -411,9 +429,78 @@
       outline: none;
     }
 
+    .proof {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(160deg, rgba(15, 20, 31, 0.96) 0%, rgba(10, 14, 22, 0.96) 100%);
+    }
+
+    .proof-head {
+      margin: 0;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #9cb1cc;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .proof-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .proof-card {
+      border: 1px solid #1f2c42;
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(13, 19, 31, 0.9);
+    }
+
+    .proof-q {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #d7e3f8;
+    }
+
+    .proof-meta {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-family: "Space Mono", monospace;
+      font-size: 11px;
+      color: #89a0bf;
+      gap: 8px;
+    }
+
+    .sticky-tg {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 20;
+      display: none;
+      text-align: center;
+      border: 1px solid #00ffa2;
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(0, 255, 136, 0.96) 0%, rgba(0, 215, 116, 0.96) 100%);
+      color: #07130e;
+      text-decoration: none;
+      font-family: "Space Mono", monospace;
+      font-weight: 700;
+      min-height: 50px;
+      padding: 14px 10px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+    }
+
     @media (max-width: 900px) {
       .hero { padding: 22px; }
       .grid { grid-template-columns: 1fr; }
+      .proof-grid { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 640px) {
@@ -424,6 +511,9 @@
       h1 { font-size: clamp(34px, 15vw, 56px); }
       .sub { font-size: 14px; }
       .market { max-width: 68%; }
+      .proof-grid { grid-template-columns: 1fr; }
+      .sticky-tg { display: block; }
+      body { padding-bottom: 74px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -488,6 +578,11 @@
           <p class="cta-label">Fastest way to get value</p>
           <h2 class="cta-title">Catch the move before everyone else.</h2>
           <p class="cta-copy">Open the bot now for instant signals. Leave email as backup for launch updates and digest.</p>
+          <ul class="speedlist" aria-label="What you get in 60 seconds">
+            <li>Connect in 1 tap, no setup friction.</li>
+            <li>Top movers and watchlist deltas in one feed.</li>
+            <li>Signal-first alerts, not noisy chatter.</li>
+          </ul>
 
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
 
@@ -509,14 +604,44 @@
         <span><a href="/privacy?lang=en">Privacy</a> · <a href="/terms?lang=en">Terms</a></span>
       </div>
     </section>
+
+    <section class="proof" aria-label="Historical examples">
+      <p class="proof-head">Historical examples · Dec 2025 - Mar 2026</p>
+      <div class="proof-grid">
+        <article class="proof-card">
+          <p class="proof-q">Miami temperature market repriced sharply in one window.</p>
+          <div class="proof-meta"><span>Feb 16, 2026</span><span class="delta-down">-67.5pp</span></div>
+        </article>
+        <article class="proof-card">
+          <p class="proof-q">DOJ/Epstein narrative market saw a fast upside jump.</p>
+          <div class="proof-meta"><span>Dec 13, 2025</span><span class="delta-up">+66.5pp</span></div>
+        </article>
+        <article class="proof-card">
+          <p class="proof-q">Dota2 map winner flipped hard after lineup information.</p>
+          <div class="proof-meta"><span>Jan 22, 2026</span><span class="delta-up">+64.0pp</span></div>
+        </article>
+      </div>
+    </section>
   </div>
+  <a id="tg-link-sticky" class="sticky-tg" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_sticky">Open Telegram Bot</a>
 
   <script>
     const form = document.getElementById('waitlist-form');
     const msg = document.getElementById('msg');
     const emailInput = document.getElementById('email');
     const tgLink = document.getElementById('tg-link');
-    const tgLinkBottom = document.getElementById('tg-link-bottom');
+    const tgLinkSticky = document.getElementById('tg-link-sticky');
+
+    function getAttribution() {
+      const p = new URLSearchParams(window.location.search);
+      return {
+        lang: 'en',
+        placement: 'landing',
+        utm_source: p.get('utm_source') || '',
+        utm_medium: p.get('utm_medium') || '',
+        utm_campaign: p.get('utm_campaign') || ''
+      };
+    }
 
     async function trackEvent(eventType, details = {}) {
       try {
@@ -529,12 +654,12 @@
       } catch (_) {}
     }
 
-    trackEvent('page_view', { lang: 'en' });
+    trackEvent('page_view', { ...getAttribution(), placement: 'page' });
     tgLink?.addEventListener('click', () => {
-      trackEvent('tg_click', { lang: 'en', placement: 'hero_panel' });
+      trackEvent('tg_click', { ...getAttribution(), placement: 'hero_panel' });
     });
-    tgLinkBottom?.addEventListener('click', () => {
-      trackEvent('tg_click', { lang: 'en', placement: 'howto_panel' });
+    tgLinkSticky?.addEventListener('click', () => {
+      trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
     });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -548,7 +673,11 @@
         const res = await fetch('/api/waitlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source: 'site' })
+          body: JSON.stringify({
+            email,
+            source: 'site',
+            details: { ...getAttribution(), placement: 'waitlist_form' }
+          })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Request failed');
