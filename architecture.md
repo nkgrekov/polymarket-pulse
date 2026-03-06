@@ -123,7 +123,8 @@ Site + Email API:
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
 • site telemetry endpoint: `/api/events` (`page_view`, `tg_click`)
-• landing includes Telegram onboarding steps + FAQ conversion blocks
+• landing uses dark trading-terminal UI with pain-driven hero, live “Top movers” mock widget, scarcity line, and dual CTA (Telegram primary + email waitlist)
+• Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 • Resend mail-auth DNS hosted in Cloudflare on `resend.polymarketpulse.app`

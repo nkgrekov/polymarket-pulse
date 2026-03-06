@@ -225,11 +225,14 @@ Site/email status:
 • SEO baseline added: `robots.txt`, `sitemap.xml`, `og-card.svg`
 • Added browser favicon (`/favicon.svg`) and Telegram CTA on landing
 • Added site event endpoint (`/api/events`) for `page_view` and `tg_click`
-• Added landing onboarding section (“How to start in Telegram”) and FAQ (RU/EN)
+• Landing fully redesigned (RU/EN): dark trading-terminal aesthetic, pain-driven hero, live mock “Top movers”, dual CTA hierarchy (Telegram primary + email waitlist secondary)
+• Google Analytics tag (`G-J901VRQH4G`) embedded in all landing variants (`index.en.html`, `index.ru.html`, `index.html`)
 • `site` sender configured to use `welcome@polymarketpulse.app` (Resend from-address)
 • Resend DNS records configured in Cloudflare (`resend._domainkey`, `resend` MX/TXT)
+• Resend verification currently pending in dashboard (`Restart/Verify` after DNS propagation)
 • Production custom domain active: `https://polymarketpulse.app`
 • `www.polymarketpulse.app` redirects to apex via Cloudflare page rule
+• Existing Railway `site` service redeployed from local source root `api/`; production serves redesigned landing
 
 ---
 
