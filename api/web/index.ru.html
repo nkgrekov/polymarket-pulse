@@ -31,15 +31,16 @@
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
 
     :root {
-      --bg: #0a0a0f;
-      --panel: #10131b;
-      --panel-2: #0c1017;
-      --line: #232a3b;
-      --text: #eaf1ff;
-      --muted: #8f9ab2;
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
       --accent: #00ff88;
-      --accent-dim: #00c96a;
-      --negative: #ff5577;
+      --negative: #ff4444;
       --positive: #00ff88;
     }
 
@@ -50,9 +51,9 @@
       color: var(--text);
       font-family: "Syne", "Segoe UI", sans-serif;
       background:
-        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.1) 0%, transparent 60%),
-        radial-gradient(1000px 700px at -10% 10%, rgba(0, 224, 255, 0.09) 0%, transparent 58%),
-        linear-gradient(180deg, #090a0f 0%, #0a0a0f 60%, #080a11 100%);
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(1000px 700px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
       min-height: 100vh;
       overflow-x: hidden;
     }
@@ -63,8 +64,8 @@
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
       background-size: 28px 28px;
       opacity: 0.2;
       animation: drift 14s linear infinite;
@@ -96,7 +97,7 @@
     .logo {
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #cbe2ff;
+      color: var(--text);
     }
 
     .lang a {
@@ -119,8 +120,8 @@
     .hero {
       border: 1px solid var(--line);
       border-radius: 20px;
-      background: linear-gradient(150deg, rgba(18, 24, 38, 0.96) 0%, rgba(11, 14, 22, 0.96) 100%);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      background: linear-gradient(150deg, rgba(19, 23, 20, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
       padding: 30px;
     }
 
@@ -130,7 +131,7 @@
       gap: 8px;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #9db0ca;
+      color: var(--muted);
       letter-spacing: 0.08em;
       text-transform: uppercase;
       margin-bottom: 14px;
@@ -172,7 +173,7 @@
       margin-top: 16px;
       font-family: "Space Mono", monospace;
       font-size: 13px;
-      color: #bfd3ef;
+      color: var(--muted);
     }
 
     .accent {
@@ -189,7 +190,7 @@
     .card {
       border-radius: 16px;
       border: 1px solid var(--line);
-      background: var(--panel-2);
+      background: var(--panel);
       padding: 16px;
       position: relative;
       overflow: hidden;
@@ -216,7 +217,7 @@
       margin: 0;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #8ca2c0;
+      color: var(--muted);
       letter-spacing: 0.07em;
       text-transform: uppercase;
     }
@@ -228,9 +229,9 @@
     }
 
     .row {
-      border: 1px solid #1f2738;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(17, 22, 33, 0.9);
+      background: #131714;
       padding: 12px;
     }
 
@@ -241,7 +242,7 @@
       align-items: baseline;
       font-family: "Space Mono", monospace;
       font-size: 13px;
-      color: #c9daef;
+      color: var(--text);
     }
 
     .market {
@@ -252,7 +253,7 @@
     }
 
     .time {
-      color: #7686a2;
+      color: var(--muted-soft);
       font-size: 12px;
     }
 
@@ -266,20 +267,20 @@
     }
 
     .move {
-      color: #d7e7ff;
+      color: var(--text);
     }
 
     .delta-up { color: var(--positive); }
     .delta-down { color: var(--negative); }
 
     .cta-panel {
-      background: linear-gradient(175deg, #111725 0%, #0d1220 100%);
+      background: linear-gradient(175deg, #161b17 0%, #111612 100%);
     }
 
     .cta-label {
       font-size: 12px;
       font-family: "Space Mono", monospace;
-      color: #8ca2c0;
+      color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin: 0;
@@ -300,22 +301,20 @@
       line-height: 1.5;
     }
 
-    .speedlist {
+    .speedrows {
       margin: 12px 0 0;
-      padding: 0;
-      list-style: none;
       display: grid;
       gap: 8px;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #c9d8ef;
+      color: var(--muted);
     }
 
-    .speedlist li {
-      border: 1px solid #223149;
+    .speedrow {
+      border: 1px solid var(--line);
       border-radius: 10px;
       padding: 8px 10px;
-      background: rgba(12, 19, 31, 0.75);
+      background: #131714;
     }
 
     .tg-btn {
@@ -325,10 +324,10 @@
       width: 100%;
       min-height: 52px;
       margin-top: 14px;
-      border: 1px solid #00ffa2;
+      border: 1px solid var(--accent);
       border-radius: 12px;
-      background: linear-gradient(180deg, #00ff88 0%, #00d774 100%);
-      color: #07130e;
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      color: var(--bg-2);
       font-family: "Space Mono", monospace;
       font-size: 16px;
       font-weight: 700;
@@ -338,15 +337,14 @@
 
     .tg-btn:hover,
     .tg-btn:focus-visible {
-      transform: translateY(-1px);
-      box-shadow: 0 0 24px rgba(0, 255, 136, 0.3);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.24);
       outline: none;
     }
 
     .divider {
       margin: 14px 0;
       height: 1px;
-      background: linear-gradient(90deg, transparent 0%, #253149 20%, #253149 80%, transparent 100%);
+      background: linear-gradient(90deg, transparent 0%, var(--line) 20%, var(--line) 80%, transparent 100%);
     }
 
     .form { display: grid; gap: 10px; }
@@ -354,7 +352,7 @@
     .label {
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #8ca2c0;
+      color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       display: block;
@@ -364,13 +362,13 @@
     input[type="email"] {
       width: 100%;
       min-height: 48px;
-      border: 1px solid #2d3850;
+      border: 1px solid var(--line);
       border-radius: 11px;
       padding: 12px;
       font-family: "Space Mono", monospace;
       font-size: 14px;
       color: var(--text);
-      background: #0a101b;
+      background: var(--bg-2);
     }
 
     input[type="email"]:focus {
@@ -381,10 +379,10 @@
 
     button {
       min-height: 48px;
-      border: 1px solid #2d3850;
+      border: 1px solid var(--line);
       border-radius: 11px;
-      background: #111a2a;
-      color: #d2def2;
+      background: #131714;
+      color: var(--text);
       font-family: "Space Mono", monospace;
       font-size: 14px;
       font-weight: 700;
@@ -394,8 +392,8 @@
 
     button:hover,
     button:focus-visible {
-      border-color: #00d990;
-      background: #121f2f;
+      border-color: var(--accent);
+      background: #1a1f1b;
       outline: none;
     }
 
@@ -404,7 +402,7 @@
       min-height: 20px;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #8fa3c0;
+      color: var(--muted);
     }
 
     .meta {
@@ -415,11 +413,11 @@
       flex-wrap: wrap;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #70809d;
+      color: var(--muted-soft);
     }
 
     .meta a {
-      color: #9bb4d5;
+      color: var(--muted-soft);
       text-decoration: none;
     }
 
@@ -434,14 +432,14 @@
       border: 1px solid var(--line);
       border-radius: 18px;
       padding: 16px;
-      background: linear-gradient(160deg, rgba(15, 20, 31, 0.96) 0%, rgba(10, 14, 22, 0.96) 100%);
+      background: #131714;
     }
 
     .proof-head {
       margin: 0;
       font-family: "Space Mono", monospace;
       font-size: 12px;
-      color: #9cb1cc;
+      color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
@@ -454,17 +452,30 @@
     }
 
     .proof-card {
-      border: 1px solid #1f2c42;
+      border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 10px;
-      background: rgba(13, 19, 31, 0.9);
+      padding: 12px;
+      background: #131714;
+      transition: background 0.2s ease;
+    }
+
+    .proof-card:hover {
+      background: #1a1f1b;
+    }
+
+    .proof-card.pos {
+      border-left: 3px solid var(--positive);
+    }
+
+    .proof-card.neg {
+      border-left: 3px solid var(--negative);
     }
 
     .proof-q {
       margin: 0;
       font-size: 13px;
       line-height: 1.35;
-      color: #d7e3f8;
+      color: var(--text);
     }
 
     .proof-meta {
@@ -472,9 +483,24 @@
       display: flex;
       justify-content: space-between;
       font-family: "Space Mono", monospace;
-      font-size: 11px;
-      color: #89a0bf;
+      font-size: 12px;
+      color: var(--muted-soft);
       gap: 8px;
+    }
+
+    .proof-delta {
+      margin-top: 8px;
+      font-family: "Space Mono", monospace;
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .proof-note {
+      margin-top: 8px;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: var(--muted-soft);
+      line-height: 1.4;
     }
 
     .sticky-tg {
@@ -485,10 +511,10 @@
       z-index: 20;
       display: none;
       text-align: center;
-      border: 1px solid #00ffa2;
+      border: 1px solid var(--accent);
       border-radius: 12px;
-      background: linear-gradient(180deg, rgba(0, 255, 136, 0.96) 0%, rgba(0, 215, 116, 0.96) 100%);
-      color: #07130e;
+      background: linear-gradient(180deg, rgba(0, 255, 136, 0.96) 0%, rgba(0, 216, 116, 0.96) 100%);
+      color: var(--bg-2);
       text-decoration: none;
       font-family: "Space Mono", monospace;
       font-weight: 700;
@@ -497,10 +523,69 @@
       box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
     }
 
+    .intent-links {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #131714;
+    }
+
+    .intent-title {
+      margin: 0;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .intent-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .intent-grid a {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 9px 10px;
+      text-decoration: none;
+      color: var(--muted);
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      background: #131714;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .intent-grid a:hover,
+    .intent-grid a:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
+    .faq {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #131714;
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .faq b { color: var(--text); }
+    .faq-prefix { color: var(--accent); }
+
     @media (max-width: 900px) {
       .hero { padding: 22px; }
       .grid { grid-template-columns: 1fr; }
       .proof-grid { grid-template-columns: 1fr 1fr; }
+      .intent-grid { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 640px) {
@@ -512,6 +597,7 @@
       .sub { font-size: 14px; }
       .market { max-width: 68%; }
       .proof-grid { grid-template-columns: 1fr; }
+      .intent-grid { grid-template-columns: 1fr; }
       .sticky-tg { display: block; }
       body { padding-bottom: 74px; }
     }
@@ -578,11 +664,11 @@
           <p class="cta-label">Самый быстрый способ получить value</p>
           <h2 class="cta-title">Лови движение раньше остальных.</h2>
           <p class="cta-copy">Открой бота сейчас и получай сигналы сразу. Email оставь как резерв для запуска и дайджеста.</p>
-          <ul class="speedlist" aria-label="Что вы получите за 60 секунд">
-            <li>Подключение за 1 тап без сложной настройки.</li>
-            <li>Top movers и watchlist-дельты в одном фиде.</li>
-            <li>Сигналы по делу, а не поток шумовых пушей.</li>
-          </ul>
+          <div class="speedrows" aria-label="Что вы получите за 60 секунд">
+            <div class="speedrow">Подключение за 1 тап без сложной настройки.</div>
+            <div class="speedrow">Top movers и watchlist-дельты в одном фиде.</div>
+            <div class="speedrow">Сигналы по делу, а не поток шумовых пушей.</div>
+          </div>
 
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_ru">Открыть Telegram-бота →</a>
 
@@ -606,20 +692,43 @@
     </section>
 
     <section class="proof" aria-label="Исторические примеры">
-      <p class="proof-head">Historical examples · Dec 2025 - Mar 2026</p>
+      <p class="proof-head">HISTORICAL EXAMPLES · DEC 2025 - MAR 2026</p>
       <div class="proof-grid">
-        <article class="proof-card">
-          <p class="proof-q">Температурный рынок по Майами резко переоценился за одно окно.</p>
-          <div class="proof-meta"><span>16 фев 2026</span><span class="delta-down">-67.5пп</span></div>
+        <article class="proof-card neg">
+          <p class="proof-q">Температурный рынок по Майами</p>
+          <div class="proof-meta"><span>16 фев 2026</span><span>window shift</span></div>
+          <div class="proof-delta delta-down">-67.5пп</div>
+          <p class="proof-note">Вероятность резко переоценилась в одном live-переходе бакетов.</p>
         </article>
-        <article class="proof-card">
-          <p class="proof-q">Рынок по сюжету DOJ/Epstein показал быстрый апсайд-рывок.</p>
-          <div class="proof-meta"><span>13 дек 2025</span><span class="delta-up">+66.5пп</span></div>
+        <article class="proof-card pos">
+          <p class="proof-q">Рынок по сюжету DOJ/Epstein</p>
+          <div class="proof-meta"><span>13 дек 2025</span><span>upside repricing</span></div>
+          <div class="proof-delta delta-up">+66.5пп</div>
+          <p class="proof-note">После нового нарратива рынок быстро переоценил вероятность вверх.</p>
         </article>
-        <article class="proof-card">
-          <p class="proof-q">Рынок победителя карты Dota2 резко развернулся после новости о составе.</p>
-          <div class="proof-meta"><span>22 янв 2026</span><span class="delta-up">+64.0пп</span></div>
+        <article class="proof-card pos">
+          <p class="proof-q">Рынок победителя карты Dota2</p>
+          <div class="proof-meta"><span>22 янв 2026</span><span>lineup shock</span></div>
+          <div class="proof-delta delta-up">+64.0пп</div>
+          <p class="proof-note">После новости о составе котировки развернулись на сильной дельте.</p>
         </article>
+      </div>
+    </section>
+
+    <section class="intent-links" aria-label="Связанные SEO-страницы">
+      <p class="intent-title">EXPLORE BY INTENT</p>
+      <div class="intent-grid">
+        <a href="/analytics?lang=ru">Polymarket аналитика</a>
+        <a href="/dashboard?lang=ru">Альтернатива dashboard</a>
+        <a href="/signals?lang=ru">Signals</a>
+        <a href="/telegram-bot?lang=ru">Telegram-бот</a>
+        <a href="/top-movers?lang=ru">Top movers</a>
+        <a href="/watchlist-alerts?lang=ru">Watchlist alerts</a>
+      </div>
+      <div class="faq">
+        <span class="faq-prefix">// </span><b>FAQ: почему в /movers бывает 0?</b><br />
+        Если в коротком окне `last/prev` движение плоское, бот показывает fallback movers за 1h.  
+        Если и там плоско, по дизайну возвращается 0, чтобы не спамить шумом.
       </div>
     </section>
   </div>

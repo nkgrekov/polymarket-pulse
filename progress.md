@@ -141,18 +141,22 @@ These views power signal generation.
 
 Telegram bot upgraded to multi-user with native onboarding.
 
-Commands:
+Primary commands in Telegram menu:
 
 /start  
-/help  
-/plan  
-/limits  
-/upgrade  
-/threshold  
-/inbox  
-/inbox20  
 /movers  
 /watchlist  
+/inbox  
+/plan  
+/help  
+
+Advanced commands (kept available via typing and `/help`):
+
+/menu  
+/upgrade  
+/limits  
+/threshold  
+/inbox20  
 /watchlist_list  
 /watchlist_add  
 /watchlist_remove  
@@ -188,10 +192,43 @@ Threshold policy:
 Onboarding UX update:
 
 • `/start` now includes “what bot does” + 60-second quick start flow  
+• `/start` now adds reply keyboard + inline `/menu` actions for core flow  
+• added callback-driven action menu (`/menu`) with fast entry to movers/watchlist/inbox/plan/upgrade  
+• `/watchlist_add` without args now opens top-movers picker (no manual market_id copy)  
 • `/help` reorganized by use-case (plan, signals, watchlist, threshold)  
 • `/limits` shows FREE/PRO constraints and current usage  
 • `/upgrade` provides explicit conversion path to PRO
 • `/upgrade` now logs lead intents into `app.upgrade_intents` for manual sales follow-up
+
+SEO/Conversion update:
+
+• added 6 SEO intent pages: `/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`  
+• sitemap now includes SEO pages  
+• main landing (EN/RU) now links to these intent pages and includes FAQ block for `/movers` zero-state
+• dark design consistency pass completed from `better site.md` rules:
+  - landing and SEO pages now share one dark terminal palette
+  - no light blocks / no yellow CTA variants / no bullet lists
+  - historical proof cards and intent tags now use unified card+pill system
+  - FAQ block is rendered as dark callout with terminal-style prefix marker
+
+SMM engine update:
+
+• added competitor sweep script: `scripts/growth/competitive_scan.py`  
+• generated extended competitor report: `docs/competitive_sweep_full_2026-03-08.md`  
+• added social draft generator from live views: `scripts/growth/generate_social_drafts.py`  
+• added visual templates: `assets/social/*.svg` and operation doc `docs/social_pipeline.md`
+
+Deploy status update (2026-03-08):
+
+• Railway `site` redeployed from `api/` path root (fixed build context)  
+• Railway `bot` redeployed from `bot/` path root (fixed build context)  
+• smoke checks passed on `/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`  
+• `sitemap.xml` now includes all SEO intent pages
+
+Competitive strategy update:
+
+• added market landscape memo: `docs/competitive_landscape_2026-03-08.md`  
+• positioning fixed on mainstream Telegram activation and simple signal-first UX
 
 ---
 

@@ -25,6 +25,129 @@ WEB_DIR = ROOT / "web"
 
 app = FastAPI(title="Polymarket Pulse Site API")
 
+SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
+    "analytics": {
+        "en": {
+            "title": "Polymarket Analytics - Live Probability Signals | Polymarket Pulse",
+            "description": "Polymarket analytics for real probability shifts: top movers, watchlist deltas, and signal-first alerts in Telegram.",
+            "h1": "Polymarket analytics without dashboard overload.",
+            "intro": "Track meaningful market moves and skip terminal noise. Get live deltas, not endless charts.",
+            "k1": "Top movers in the latest live window",
+            "k2": "Personal watchlist with threshold filtering",
+            "k3": "Telegram-first alerts for faster reaction",
+        },
+        "ru": {
+            "title": "Polymarket аналитика - live сигналы вероятностей | Polymarket Pulse",
+            "description": "Аналитика Polymarket по реальным сдвигам вероятностей: top movers, watchlist-дельты и signal-first алерты в Telegram.",
+            "h1": "Polymarket аналитика без перегруза дашбордами.",
+            "intro": "Отслеживайте значимые движения рынка, а не шум терминала. Только live-дельты по делу.",
+            "k1": "Top movers в последнем live-окне",
+            "k2": "Персональный watchlist с порогом сигналов",
+            "k3": "Telegram-first алерты для быстрой реакции",
+        },
+    },
+    "dashboard": {
+        "en": {
+            "title": "Polymarket Dashboard Alternative - Signal Feed | Polymarket Pulse",
+            "description": "A simple Polymarket dashboard alternative focused on live movers, watchlists, and actionable alerts.",
+            "h1": "A dashboard alternative for normal users.",
+            "intro": "No complex terminal required. Open Telegram and see what actually moved right now.",
+            "k1": "One feed for movers, inbox, and watchlist",
+            "k2": "Clear delta + time window for each signal",
+            "k3": "Freemium model with upgrade path to Pro",
+        },
+        "ru": {
+            "title": "Альтернатива Polymarket dashboard - signal feed | Polymarket Pulse",
+            "description": "Простая альтернатива dashboard для Polymarket: live movers, watchlist и actionable алерты.",
+            "h1": "Альтернатива dashboard для обычного пользователя.",
+            "intro": "Без сложного терминала. Открываете Telegram и сразу видите, что реально сдвинулось.",
+            "k1": "Одна лента для movers, inbox и watchlist",
+            "k2": "Понятные delta + временное окно у каждого сигнала",
+            "k3": "Freemium-модель и апгрейд до Pro",
+        },
+    },
+    "signals": {
+        "en": {
+            "title": "Polymarket Signals - Live Alerts in Telegram | Polymarket Pulse",
+            "description": "Get Polymarket signals based on real probability shifts. Configure threshold and receive clean Telegram alerts.",
+            "h1": "Signals, not noise.",
+            "intro": "Set your threshold, follow markets, and receive only meaningful moves in your inbox.",
+            "k1": "Per-user threshold in bot settings",
+            "k2": "Deduplicated alerts and daily free limits",
+            "k3": "Fast onboarding in under 60 seconds",
+        },
+        "ru": {
+            "title": "Polymarket Signals - live алерты в Telegram | Polymarket Pulse",
+            "description": "Получайте сигналы Polymarket по реальным сдвигам вероятностей. Настройте порог и получайте чистые алерты в Telegram.",
+            "h1": "Сигналы, а не шум.",
+            "intro": "Выставляете порог, выбираете рынки и получаете только значимые движения в inbox.",
+            "k1": "Персональный threshold в настройках бота",
+            "k2": "Дедупликация алертов и дневные free-лимиты",
+            "k3": "Онбординг меньше чем за 60 секунд",
+        },
+    },
+    "telegram-bot": {
+        "en": {
+            "title": "Polymarket Telegram Bot - Live Movers and Watchlist Alerts",
+            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and live probability alerts.",
+            "h1": "Polymarket Telegram bot for live signals.",
+            "intro": "Start with /movers, add one market to watchlist, and get alerts when probabilities shift.",
+            "k1": "Core commands that fit in Telegram menu",
+            "k2": "Inline menu for fast actions",
+            "k3": "Multi-user profile with plan and limits",
+        },
+        "ru": {
+            "title": "Polymarket Telegram bot - live movers и watchlist алерты",
+            "description": "Используйте Telegram-бота Polymarket Pulse для top movers, отслеживания watchlist и live алертов вероятности.",
+            "h1": "Polymarket Telegram-бот для live сигналов.",
+            "intro": "Начните с /movers, добавьте один рынок в watchlist и получайте алерты при сдвиге вероятности.",
+            "k1": "Core-команды, которые помещаются в меню Telegram",
+            "k2": "Inline-меню для быстрых действий",
+            "k3": "Мультиюзерный профиль с планом и лимитами",
+        },
+    },
+    "top-movers": {
+        "en": {
+            "title": "Polymarket Top Movers - Live Probability Shifts",
+            "description": "See Polymarket top movers by probability change and track market momentum via Telegram.",
+            "h1": "Top movers in one tap.",
+            "intro": "When the short window is flat, fallback logic surfaces the strongest 1h moves.",
+            "k1": "Latest window movers with delta",
+            "k2": "1h fallback when market is flat",
+            "k3": "Direct add-to-watchlist flow",
+        },
+        "ru": {
+            "title": "Polymarket Top Movers - live сдвиги вероятностей",
+            "description": "Смотрите top movers в Polymarket по изменению вероятности и отслеживайте momentum через Telegram.",
+            "h1": "Top movers в один тап.",
+            "intro": "Если короткое окно плоское, fallback логика показывает самые сильные движения за 1 час.",
+            "k1": "Movers по последнему окну с дельтой",
+            "k2": "Fallback на 1h при плоском рынке",
+            "k3": "Прямой сценарий добавления в watchlist",
+        },
+    },
+    "watchlist-alerts": {
+        "en": {
+            "title": "Polymarket Watchlist Alerts - Custom Market Tracking",
+            "description": "Create your Polymarket watchlist and get custom Telegram alerts when selected markets move.",
+            "h1": "Watchlist alerts that stay actionable.",
+            "intro": "Add the markets that matter to you and tune sensitivity with per-user threshold.",
+            "k1": "Free plan: 3 markets and 20 alerts/day",
+            "k2": "Pro plan: unlimited watchlist and alerts",
+            "k3": "Clear /plan and /upgrade flow in Telegram",
+        },
+        "ru": {
+            "title": "Polymarket Watchlist Alerts - кастомное отслеживание рынков",
+            "description": "Соберите свой watchlist Polymarket и получайте кастомные Telegram-алерты, когда выбранные рынки двигаются.",
+            "h1": "Watchlist-алерты, которые помогают действовать.",
+            "intro": "Добавьте важные для вас рынки и настройте чувствительность персональным threshold.",
+            "k1": "Free: 3 рынка и 20 алертов в день",
+            "k2": "Pro: безлимит watchlist и алерты",
+            "k3": "Понятный сценарий /plan и /upgrade в Telegram",
+        },
+    },
+}
+
 
 class WaitlistRequest(BaseModel):
     email: EmailStr
@@ -75,6 +198,224 @@ def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
 
 def base_url() -> str:
     return APP_BASE_URL.rstrip("/")
+
+
+def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
+    page = SEO_PAGES[slug][lang]
+    page_label = slug.replace("-", " ").upper()
+    home_q = "?lang=ru" if lang == "ru" else "?lang=en"
+    alt_lang = "ru" if lang == "en" else "en"
+    alt_q = "?lang=ru" if alt_lang == "ru" else "?lang=en"
+    cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
+    back_text = "Back to homepage" if lang == "en" else "На главную"
+    links_head = "Related pages" if lang == "en" else "Связанные страницы"
+    page_view_js_lang = "en" if lang == "en" else "ru"
+
+    links = "".join(
+        f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
+    )
+
+    return f"""<!doctype html>
+<html lang="{lang}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{page["title"]}</title>
+  <meta name="description" content="{page["description"]}" />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="{page["title"]}" />
+  <meta property="og:description" content="{page["description"]}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/og-card.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{page["title"]}" />
+  <meta name="twitter:description" content="{page["description"]}" />
+  <meta name="twitter:image" content="/og-card.svg" />
+  <link rel="canonical" href="/{slug}" />
+  <link rel="alternate" hreflang="{lang}" href="/{slug}{home_q}" />
+  <link rel="alternate" hreflang="{alt_lang}" href="/{slug}{alt_q}" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){{dataLayer.push(arguments);}}
+    gtag('js', new Date());
+    gtag('config', 'G-J901VRQH4G');
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
+    :root {{
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Syne", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }}
+    .wrap {{ width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }}
+    .top {{
+      display:flex; justify-content:space-between; align-items:center; gap: 12px;
+      font-family:"Space Mono", monospace; font-size:12px; color: var(--muted);
+    }}
+    .top a {{
+      color: var(--muted);
+      text-decoration: none;
+      border:1px solid var(--line-soft);
+      border-radius:999px;
+      padding:6px 10px;
+    }}
+    .top a:hover, .top a:focus-visible {{ border-color: var(--accent); color: var(--text); outline: none; }}
+    .card {{
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+    }}
+    h1 {{
+      margin: 0;
+      line-height: 0.95;
+      font-size: clamp(36px, 7vw, 72px);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }}
+    .intro {{
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: clamp(15px, 2vw, 20px);
+      line-height: 1.45;
+      font-family: "Space Mono", monospace;
+    }}
+    .feature-rows {{
+      margin-top: 16px;
+      display: grid;
+      gap: 10px;
+    }}
+    .feature-row {{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #131714;
+      padding: 11px 12px;
+      font-family: "Space Mono", monospace;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    .cta {{
+      margin-top: 18px;
+      display:inline-flex; align-items:center; justify-content:center;
+      min-height: 48px; padding: 10px 16px; border-radius: 12px; text-decoration: none;
+      font-family: "Space Mono", monospace; font-weight: 700;
+      color: var(--bg-2); background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border: 1px solid var(--accent);
+    }}
+    .links-title {{
+      margin: 18px 0 8px;
+      color: var(--muted);
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }}
+    .links {{
+      margin-top: 0;
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }}
+    .links a {{
+      text-decoration: none;
+      color: var(--muted);
+      border:1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 9px 12px;
+      background: #131714;
+      font-family: "Space Mono", monospace;
+      font-size:13px;
+      text-align: center;
+    }}
+    .links a:hover, .links a:focus-visible {{ border-color: var(--accent); color: var(--text); outline: none; }}
+    .back {{
+      margin-top: 14px;
+      display: inline-block;
+      color: var(--muted-soft);
+      text-decoration: underline;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+    }}
+    .back:hover, .back:focus-visible {{ color: var(--text); outline: none; }}
+    @media (max-width: 860px) {{ .links {{ grid-template-columns: 1fr 1fr; }} }}
+    @media (max-width: 640px) {{
+      .wrap {{ width: calc(100% - 20px); }}
+      .card {{ padding: 16px; }}
+      .links {{ grid-template-columns: 1fr; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <span>POLYMARKET PULSE // {page_label}</span>
+      <div>
+        <a href="/{slug}{home_q}">{lang.upper()}</a>
+        <a href="/{slug}{alt_q}">{alt_lang.upper()}</a>
+      </div>
+    </div>
+    <article class="card">
+      <h1>{page["h1"]}</h1>
+      <p class="intro">{page["intro"]}</p>
+      <div class="feature-rows">
+        <div class="feature-row">{page["k1"]}</div>
+        <div class="feature-row">{page["k2"]}</div>
+        <div class="feature-row">{page["k3"]}</div>
+      </div>
+      <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
+      <p class="links-title">{links_head}</p>
+      <div class="links" aria-label="{links_head}">
+        {links}
+      </div>
+      <a class="back" href="/{home_q}">{back_text}</a>
+    </article>
+  </div>
+  <script>
+    async function trackEvent(eventType, details = {{}}) {{
+      try {{
+        await fetch('/api/events', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify({{ event_type: eventType, source: 'site', details }}),
+          keepalive: true
+        }});
+      }} catch (_) {{}}
+    }}
+    const p = new URLSearchParams(window.location.search);
+    const details = {{
+      lang: '{page_view_js_lang}',
+      placement: 'seo_{slug}',
+      utm_source: p.get('utm_source') || '',
+      utm_medium: p.get('utm_medium') || '',
+      utm_campaign: p.get('utm_campaign') || ''
+    }};
+    trackEvent('page_view', details);
+    document.getElementById('tg-link')?.addEventListener('click', () => {{
+      trackEvent('tg_click', details);
+    }});
+  </script>
+</body>
+</html>
+"""
 
 
 def enrich_details(
@@ -206,12 +547,14 @@ def robots() -> PlainTextResponse:
 @app.get("/sitemap.xml")
 def sitemap() -> Response:
     u = base_url()
+    extra_urls = "".join(f"  <url><loc>{u}/{slug}</loc></url>\n" for slug in SEO_PAGES)
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         f"  <url><loc>{u}/</loc></url>\n"
         f"  <url><loc>{u}/privacy</loc></url>\n"
         f"  <url><loc>{u}/terms</loc></url>\n"
+        f"{extra_urls}"
         "</urlset>\n"
     )
     return Response(content=content, media_type="application/xml")
@@ -255,6 +598,14 @@ def privacy(request: Request) -> HTMLResponse:
 def terms(request: Request) -> HTMLResponse:
     lang = detect_lang(request)
     return HTMLResponse(load_page("terms", lang))
+
+
+@app.get("/{slug}", response_class=HTMLResponse)
+def seo_page(slug: str, request: Request) -> HTMLResponse:
+    if slug not in SEO_PAGES:
+        raise HTTPException(status_code=404, detail="Not found")
+    lang = detect_lang(request)
+    return HTMLResponse(render_seo_page(slug, lang))
 
 
 @app.post("/api/events")

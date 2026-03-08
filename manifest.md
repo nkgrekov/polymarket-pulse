@@ -246,3 +246,20 @@ Start as a tool for traders.
 Evolve into a forecasting intelligence platform.
 
 Eventually become the infrastructure layer for decision forecasting.
+
+---
+
+# UX Manifest (Mandatory)
+
+Live-first value must be matched by interface consistency.
+
+Design system is product logic, not decoration.
+
+Rules:
+
+• All site pages use one dark terminal aesthetic (`#0d0f0e` / `#0a0c0b` backgrounds, dark cards, off-white text).  
+• Accent green (`#00ff88`) is reserved for positive/active/CTA states only.  
+• Accent red (`#ff4444`) is reserved for negative deltas only.  
+• No light-theme sections, no yellow CTA variants, no visual drift between landing and subpages.  
+• Data rows, tags, and callouts must use the same component language across pages.  
+• Signal clarity beats ornament: no noisy effects that hide numeric meaning.
