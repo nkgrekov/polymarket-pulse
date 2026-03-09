@@ -4,6 +4,16 @@ This document describes the technical architecture.
 
 ---
 
+# Active Execution Plan Link
+
+Operational 14-day delivery plan is versioned in:
+
+`docs/plan_14day_seo_bot_growth_2026-03-09.md`
+
+Architecture and rollout priorities must stay aligned with that plan and with `manifest.md`.
+
+---
+
 # Data Pipeline
 
 Polymarket API  
@@ -124,8 +134,12 @@ Also runs:
 • compact Telegram command menu with advanced commands moved to `/help`
 • quick-reply keyboard on `/start` for core actions (`/movers`, `/watchlist`, `/inbox`, `/plan`)
 • callback action menu (`/menu`) with inline buttons for movers/watchlist/inbox/plan/picker/threshold
-• watchlist picker flow from live movers (callback tokens mapped in bot memory)
+• watchlist picker flow uses mover-first candidates ranked by live liquidity (volume proxy), with live-liquidity fallback and callback tokens in bot memory
+• picker supports category-level callback filters (`all`, `crypto`, `politics`, `macro`) on top of liquidity-ranked candidates
+• category filter behavior is strict: no cross-category fallback; empty category returns explicit UX guidance
 • `/upgrade` command writes conversion intent into `app.upgrade_intents`
+• adaptive signal windows in read path (`latest`, then `30m`, then `1h`) for movers/watchlist views
+• zero-state diagnostics for inbox/watchlist to distinguish threshold filtering vs missing live quotes
 
 Site + Email API:
 
@@ -142,9 +156,13 @@ Site + Email API:
 • landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`
+• SEO telemetry events include `waitlist_intent` on intent pages
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 • Resend mail-auth DNS hosted in Cloudflare (`resend._domainkey` + `send.polymarketpulse.app` SPF)
 • Resend domain `polymarketpulse.app` is `verified`
+• canonical/og/twitter metadata is absolute URL based
+• `hreflang` includes `x-default`
+• sitemap publishes localized EN/RU variants for crawl coverage
 
 ---
 
@@ -188,6 +206,12 @@ market universe
 user positions
 
 Universe refresh is a post-write step with its own timeout budget.
+
+Live-only hardening:
+
+• migration `db/migrations/005_live_only_hardening.sql` enforces `active` status across universe rebuild and snapshot views  
+• `closed` markets are excluded from `public.market_universe` even when passed from manual/position sources  
+• bot watchlist snapshot view is aligned to active-only universe contract
 
 ---
 

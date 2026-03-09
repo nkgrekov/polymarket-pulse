@@ -207,9 +207,16 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     alt_lang = "ru" if lang == "en" else "en"
     alt_q = "?lang=ru" if alt_lang == "ru" else "?lang=en"
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
+    cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
     page_view_js_lang = "en" if lang == "en" else "ru"
+    base = base_url()
+    canonical_url = f"{base}/{slug}"
+    lang_url = f"{base}/{slug}{home_q}"
+    alt_lang_url = f"{base}/{slug}{alt_q}"
+    x_default_url = f"{base}/{slug}?lang=en"
+    og_image_url = f"{base}/og-card.svg"
 
     links = "".join(
         f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
@@ -226,15 +233,22 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
   <meta property="og:title" content="{page["title"]}" />
   <meta property="og:description" content="{page["description"]}" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/og-card.svg" />
+  <meta property="og:url" content="{canonical_url}" />
+  <meta property="og:image" content="{og_image_url}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{page["title"]}" />
   <meta name="twitter:description" content="{page["description"]}" />
-  <meta name="twitter:image" content="/og-card.svg" />
-  <link rel="canonical" href="/{slug}" />
-  <link rel="alternate" hreflang="{lang}" href="/{slug}{home_q}" />
-  <link rel="alternate" hreflang="{alt_lang}" href="/{slug}{alt_q}" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="twitter:image" content="{og_image_url}" />
+  <meta name="twitter:url" content="{canonical_url}" />
+  <link rel="canonical" href="{canonical_url}" />
+  <link rel="alternate" hreflang="{lang}" href="{lang_url}" />
+  <link rel="alternate" hreflang="{alt_lang}" href="{alt_lang_url}" />
+  <link rel="alternate" hreflang="x-default" href="{x_default_url}" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -321,6 +335,16 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       color: var(--bg-2); background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
       border: 1px solid var(--accent);
     }}
+    .cta-secondary {{
+      margin-top: 10px;
+      margin-left: 8px;
+      display:inline-flex; align-items:center; justify-content:center;
+      min-height: 48px; padding: 10px 16px; border-radius: 12px; text-decoration: none;
+      font-family: "Space Mono", monospace; font-weight: 700;
+      color: var(--text); background: #131714;
+      border: 1px solid var(--line-soft);
+    }}
+    .cta-secondary:hover, .cta-secondary:focus-visible {{ border-color: var(--accent); outline: none; }}
     .links-title {{
       margin: 18px 0 8px;
       color: var(--muted);
@@ -382,6 +406,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         <div class="feature-row">{page["k3"]}</div>
       </div>
       <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
+      <a id="waitlist-link" class="cta-secondary" href="/{home_q}#waitlist-form">{cta_waitlist_text}</a>
       <p class="links-title">{links_head}</p>
       <div class="links" aria-label="{links_head}">
         {links}
@@ -411,6 +436,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     trackEvent('page_view', details);
     document.getElementById('tg-link')?.addEventListener('click', () => {{
       trackEvent('tg_click', details);
+    }});
+    document.getElementById('waitlist-link')?.addEventListener('click', () => {{
+      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_waitlist' }});
     }});
   </script>
 </body>
@@ -547,13 +575,20 @@ def robots() -> PlainTextResponse:
 @app.get("/sitemap.xml")
 def sitemap() -> Response:
     u = base_url()
-    extra_urls = "".join(f"  <url><loc>{u}/{slug}</loc></url>\n" for slug in SEO_PAGES)
+    extra_urls = "".join(
+        f"  <url><loc>{u}/{slug}?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/{slug}?lang=ru</loc></url>\n"
+        for slug in SEO_PAGES
+    )
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"  <url><loc>{u}/</loc></url>\n"
-        f"  <url><loc>{u}/privacy</loc></url>\n"
-        f"  <url><loc>{u}/terms</loc></url>\n"
+        f"  <url><loc>{u}/?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/?lang=ru</loc></url>\n"
+        f"  <url><loc>{u}/privacy?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/privacy?lang=ru</loc></url>\n"
+        f"  <url><loc>{u}/terms?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/terms?lang=ru</loc></url>\n"
         f"{extra_urls}"
         "</urlset>\n"
     )
@@ -578,8 +613,35 @@ def favicon_svg() -> Response:
 
 @app.get("/favicon.ico")
 def favicon_ico() -> Response:
-    # Serve SVG fallback for modern browsers that still request /favicon.ico.
+    p = WEB_DIR / "favicon.ico"
+    if p.exists():
+        return Response(content=p.read_bytes(), media_type="image/x-icon")
+    # Fallback for environments where only SVG is present.
     return favicon_svg()
+
+
+@app.get("/favicon-32x32.png")
+def favicon_32() -> Response:
+    p = WEB_DIR / "favicon-32x32.png"
+    if not p.exists():
+        return Response(status_code=404)
+    return Response(content=p.read_bytes(), media_type="image/png")
+
+
+@app.get("/favicon-48x48.png")
+def favicon_48() -> Response:
+    p = WEB_DIR / "favicon-48x48.png"
+    if not p.exists():
+        return Response(status_code=404)
+    return Response(content=p.read_bytes(), media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_touch_icon() -> Response:
+    p = WEB_DIR / "apple-touch-icon.png"
+    if not p.exists():
+        return Response(status_code=404)
+    return Response(content=p.read_bytes(), media_type="image/png")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -614,7 +676,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     merged_details = enrich_details(request, data.details, fallback_lang=req_lang)
     detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
-    allowed = {"tg_click", "page_view"}
+    allowed = {"tg_click", "page_view", "waitlist_intent"}
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
         raise HTTPException(status_code=400, detail="unsupported event_type")

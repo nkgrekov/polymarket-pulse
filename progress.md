@@ -4,6 +4,35 @@ This document tracks the current state of the project.
 
 ---
 
+# Active 14-Day Plan
+
+Current execution plan is tracked in:
+
+`docs/plan_14day_seo_bot_growth_2026-03-09.md`
+
+Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the primary KPI.
+
+---
+
+# DB Hardening Update (2026-03-09)
+
+Applied migration:
+
+`db/migrations/005_live_only_hardening.sql`
+
+Changes:
+
+• `public.refresh_market_universe(...)` now filters out `closed` markets for all sources (`manual`, `position`, `auto`)  
+• `public.top_movers_latest`, `public.portfolio_snapshot_latest`, `public.watchlist_snapshot_latest` additionally enforce `markets.status='active'`  
+• `bot.watchlist_snapshot_latest` aligned to same active-only universe contract  
+
+Post-migration snapshot:
+
+• `public.market_universe`: 200 total, `closed=0`  
+• live-only scope is now consistent at universe + snapshot-view layer
+
+---
+
 # Layer 0 — Data Infrastructure
 
 The data pipeline collects probability market data from Polymarket.
@@ -195,10 +224,17 @@ Onboarding UX update:
 • `/start` now adds reply keyboard + inline `/menu` actions for core flow  
 • added callback-driven action menu (`/menu`) with fast entry to movers/watchlist/inbox/plan/upgrade  
 • `/watchlist_add` without args now opens top-movers picker (no manual market_id copy)  
+• watchlist picker expanded: `movers + liquid live + fresh active markets` (fallback), plus “Обновить список” action  
+• picker relevance tuning: candidate ranking now prioritizes live movers by liquidity (volume proxy), then live-liquidity fallback; removed noisy fresh-feed bias
+• watchlist picker now supports quick category filters (`All`, `Crypto`, `Politics`, `Macro`) via inline callbacks
+• category fallback fixed: filters no longer leak unrelated markets; if category has no live candidates, bot explains it explicitly
 • `/help` reorganized by use-case (plan, signals, watchlist, threshold)  
 • `/limits` shows FREE/PRO constraints and current usage  
 • `/upgrade` provides explicit conversion path to PRO
 • `/upgrade` now logs lead intents into `app.upgrade_intents` for manual sales follow-up
+• `/movers` now uses adaptive fallback windows (latest -> 30m -> 1h)
+• `/watchlist` now uses adaptive fallback windows (latest -> 30m -> 1h)
+• `/inbox` and `/watchlist` now return diagnostic zero-state reasons (threshold too high vs no live quotes/closed markets)
 
 SEO/Conversion update:
 
@@ -210,6 +246,13 @@ SEO/Conversion update:
   - no light blocks / no yellow CTA variants / no bullet lists
   - historical proof cards and intent tags now use unified card+pill system
   - FAQ block is rendered as dark callout with terminal-style prefix marker
+• technical SEO hardening completed:
+  - canonical/og:url/twitter:url moved to absolute URLs
+  - `hreflang` now includes `x-default`
+  - sitemap expanded to EN/RU URL variants for home/privacy/terms/intent pages
+• conversion polish on SEO intent pages:
+  - primary CTA remains Telegram bot
+  - secondary CTA added: Email waitlist (`#waitlist-form`) with event tracking (`waitlist_intent`)
 
 SMM engine update:
 
