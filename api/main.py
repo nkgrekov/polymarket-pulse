@@ -1,5 +1,9 @@
 import os
+import json
 import secrets
+import hashlib
+import hmac
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -19,6 +23,13 @@ PG_CONN = os.environ.get("PG_CONN", "")
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Polymarket Pulse <onboarding@resend.dev>")
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_PRICE_ID_MONTHLY = os.environ.get("STRIPE_PRICE_ID_MONTHLY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_SUCCESS_URL = os.environ.get("STRIPE_SUCCESS_URL", "")
+STRIPE_CANCEL_URL = os.environ.get("STRIPE_CANCEL_URL", "")
+PRO_SUBSCRIPTION_DAYS = int(os.environ.get("PRO_SUBSCRIPTION_DAYS", "30"))
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
@@ -133,7 +144,7 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
             "h1": "Watchlist alerts that stay actionable.",
             "intro": "Add the markets that matter to you and tune sensitivity with per-user threshold.",
             "k1": "Free plan: 3 markets and 20 alerts/day",
-            "k2": "Pro plan: unlimited watchlist and alerts",
+            "k2": "Pro plan: 20 watchlist markets, unlimited alerts, email digest",
             "k3": "Clear /plan and /upgrade flow in Telegram",
         },
         "ru": {
@@ -142,7 +153,7 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
             "h1": "Watchlist-алерты, которые помогают действовать.",
             "intro": "Добавьте важные для вас рынки и настройте чувствительность персональным threshold.",
             "k1": "Free: 3 рынка и 20 алертов в день",
-            "k2": "Pro: безлимит watchlist и алерты",
+            "k2": "Pro: 20 рынков в watchlist, безлимит алертов и email-дайджест",
             "k3": "Понятный сценарий /plan и /upgrade в Telegram",
         },
     },
@@ -159,6 +170,118 @@ class SiteEventRequest(BaseModel):
     event_type: str
     source: str = "site"
     details: dict | None = None
+
+
+class StripeCheckoutRequest(BaseModel):
+    email: EmailStr
+    user_id: str | None = None
+    source: str = "site"
+    lang: Literal["ru", "en"] | None = None
+
+
+SQL_LIVE_MOVERS_PREVIEW = """
+select
+  market_id,
+  question,
+  last_bucket,
+  prev_bucket,
+  yes_mid_now,
+  yes_mid_prev,
+  delta_yes
+from public.top_movers_latest
+where yes_mid_now is not null
+  and yes_mid_prev is not null
+order by abs(delta_yes) desc nulls last
+limit %s;
+"""
+
+SQL_LIVE_SPARKLINE_POINTS = """
+select
+  market_id,
+  ts_bucket,
+  mid
+from (
+  select
+    ms.market_id,
+    ms.ts_bucket,
+    max(((ms.yes_bid + ms.yes_ask) / 2.0)) as mid
+  from public.market_snapshots ms
+  where ms.market_id = any(%s::text[])
+    and ms.ts_bucket >= now() - make_interval(hours => %s)
+    and ms.yes_bid is not null
+    and ms.yes_ask is not null
+  group by ms.market_id, ms.ts_bucket
+) t
+order by market_id, ts_bucket;
+"""
+
+SQL_ENSURE_PAYMENT_EVENTS = """
+create table if not exists app.payment_events (
+  id bigserial primary key,
+  provider text not null,
+  external_id text not null,
+  event_type text not null,
+  status text not null default 'succeeded',
+  user_id uuid references app.users(id) on delete set null,
+  email text,
+  amount_cents bigint,
+  currency text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, external_id)
+);
+"""
+
+SQL_PAYMENT_EVENT_EXISTS = """
+select 1
+from app.payment_events
+where provider = %s
+  and external_id = %s
+limit 1;
+"""
+
+SQL_PAYMENT_EVENT_INSERT = """
+insert into app.payment_events (
+  provider,
+  external_id,
+  event_type,
+  status,
+  user_id,
+  email,
+  amount_cents,
+  currency,
+  payload
+)
+values (%s, %s, %s, %s, %s::uuid, %s, %s, %s, %s);
+"""
+
+SQL_SUBSCRIPTION_INSERT_PRO = """
+insert into app.subscriptions (
+  user_id,
+  plan,
+  status,
+  source,
+  started_at,
+  renew_at
+)
+values (
+  %s::uuid,
+  'pro',
+  'active',
+  %s,
+  now(),
+  now() + make_interval(days => %s)
+)
+returning renew_at;
+"""
+
+SQL_PROFILE_SET_PRO = """
+update bot.profiles
+set plan = 'pro',
+    updated_at = now()
+where user_id = %s::uuid;
+"""
 
 
 def detect_lang(request: Request, explicit: str | None = None) -> Literal["ru", "en"]:
@@ -217,6 +340,20 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     alt_lang_url = f"{base}/{slug}{alt_q}"
     x_default_url = f"{base}/{slug}?lang=en"
     og_image_url = f"{base}/og-card.svg"
+    page_schema = json.dumps(
+        {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "@id": canonical_url,
+            "url": canonical_url,
+            "name": page["title"],
+            "description": page["description"],
+            "inLanguage": "en-US" if lang == "en" else "ru-RU",
+            "isPartOf": {"@type": "WebSite", "url": base, "name": "Polymarket Pulse"},
+            "about": {"@type": "Thing", "name": "Polymarket live analytics and Telegram signals"},
+        },
+        ensure_ascii=False,
+    )
 
     links = "".join(
         f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
@@ -249,6 +386,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
+  <script type="application/ld+json">{page_schema}</script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -535,6 +673,241 @@ def send_email(to_email: str, subject: str, html: str) -> None:
         raise HTTPException(status_code=502, detail=f"Resend error: {resp.text[:200]}")
 
 
+def stripe_enabled() -> bool:
+    return bool(STRIPE_SECRET_KEY and STRIPE_PRICE_ID_MONTHLY)
+
+
+def stripe_api_call(path: str, data: dict[str, str | int | None]) -> dict:
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe is not configured")
+    payload = {k: v for k, v in data.items() if v is not None}
+    resp = requests.post(
+        f"https://api.stripe.com{path}",
+        auth=(STRIPE_SECRET_KEY, ""),
+        data=payload,
+        timeout=20,
+    )
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=502, detail=f"Stripe API error: {resp.text[:200]}")
+    return resp.json()
+
+
+def stripe_get(path: str, params: dict[str, str] | None = None) -> dict:
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe is not configured")
+    resp = requests.get(
+        f"https://api.stripe.com{path}",
+        auth=(STRIPE_SECRET_KEY, ""),
+        params=params or {},
+        timeout=20,
+    )
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=502, detail=f"Stripe API error: {resp.text[:200]}")
+    return resp.json()
+
+
+def verify_stripe_signature(payload: bytes, signature_header: str) -> bool:
+    if not STRIPE_WEBHOOK_SECRET:
+        return False
+    if not signature_header:
+        return False
+    fields = {}
+    for part in signature_header.split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            fields.setdefault(k.strip(), []).append(v.strip())
+    ts = (fields.get("t") or [None])[0]
+    sigs = fields.get("v1") or []
+    if not ts or not sigs:
+        return False
+    signed_payload = f"{ts}.{payload.decode('utf-8')}".encode("utf-8")
+    expected = hmac.new(STRIPE_WEBHOOK_SECRET.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(expected, s) for s in sigs)
+
+
+def ensure_payment_schema(cur) -> None:
+    cur.execute(SQL_ENSURE_PAYMENT_EVENTS)
+
+
+def resolve_user_id_for_email(cur, email: str, preferred_user_id: str | None = None) -> str:
+    clean_email = email.strip().lower()
+    if preferred_user_id:
+        cur.execute("select id from app.users where id = %s::uuid", (preferred_user_id,))
+        row = cur.fetchone()
+        if row:
+            user_id = str(row[0])
+            cur.execute(
+                """
+                insert into app.identities (user_id, provider, provider_user_id)
+                values (%s::uuid, 'email', %s)
+                on conflict (provider, provider_user_id) do update
+                set user_id = excluded.user_id
+                """,
+                (user_id, clean_email),
+            )
+            cur.execute(
+                """
+                insert into app.email_subscribers (email, user_id, source)
+                values (%s, %s::uuid, 'site')
+                on conflict (email) do update
+                set user_id = coalesce(app.email_subscribers.user_id, excluded.user_id),
+                    updated_at = now()
+                """,
+                (clean_email, user_id),
+            )
+            return user_id
+
+    cur.execute("select user_id from app.email_subscribers where email = %s", (clean_email,))
+    row = cur.fetchone()
+    if row and row[0]:
+        return str(row[0])
+
+    cur.execute(
+        "select user_id from app.identities where provider = 'email' and provider_user_id = %s limit 1",
+        (clean_email,),
+    )
+    row = cur.fetchone()
+    if row and row[0]:
+        user_id = str(row[0])
+    else:
+        cur.execute(
+            """
+            insert into app.users (legacy_user_key)
+            values (%s)
+            on conflict (legacy_user_key) do update
+            set updated_at = now()
+            returning id
+            """,
+            (f"email:{clean_email}",),
+        )
+        user_id = str(cur.fetchone()[0])
+        cur.execute(
+            """
+            insert into app.identities (user_id, provider, provider_user_id)
+            values (%s::uuid, 'email', %s)
+            on conflict (provider, provider_user_id) do update
+            set user_id = excluded.user_id
+            """,
+            (user_id, clean_email),
+        )
+
+    cur.execute(
+        """
+        insert into app.email_subscribers (email, user_id, source)
+        values (%s, %s::uuid, 'site')
+        on conflict (email) do update
+        set user_id = coalesce(app.email_subscribers.user_id, excluded.user_id),
+            updated_at = now()
+        """,
+        (clean_email, user_id),
+    )
+    return user_id
+
+
+def activate_pro_from_payment(
+    *,
+    provider: str,
+    external_id: str,
+    event_type: str,
+    email: str,
+    preferred_user_id: str | None,
+    amount_cents: int | None,
+    currency: str | None,
+    source: str,
+    payload: dict,
+) -> tuple[bool, str]:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    with psycopg.connect(PG_CONN, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '10000ms'")
+            ensure_payment_schema(cur)
+            cur.execute(SQL_PAYMENT_EVENT_EXISTS, (provider, external_id))
+            if cur.fetchone():
+                conn.commit()
+                return False, "already_processed"
+
+            user_id = resolve_user_id_for_email(cur, email, preferred_user_id=preferred_user_id)
+            cur.execute(
+                SQL_PAYMENT_EVENT_INSERT,
+                (
+                    provider,
+                    external_id,
+                    event_type,
+                    "succeeded",
+                    user_id,
+                    email.strip().lower(),
+                    amount_cents,
+                    currency,
+                    Jsonb(payload),
+                ),
+            )
+            cur.execute(SQL_SUBSCRIPTION_INSERT_PRO, (user_id, source, PRO_SUBSCRIPTION_DAYS))
+            cur.execute(SQL_PROFILE_SET_PRO, (user_id,))
+        conn.commit()
+    return True, user_id
+
+
+def _to_iso(v: datetime | None) -> str | None:
+    if v is None:
+        return None
+    try:
+        return v.astimezone(timezone.utc).isoformat()
+    except Exception:
+        return str(v)
+
+
+def _compact_series(values: list[float], max_points: int) -> list[float]:
+    if len(values) <= max_points:
+        return values
+    if max_points <= 1:
+        return [values[-1]]
+    step = (len(values) - 1) / (max_points - 1)
+    return [values[round(i * step)] for i in range(max_points)]
+
+
+def fetch_live_movers_preview(limit: int = 3, history_hours: int = 6, max_points: int = 24) -> list[dict]:
+    if not PG_CONN:
+        return []
+
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(SQL_LIVE_MOVERS_PREVIEW, (limit,))
+            movers = cur.fetchall()
+            if not movers:
+                return []
+
+            market_ids = [str(r["market_id"]) for r in movers if r.get("market_id")]
+            cur.execute(SQL_LIVE_SPARKLINE_POINTS, (market_ids, history_hours))
+            points = cur.fetchall()
+
+    series_by_market: dict[str, list[float]] = defaultdict(list)
+    for row in points:
+        market_id = str(row.get("market_id") or "")
+        mid = row.get("mid")
+        if market_id and mid is not None:
+            series_by_market[market_id].append(float(mid))
+
+    out: list[dict] = []
+    for row in movers:
+        market_id = str(row.get("market_id") or "")
+        spark = _compact_series(series_by_market.get(market_id, []), max_points=max_points)
+        out.append(
+            {
+                "market_id": market_id,
+                "question": row.get("question") or "",
+                "last_bucket": _to_iso(row.get("last_bucket")),
+                "prev_bucket": _to_iso(row.get("prev_bucket")),
+                "yes_mid_now": float(row.get("yes_mid_now") or 0.0),
+                "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
+                "delta_yes": float(row.get("delta_yes") or 0.0),
+                "spark": spark,
+            }
+        )
+    return out
+
+
 def upsert_waitlist(email: str, source: str) -> str:
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
@@ -676,7 +1049,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     merged_details = enrich_details(request, data.details, fallback_lang=req_lang)
     detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
-    allowed = {"tg_click", "page_view", "waitlist_intent"}
+    allowed = {"tg_click", "page_view", "waitlist_intent", "checkout_intent"}
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
         raise HTTPException(status_code=400, detail="unsupported event_type")
@@ -688,6 +1061,161 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
         source=(data.source or "site").strip()[:64] or "site",
         details=merged_details,
     )
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/live-movers-preview")
+def live_movers_preview(limit: int = 3) -> JSONResponse:
+    safe_limit = max(1, min(int(limit), 6))
+    try:
+        rows = fetch_live_movers_preview(limit=safe_limit, history_hours=6, max_points=24)
+    except Exception:
+        rows = []
+    return JSONResponse(
+        {
+            "ok": True,
+            "rows": rows,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+@app.post("/api/stripe/checkout-session")
+def stripe_checkout_session(data: StripeCheckoutRequest, request: Request) -> JSONResponse:
+    if not stripe_enabled():
+        raise HTTPException(status_code=503, detail="Stripe checkout is not configured")
+
+    req_lang = detect_lang(request, explicit=data.lang)
+    details = enrich_details(request, fallback_lang=req_lang, fallback_placement="stripe_checkout")
+    email = data.email.strip().lower()
+    source = (data.source or "site").strip()[:64] or "site"
+    success_url = STRIPE_SUCCESS_URL or f"{base_url()}/stripe/success?session_id={{CHECKOUT_SESSION_ID}}&lang={req_lang}"
+    cancel_url = STRIPE_CANCEL_URL or f"{base_url()}/?lang={req_lang}&checkout=cancel"
+
+    session = stripe_api_call(
+        "/v1/checkout/sessions",
+        {
+            "mode": "subscription",
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "customer_email": email,
+            "line_items[0][price]": STRIPE_PRICE_ID_MONTHLY,
+            "line_items[0][quantity]": "1",
+            "allow_promotion_codes": "true",
+            "metadata[email]": email,
+            "metadata[user_id]": data.user_id or "",
+            "metadata[source]": source,
+            "metadata[lang]": req_lang,
+            "metadata[plan]": "pro_monthly",
+        },
+    )
+
+    log_site_event(
+        event_type="checkout_intent",
+        request=request,
+        lang=req_lang,
+        email=email,
+        source=source,
+        details={**details, "provider": "stripe", "session_id": session.get("id")},
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "provider": "stripe",
+            "session_id": session.get("id"),
+            "url": session.get("url"),
+            "publishable_key": STRIPE_PUBLISHABLE_KEY,
+        }
+    )
+
+
+@app.get("/stripe/success", response_class=HTMLResponse)
+def stripe_success(session_id: str, request: Request) -> HTMLResponse:
+    req_lang = detect_lang(request)
+    if not stripe_enabled():
+        if req_lang == "ru":
+            return HTMLResponse("<h3>Stripe пока не настроен.</h3>", status_code=503)
+        return HTMLResponse("<h3>Stripe is not configured yet.</h3>", status_code=503)
+
+    session = stripe_get(
+        f"/v1/checkout/sessions/{session_id}",
+        params={"expand[]": "subscription"},
+    )
+    status = (session.get("status") or "").lower()
+    payment_status = (session.get("payment_status") or "").lower()
+    metadata = session.get("metadata") or {}
+    email = (
+        metadata.get("email")
+        or session.get("customer_email")
+        or ((session.get("customer_details") or {}).get("email"))
+        or ""
+    ).strip().lower()
+    preferred_user_id = (metadata.get("user_id") or "").strip() or None
+    currency = (session.get("currency") or "").upper() or None
+    amount_total = session.get("amount_total")
+
+    if not email or status != "complete" or payment_status not in {"paid", "no_payment_required"}:
+        if req_lang == "ru":
+            return HTMLResponse("<h3>Платеж не подтвержден. Если списание было, напишите в поддержку.</h3>", status_code=400)
+        return HTMLResponse("<h3>Payment is not confirmed yet. If charged, contact support.</h3>", status_code=400)
+
+    applied, _user_id = activate_pro_from_payment(
+        provider="stripe_checkout",
+        external_id=str(session.get("id") or session_id),
+        event_type="checkout.session.completed",
+        email=email,
+        preferred_user_id=preferred_user_id,
+        amount_cents=int(amount_total) if amount_total is not None else None,
+        currency=currency,
+        source="stripe_checkout",
+        payload=session,
+    )
+
+    if req_lang == "ru":
+        if applied:
+            return HTMLResponse("<h3>Оплата подтверждена. PRO активирован.</h3>")
+        return HTMLResponse("<h3>Оплата уже обработана ранее. PRO активен.</h3>")
+    if applied:
+        return HTMLResponse("<h3>Payment confirmed. PRO is active.</h3>")
+    return HTMLResponse("<h3>Payment was already processed. PRO is active.</h3>")
+
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request) -> JSONResponse:
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Stripe webhook secret is not configured")
+
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature", "")
+    if not verify_stripe_signature(payload, signature):
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+
+    event = json.loads(payload.decode("utf-8"))
+    event_type = (event.get("type") or "").strip()
+    data_obj = ((event.get("data") or {}).get("object")) or {}
+    event_id = str(event.get("id") or "")
+
+    if event_type == "checkout.session.completed":
+        metadata = data_obj.get("metadata") or {}
+        email = (
+            metadata.get("email")
+            or data_obj.get("customer_email")
+            or ((data_obj.get("customer_details") or {}).get("email"))
+            or ""
+        ).strip().lower()
+        if email:
+            activate_pro_from_payment(
+                provider="stripe_event",
+                external_id=event_id or str(data_obj.get("id") or ""),
+                event_type=event_type,
+                email=email,
+                preferred_user_id=(metadata.get("user_id") or "").strip() or None,
+                amount_cents=data_obj.get("amount_total"),
+                currency=(data_obj.get("currency") or "").upper() or None,
+                source="stripe_webhook",
+                payload=event,
+            )
+
     return JSONResponse({"ok": True})
 
 

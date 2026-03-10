@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-label="Weekly recap template">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1320"/>
+      <stop offset="100%" stop-color="#0a0f18"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#g)"/>
+  <rect x="70" y="70" width="940" height="1210" rx="30" fill="#10131b" stroke="#223149"/>
+  <text x="110" y="150" fill="#9cb1cc" font-size="28" font-family="Fira Code, monospace">POLYMARKET PULSE</text>
+  <text x="110" y="230" fill="#eaf1ff" font-size="66" font-family="Fira Sans, sans-serif" font-weight="700">WEEKLY RECAP</text>
+  <text x="110" y="285" fill="#8f9ab2" font-size="26" font-family="Fira Code, monospace">Top probability shifts this week</text>
+
+  <g transform="translate(110,340)">
+    <rect width="860" height="720" rx="20" fill="#0f1626" stroke="#1f2c42"/>
+    <text x="34" y="70" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">1. [Market] +7.2pp</text>
+    <text x="34" y="140" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">2. [Market] -6.8pp</text>
+    <text x="34" y="210" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">3. [Market] +6.1pp</text>
+    <text x="34" y="280" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">4. [Market] -5.3pp</text>
+    <text x="34" y="350" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">5. [Market] +5.0pp</text>
+    <line x1="34" y1="410" x2="826" y2="410" stroke="#2a3550"/>
+    <text x="34" y="490" fill="#d7e7ff" font-size="32" font-family="Fira Sans, sans-serif">Learning #1: [one-line insight]</text>
+    <text x="34" y="560" fill="#d7e7ff" font-size="32" font-family="Fira Sans, sans-serif">Learning #2: [one-line insight]</text>
+    <text x="34" y="660" fill="#8f9ab2" font-size="30" font-family="Fira Code, monospace">Track next moves: @polymarket_pulse_bot</text>
+  </g>
+
+  <text x="110" y="1230" fill="#8f9ab2" font-size="28" font-family="Fira Code, monospace">x.com + threads + telegram funnel</text>
+</svg>

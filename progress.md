@@ -14,6 +14,60 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# User Path Snapshot (2026-03-10)
+
+Source of truth for this snapshot:
+
+`manifest.md` + `progress.md` + `architecture.md` + `api/main.py` + `bot/main.py` + growth docs in `docs/`.
+
+Current user-facing surfaces:
+
+• website (`https://polymarketpulse.app`) with localized landing + SEO intent pages  
+• Telegram bot (`@polymarket_pulse_bot`) as primary activation and retention surface  
+• email waitlist + double opt-in + digest follow-up
+
+Acquisition/distribution channels currently operated:
+
+• X  
+• Threads  
+• Reels/TikTok
+
+Observed activation funnel:
+
+• `page_view -> tg_click -> /start -> watchlist_add -> /inbox + push alerts`  
+• optional parallel branch: `page_view -> waitlist_submit -> confirm_success`
+
+Latest 7-day KPI snapshot (`docs/growth_kpi_latest.md`, generated 2026-03-10):
+
+• `page_view=155`, `tg_click=7` (`4.5%`)  
+• `started_users=3`, `users_with_watchlist_add=2` (`66.7%` proxy start->watchlist_add)
+
+---
+
+# Landing PRO Block Refresh (2026-03-10)
+
+Updated both localized landing templates (`api/web/index.en.html`, `api/web/index.ru.html`) to a strict dark-system PRO section:
+
+• full-width section on `#0d0f0e` with no outer rounded wrapper  
+• monospace kicker + display headline (`20 markets. No cap. Email digest included.`)  
+• two-column layout: FREE/PRO comparison rows (left) + stacked Stars/Stripe CTAs (right)  
+• primary CTA uses green-only button (`Upgrade in Telegram -> ⭐ 454 Stars`)  
+• Stripe checkout keeps existing `/api/stripe/checkout-session` email flow, restyled as outlined secondary action  
+• mobile stacks columns and keeps both CTA buttons full-width
+
+---
+
+# Bot Upgrade Flow Refresh (2026-03-10)
+
+Updated Telegram upgrade UX in `bot/main.py`:
+
+• `/upgrade` now sends a compact signal-style PRO message (Stars price + FREE/PRO delta + Stripe fallback link)  
+• invoice is sent immediately after the message in the same handler (no intermediate inline keyboard step)  
+• `/menu -> Upgrade` path aligned to the same message + immediate invoice sequence  
+• `/plan` now ends with explicit CTA line: `→ /upgrade — перейти на PRO` (or EN equivalent by Telegram locale)
+
+---
+
 # DB Hardening Update (2026-03-09)
 
 Applied migration:
@@ -30,6 +84,25 @@ Post-migration snapshot:
 
 • `public.market_universe`: 200 total, `closed=0`  
 • live-only scope is now consistent at universe + snapshot-view layer
+
+---
+
+# Universe Diversification Update (2026-03-10)
+
+Applied migration:
+
+`db/migrations/007_market_universe_auto_balance.sql`
+
+Changes:
+
+• `public.refresh_market_universe(...)` auto branch is now category-aware with caps (`politics`/`macro`/`crypto`) + weight-based top-up  
+• ingest now reads `public.market_universe` through balanced selection (instead of raw top-by-weight only) for forced coverage on each tick  
+• ingest logs now include `universe_mix` (politics/macro/crypto/other) for quick operator diagnostics  
+• ingest `fetch_markets()` now uses category-aware rebalancing and root-question dedup, reducing minute-market spam in top fetch
+
+Note:
+
+• current live supply remains crypto-heavy in latest buckets, but universe composition improved from `199 crypto / 1 politics` to `149 crypto / 50 other / 1 politics` after rebalance
 
 ---
 
@@ -211,7 +284,10 @@ Freemium v1:
 
 • Free: 3 watchlist markets  
 • Free: 20 push alerts/day  
-• Pro: unlimited
+• Pro: 20 watchlist markets  
+• Pro: email digest included  
+• Pro pricing target (iteration 1): ~$10/month equivalent in Telegram Stars
+• Telegram Stars pricing fixed for current run: `454 XTR`
 
 Threshold policy:
 
@@ -228,10 +304,21 @@ Onboarding UX update:
 • picker relevance tuning: candidate ranking now prioritizes live movers by liquidity (volume proxy), then live-liquidity fallback; removed noisy fresh-feed bias
 • watchlist picker now supports quick category filters (`All`, `Crypto`, `Politics`, `Macro`) via inline callbacks
 • category fallback fixed: filters no longer leak unrelated markets; if category has no live candidates, bot explains it explicitly
+• picker now uses balanced category ordering in `All` mode (politics -> macro -> crypto -> other) with per-category caps
+• picker labels now include category tag (`POL/CRY/MAC/OTH`) and suppress near-zero deltas (`abs(delta)<0.001` shows as `LIVE`)
+• picker message now shows current live candidate count and explains when live window is narrow
+• picker candidate pool now includes recent active markets seen in last 72h snapshots (fallback when live movers are too narrow)
 • `/help` reorganized by use-case (plan, signals, watchlist, threshold)  
 • `/limits` shows FREE/PRO constraints and current usage  
 • `/upgrade` provides explicit conversion path to PRO
+• `/plan`, `/limits`, `/upgrade` now explicitly communicate first monetization offer:
+  - PRO expands watchlist from 3 to 20
+  - includes email digest
+  - monthly price target is USD-equivalent in Telegram Stars
 • `/upgrade` now logs lead intents into `app.upgrade_intents` for manual sales follow-up
+• `/upgrade` now sends Telegram Stars invoice (`XTR`) directly in chat
+• successful Stars payment activates PRO immediately via `app.subscriptions` + `bot.profiles`
+• payment idempotency guard added through `app.payment_events` (provider/external_id)
 • `/movers` now uses adaptive fallback windows (latest -> 30m -> 1h)
 • `/watchlist` now uses adaptive fallback windows (latest -> 30m -> 1h)
 • `/inbox` and `/watchlist` now return diagnostic zero-state reasons (threshold too high vs no live quotes/closed markets)
@@ -253,12 +340,28 @@ SEO/Conversion update:
 • conversion polish on SEO intent pages:
   - primary CTA remains Telegram bot
   - secondary CTA added: Email waitlist (`#waitlist-form`) with event tracking (`waitlist_intent`)
+• schema.org baseline added:
+  - landing EN/RU now includes `Organization` + `WebSite` JSON-LD
+  - intent pages now include `WebPage` JSON-LD from `render_seo_page`
 
 SMM engine update:
 
 • added competitor sweep script: `scripts/growth/competitive_scan.py`  
 • generated extended competitor report: `docs/competitive_sweep_full_2026-03-08.md`  
-• added social draft generator from live views: `scripts/growth/generate_social_drafts.py`  
+• generated refreshed competitor snapshot: `docs/competitive_sweep_latest.md` (162 tools parsed from polymark.et)
+• extracted 3 interception positioning messages for site/bot/social: `docs/positioning_messages_latest.md`
+• upgraded social draft generator: `scripts/growth/generate_social_drafts.py`
+  - EN/RU drafts for both `x` and `threads`
+  - UTM-tagged site links + Telegram deep links with source/campaign tags
+  - configurable minimum delta threshold (`--min-abs-delta`) to avoid low-signal posts
+  - weekly recap skeleton included in generated file
+• added weekly KPI retro script: `scripts/growth/weekly_kpi_report.py`
+  - funnel from `app.site_events`: `page_view -> tg_click -> waitlist_submit -> confirm_success`
+  - `tg_click` split by `utm_source` and by placement
+  - activation proxy from DB: `telegram identities -> users_with_watchlist_add`
+• refreshed operational docs:
+  - `docs/social_pipeline.md`
+  - generated snapshots: `docs/social_drafts_latest.md`, `docs/growth_kpi_latest.md`
 • added visual templates: `assets/social/*.svg` and operation doc `docs/social_pipeline.md`
 
 Deploy status update (2026-03-08):
@@ -314,11 +417,18 @@ Site/email status:
 • `.github/workflows/digest.yml` runs digest daily (and supports manual trigger)
 • Landing is localized (`RU`/`EN`) with auto-detection by geo/lang headers
 • SEO baseline added: `robots.txt`, `sitemap.xml`, `og-card.svg`
-• Added browser favicon (`/favicon.svg`) and Telegram CTA on landing
+• Added browser favicon pack (`/favicon.ico`, `/favicon-32x32.png`, `/favicon-48x48.png`, `/apple-touch-icon.png`) and Telegram CTA on landing
 • Added site event endpoint (`/api/events`) for `page_view` and `tg_click`
 • `app.site_events.details` now stores attribution payload: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 • Waitlist flow now forwards attribution into confirm/unsubscribe funnel events
-• Landing fully redesigned (RU/EN): dark trading-terminal aesthetic, pain-driven hero, live mock “Top movers”, dual CTA hierarchy (Telegram primary + email waitlist secondary)
+• Landing fully redesigned (RU/EN): dark trading-terminal aesthetic, pain-driven hero, live DB-powered “Top movers” preview (3 markets + mini-sparklines), dual CTA hierarchy (Telegram primary + email waitlist secondary)
+• Added landing API endpoint `/api/live-movers-preview` (reads `public.top_movers_latest` + recent `market_snapshots`) for real-time homepage proof
+• Added integration checklist for monetization/distribution credentials: `docs/credentials_checklist.md`
+• Added Stripe checkout flow:
+  - `POST /api/stripe/checkout-session`
+  - `GET /stripe/success` (server-side session confirmation + PRO activation)
+  - `POST /api/stripe/webhook` (signature-verified event intake)
+• Checkout CTA moved out of main hero flow into a separate bottom `PRO` section to keep primary activation focused on Telegram + waitlist
 • Added conversion UX upgrades: “what you get in 60 seconds”, mobile sticky Telegram CTA, and clear CTA hierarchy
 • Added static social-proof block `Historical examples` (Dec–Mar sample cards, explicitly non-live)
 • Google Analytics tag (`G-J901VRQH4G`) embedded in all landing variants (`index.en.html`, `index.ru.html`, `index.html`)

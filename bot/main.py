@@ -1,7 +1,9 @@
 import asyncio
+import hashlib
 import logging
 import os
 import time
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -9,8 +11,24 @@ import psycopg
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from telegram import BotCommand, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import (
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    LabeledPrice,
+    ReplyKeyboardMarkup,
+    Update,
+)
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    PreCheckoutQueryHandler,
+    filters,
+)
 
 load_dotenv()
 
@@ -24,6 +42,12 @@ DB_RETRY_SLEEP_SECONDS = float(os.environ.get("DB_RETRY_SLEEP_SECONDS", "1.5"))
 PUSH_INITIAL_DELAY_SECONDS = int(os.environ.get("PUSH_INITIAL_DELAY_SECONDS", "20"))
 FREE_WATCHLIST_LIMIT = int(os.environ.get("FREE_WATCHLIST_LIMIT", "3"))
 FREE_DAILY_ALERT_LIMIT = int(os.environ.get("FREE_DAILY_ALERT_LIMIT", "20"))
+PRO_WATCHLIST_LIMIT = int(os.environ.get("PRO_WATCHLIST_LIMIT", "20"))
+PRO_MONTHLY_USD = os.environ.get("PRO_MONTHLY_USD", "10")
+PRO_SUBSCRIPTION_DAYS = int(os.environ.get("PRO_SUBSCRIPTION_DAYS", "30"))
+TELEGRAM_STARS_ENABLED = os.environ.get("TELEGRAM_STARS_ENABLED", "1").strip() not in {"0", "false", "False"}
+TELEGRAM_STARS_PRICE_XTR = int(os.environ.get("TELEGRAM_STARS_PRICE_XTR", "454"))
+PRO_STARS_PAYLOAD_PREFIX = "pro_monthly_stars"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,32 +117,126 @@ limit %s;
 """
 
 SQL_TOP_MOVERS = """
-select
-  market_id,
-  question,
-  last_bucket,
-  prev_bucket,
-  yes_mid_now,
-  yes_mid_prev,
-  delta_yes
-from public.top_movers_latest
-where abs(delta_yes) > 0
+with base as (
+  select
+    market_id,
+    question,
+    last_bucket,
+    prev_bucket,
+    yes_mid_now,
+    yes_mid_prev,
+    delta_yes,
+    coalesce(nullif(regexp_replace(question, ' - .*$', ''), ''), market_id) as root_key
+  from public.top_movers_latest
+  where abs(delta_yes) > 0
+), ranked as (
+  select distinct on (root_key)
+    market_id,
+    question,
+    last_bucket,
+    prev_bucket,
+    yes_mid_now,
+    yes_mid_prev,
+    delta_yes
+  from base
+  order by root_key, abs(delta_yes) desc nulls last
+)
+select *
+from ranked
 order by abs(delta_yes) desc nulls last
 limit %s;
 """
 
 SQL_TOP_MOVERS_1H = """
-select
-  market_id,
-  question,
-  ts_now as last_bucket,
-  ts_prev as prev_bucket,
-  yes_mid_now,
-  yes_mid_1h as yes_mid_prev,
-  delta_yes_1h as delta_yes
-from public.top_movers_1h
-where abs(delta_yes_1h) > 0
-order by abs(delta_yes_1h) desc nulls last
+with base as (
+  select
+    market_id,
+    question,
+    ts_now as last_bucket,
+    ts_prev as prev_bucket,
+    yes_mid_now,
+    yes_mid_1h as yes_mid_prev,
+    delta_yes_1h as delta_yes,
+    coalesce(nullif(regexp_replace(question, ' - .*$', ''), ''), market_id) as root_key
+  from public.top_movers_1h
+  where abs(delta_yes_1h) > 0
+), ranked as (
+  select distinct on (root_key)
+    market_id,
+    question,
+    last_bucket,
+    prev_bucket,
+    yes_mid_now,
+    yes_mid_prev,
+    delta_yes
+  from base
+  order by root_key, abs(delta_yes) desc nulls last
+)
+select *
+from ranked
+order by abs(delta_yes) desc nulls last
+limit %s;
+"""
+
+SQL_TOP_MOVERS_WINDOW = """
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket - make_interval(mins => %s)
+), universe as (
+  select distinct u.market_id
+  from public.market_universe u
+  join public.markets m on m.market_id = u.market_id
+  where m.status = 'active'
+), last_rows as (
+  select
+    ms.market_id,
+    max((ms.yes_bid + ms.yes_ask) / 2.0) as yes_mid_now
+  from public.market_snapshots ms
+  join lb on ms.ts_bucket = lb.last_bucket
+  join universe u on u.market_id = ms.market_id
+  where ms.yes_bid is not null and ms.yes_ask is not null
+  group by ms.market_id
+), prev_rows as (
+  select
+    ms.market_id,
+    max((ms.yes_bid + ms.yes_ask) / 2.0) as yes_mid_prev
+  from public.market_snapshots ms
+  join prev p on ms.ts_bucket = p.prev_bucket
+  join universe u on u.market_id = ms.market_id
+  where ms.yes_bid is not null and ms.yes_ask is not null
+  group by ms.market_id
+), base as (
+  select
+    l.market_id,
+    m.question,
+    (select last_bucket from lb) as last_bucket,
+    (select prev_bucket from prev) as prev_bucket,
+    l.yes_mid_now,
+    p.yes_mid_prev,
+    (l.yes_mid_now - p.yes_mid_prev) as delta_yes,
+    coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), l.market_id) as root_key
+  from last_rows l
+  join prev_rows p on p.market_id = l.market_id
+  join public.markets m on m.market_id = l.market_id
+  where abs(l.yes_mid_now - p.yes_mid_prev) > 0
+), ranked as (
+  select distinct on (root_key)
+    market_id,
+    question,
+    last_bucket,
+    prev_bucket,
+    yes_mid_now,
+    yes_mid_prev,
+    delta_yes
+  from base
+  order by root_key, abs(delta_yes) desc nulls last
+)
+select *
+from ranked
+order by abs(delta_yes) desc nulls last
 limit %s;
 """
 
@@ -137,6 +255,59 @@ order by abs(delta_mid) desc nulls last
 limit %s;
 """
 
+SQL_WATCHLIST_SNAPSHOT_WINDOW = """
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket - make_interval(mins => %s)
+), universe as (
+  select distinct u.market_id
+  from public.market_universe u
+  join public.markets m on m.market_id = u.market_id
+  where m.status = 'active'
+), wl as (
+  select w.user_id, w.market_id
+  from bot.watchlist w
+  join universe u on u.market_id = w.market_id
+  where w.user_id = %s::uuid
+), last_mid as (
+  select
+    ms.market_id,
+    max((ms.yes_bid + ms.yes_ask) / 2.0) as mid_now
+  from public.market_snapshots ms
+  join lb on ms.ts_bucket = lb.last_bucket
+  join wl on wl.market_id = ms.market_id
+  where ms.yes_bid is not null and ms.yes_ask is not null
+  group by ms.market_id
+), prev_mid as (
+  select
+    ms.market_id,
+    max((ms.yes_bid + ms.yes_ask) / 2.0) as mid_prev
+  from public.market_snapshots ms
+  join prev p on ms.ts_bucket = p.prev_bucket
+  join wl on wl.market_id = ms.market_id
+  where ms.yes_bid is not null and ms.yes_ask is not null
+  group by ms.market_id
+)
+select
+  wl.market_id,
+  m.question,
+  (select last_bucket from lb) as last_bucket,
+  (select prev_bucket from prev) as prev_bucket,
+  lm.mid_now as yes_mid_now,
+  pm.mid_prev as yes_mid_prev,
+  (lm.mid_now - pm.mid_prev) as delta_yes
+from wl
+join last_mid lm on lm.market_id = wl.market_id
+join prev_mid pm on pm.market_id = wl.market_id
+join public.markets m on m.market_id = wl.market_id
+where abs(lm.mid_now - pm.mid_prev) > 0
+order by abs(lm.mid_now - pm.mid_prev) desc nulls last
+limit %s;
+"""
+
 SQL_WATCHLIST_LIST = """
 select w.market_id, m.question, w.created_at
 from bot.watchlist w
@@ -144,6 +315,225 @@ join public.markets m on m.market_id = w.market_id
 where w.user_id = %s::uuid
 order by w.created_at desc
 limit %s;
+"""
+
+SQL_WATCHLIST_PICKER_CANDIDATES = """
+with params as (
+  select %s::text as cat
+), lb as (
+  select last_bucket from public.global_bucket_latest
+), recent_seen as (
+  select
+    s.market_id,
+    max(s.ts_bucket) as last_seen
+  from public.market_snapshots s
+  where s.ts_bucket >= now() - interval '72 hours'
+  group by s.market_id
+), quotes as (
+  select
+    s.market_id,
+    max(coalesce(s.liquidity, 0)) as liquidity
+  from public.market_snapshots s
+  join lb on s.ts_bucket = lb.last_bucket
+  where s.yes_bid is not null
+    and s.yes_ask is not null
+  group by s.market_id
+), movers_now as (
+  select
+    t.market_id,
+    t.question,
+    t.delta_yes as delta_yes,
+    q.liquidity,
+    1 as prio,
+    coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
+    lower(t.question) like '%%up or down - %%' as is_micro
+  from public.top_movers_latest t
+  join quotes q on q.market_id = t.market_id
+  join public.markets m on m.market_id = t.market_id
+  where coalesce(m.status, 'active') = 'active'
+), movers_1h as (
+  select
+    t.market_id,
+    t.question,
+    t.delta_yes_1h as delta_yes,
+    q.liquidity,
+    2 as prio,
+    coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
+    lower(t.question) like '%%up or down - %%' as is_micro
+  from public.top_movers_1h t
+  join quotes q on q.market_id = t.market_id
+  join public.markets m on m.market_id = t.market_id
+  where coalesce(m.status, 'active') = 'active'
+), liquid_live as (
+  select
+    m.market_id,
+    m.question,
+    null::numeric as delta_yes,
+    q.liquidity,
+    3 as prio,
+    coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
+    lower(m.question) like '%%up or down - %%' as is_micro
+  from public.markets m
+  join quotes q on q.market_id = m.market_id
+  where coalesce(m.status, 'active') = 'active'
+  order by q.liquidity desc, m.market_id
+  limit 80
+), fresh_active as (
+  select
+    m.market_id,
+    m.question,
+    null::numeric as delta_yes,
+    null::numeric as liquidity,
+    4 as prio,
+    coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
+    lower(m.question) like '%%up or down - %%' as is_micro
+  from public.markets m
+  join recent_seen rs on rs.market_id = m.market_id
+  where coalesce(m.status, 'active') = 'active'
+    and m.question is not null
+    and length(m.question) > 12
+  order by rs.last_seen desc, m.market_id desc
+  limit 220
+), pool as (
+  select * from movers_now
+  union all
+  select * from movers_1h
+  union all
+  select * from liquid_live
+  union all
+  select * from fresh_active
+), ranked as (
+  select distinct on (root_key)
+    market_id,
+    question,
+    delta_yes,
+    liquidity,
+    prio,
+    is_micro
+  from pool
+  order by root_key, is_micro, prio, abs(delta_yes) desc nulls last, liquidity desc nulls last
+), tagged as (
+  select
+    r.*,
+    case
+      when lower(r.question) similar to '%%(trump|biden|election|senate|house|president|iran|putin|zelensky|congress|war|ceasefire|nato|israel|ukraine|rfk)%%'
+        then 'politics'
+      when lower(r.question) similar to '%%(fed|inflation|recession|gdp|cpi|interest rate|oil|yield|tariff|unemployment|jobs report|treasury)%%'
+        then 'macro'
+      when lower(r.question) similar to '%%(bitcoin|ethereum|solana|xrp|bnb|dogecoin|crypto|fdv|btc|eth|memecoin)%%'
+        then 'crypto'
+      else 'other'
+    end as cat_tag
+  from ranked r
+), filtered as (
+  select *
+  from tagged
+  where
+    (select cat from params) = 'all'
+    or ((select cat from params) = cat_tag)
+), balanced as (
+  select
+    f.*,
+    row_number() over (
+      partition by cat_tag
+      order by is_micro, prio, coalesce(liquidity, 0) desc, abs(delta_yes) desc nulls last, market_id
+    ) as cat_rank
+  from filtered f
+), final as (
+  select *
+  from balanced
+  where
+    (select cat from params) <> 'all'
+    or (
+      (cat_tag = 'politics' and cat_rank <= 4)
+      or (cat_tag = 'macro' and cat_rank <= 4)
+      or (cat_tag = 'crypto' and cat_rank <= 4)
+      or (cat_tag = 'other' and cat_rank <= 8)
+    )
+)
+select
+  market_id,
+  question,
+  case when abs(delta_yes) < 0.001 then null else delta_yes end as delta_yes,
+  liquidity,
+  prio,
+  cat_tag
+from final
+order by
+  case
+    when (select cat from params) = 'all' then
+      case cat_tag when 'politics' then 1 when 'macro' then 2 when 'crypto' then 3 else 4 end
+    else 1
+  end,
+  is_micro,
+  prio,
+  coalesce(liquidity, 0) desc,
+  abs(delta_yes) desc nulls last,
+  market_id
+limit %s;
+"""
+
+SQL_WATCHLIST_DIAGNOSTICS = """
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket
+), wl as (
+  select w.user_id, w.market_id
+  from bot.watchlist w
+  where w.user_id = %s::uuid
+), wl_status as (
+  select wl.market_id, coalesce(m.status, 'unknown') as status
+  from wl
+  left join public.markets m on m.market_id = wl.market_id
+), live_last as (
+  select distinct ms.market_id
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket = lb.last_bucket
+    and ms.yes_bid is not null
+    and ms.yes_ask is not null
+), live_prev as (
+  select distinct ms.market_id
+  from public.market_snapshots ms, prev
+  where ms.ts_bucket = prev.prev_bucket
+    and ms.yes_bid is not null
+    and ms.yes_ask is not null
+)
+select
+  (select count(*) from wl) as wl_total,
+  (select count(*) from wl_status where status = 'active') as wl_active,
+  (select count(*) from wl_status where status = 'closed') as wl_closed,
+  (
+    select count(*)
+    from wl
+    join live_last ll on ll.market_id = wl.market_id
+    join live_prev lp on lp.market_id = wl.market_id
+  ) as wl_with_quotes_both;
+"""
+
+SQL_INBOX_DIAGNOSTICS = """
+with d as (
+  select abs(delta_mid) as abs_delta
+  from bot.watchlist_snapshot_latest
+  where user_id = %s::uuid
+  union all
+  select abs(delta_mid) as abs_delta
+  from bot.portfolio_snapshot_latest
+  where user_id = %s::uuid
+)
+select
+  count(*) as candidates_total,
+  count(*) filter (where abs_delta >= %s) as over_threshold
+from d;
+"""
+
+SQL_MARKET_BRIEF = """
+select market_id, question
+from public.markets
+where market_id = %s
+limit 1;
 """
 
 SQL_FIND_MARKET = """
@@ -171,6 +561,14 @@ SQL_WATCHLIST_REMOVE = """
 delete from bot.watchlist
 where user_id = %s::uuid
   and market_id = %s;
+"""
+
+SQL_WATCHLIST_REMOVE_CLOSED = """
+delete from bot.watchlist w
+using public.markets m
+where w.user_id = %s::uuid
+  and m.market_id = w.market_id
+  and m.status = 'closed';
 """
 
 SQL_PUSH_CANDIDATES = """
@@ -254,6 +652,74 @@ insert into app.upgrade_intents (
 values (%s::uuid, %s, %s, %s, %s);
 """
 
+SQL_ENSURE_PAYMENT_EVENTS = """
+create table if not exists app.payment_events (
+  id bigserial primary key,
+  provider text not null,
+  external_id text not null,
+  event_type text not null,
+  status text not null default 'succeeded',
+  user_id uuid references app.users(id) on delete set null,
+  email text,
+  amount_cents bigint,
+  currency text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, external_id)
+);
+"""
+
+SQL_PAYMENT_EVENT_EXISTS = """
+select 1
+from app.payment_events
+where provider = %s
+  and external_id = %s
+limit 1;
+"""
+
+SQL_PAYMENT_EVENT_INSERT = """
+insert into app.payment_events (
+  provider,
+  external_id,
+  event_type,
+  status,
+  user_id,
+  email,
+  amount_cents,
+  currency,
+  payload
+)
+values (%s, %s, %s, %s, %s::uuid, %s, %s, %s, %s);
+"""
+
+SQL_SUBSCRIPTION_INSERT_PRO = """
+insert into app.subscriptions (
+  user_id,
+  plan,
+  status,
+  source,
+  started_at,
+  renew_at
+)
+values (
+  %s::uuid,
+  'pro',
+  'active',
+  %s,
+  now(),
+  now() + make_interval(days => %s)
+)
+returning renew_at;
+"""
+
+SQL_PROFILE_SET_PRO = """
+update bot.profiles
+set plan = 'pro',
+    updated_at = now()
+where user_id = %s::uuid;
+"""
+
 
 def run_db_query(query: str, params: tuple[Any, ...], *, row_factory=None):
     last_error = None
@@ -290,6 +756,60 @@ def execute_db_write(query: str, params: tuple[Any, ...]) -> None:
             log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
             time.sleep(DB_RETRY_SLEEP_SECONDS)
     raise last_error
+
+
+def ensure_payment_schema_sync() -> None:
+    execute_db_write(SQL_ENSURE_PAYMENT_EVENTS, ())
+
+
+def activate_pro_subscription_sync(
+    *,
+    user_id: str,
+    provider: str,
+    external_id: str,
+    source: str,
+    amount_cents: int | None,
+    currency: str | None,
+    payload: dict,
+    email: str | None = None,
+    event_type: str = "purchase",
+) -> tuple[bool, datetime | None]:
+    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+        try:
+            with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(SQL_ENSURE_PAYMENT_EVENTS)
+                    cur.execute(SQL_PAYMENT_EVENT_EXISTS, (provider, external_id))
+                    if cur.fetchone():
+                        conn.commit()
+                        return False, None
+
+                    cur.execute(
+                        SQL_PAYMENT_EVENT_INSERT,
+                        (
+                            provider,
+                            external_id,
+                            event_type,
+                            "succeeded",
+                            user_id,
+                            (email or "").strip().lower() or None,
+                            amount_cents,
+                            currency,
+                            Jsonb(payload),
+                        ),
+                    )
+                    cur.execute(SQL_SUBSCRIPTION_INSERT_PRO, (user_id, source, PRO_SUBSCRIPTION_DAYS))
+                    renew_at = cur.fetchone()[0]
+                    cur.execute(SQL_PROFILE_SET_PRO, (user_id,))
+                conn.commit()
+                return True, renew_at
+        except Exception as exc:
+            if attempt == DB_RETRY_ATTEMPTS:
+                raise
+            log.warning("activate pro retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            time.sleep(DB_RETRY_SLEEP_SECONDS)
+    return False, None
 
 
 def _fmt_num(value: object, digits: int, signed: bool = False) -> str:
@@ -345,7 +865,7 @@ def user_limits_block(user_ctx: dict) -> str:
         return (
             "План: PRO\n"
             f"Threshold: {threshold}\n"
-            f"Watchlist: {watchlist_count} (без лимита)\n"
+            f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
             f"Alerts today: {alerts_today} (без лимита)"
         )
     return (
@@ -353,6 +873,358 @@ def user_limits_block(user_ctx: dict) -> str:
         f"Threshold: {threshold}\n"
         f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
         f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
+    )
+
+
+def watchlist_limit_for_plan(plan: str) -> int:
+    if plan == "pro":
+        return PRO_WATCHLIST_LIMIT
+    return FREE_WATCHLIST_LIMIT
+
+
+def is_english_locale(update: Update) -> bool:
+    tg_user = update.effective_user
+    code = (tg_user.language_code or "").lower() if tg_user else ""
+    return code.startswith("en")
+
+
+def upgrade_pitch_text(update: Update) -> str:
+    if is_english_locale(update):
+        return (
+            f"⭐ <b>PRO — {TELEGRAM_STARS_PRICE_XTR} Stars / month</b>\n\n"
+            f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
+            f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
+            "Upgrade instantly via Stars below.\n"
+            'Prefer card? → <a href="https://polymarketpulse.app/?lang=en#pro">Pay with Stripe</a>'
+        )
+    return (
+        f"⭐ <b>PRO — {TELEGRAM_STARS_PRICE_XTR} Stars / month</b>\n\n"
+        f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
+        f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
+        "Upgrade instantly via Stars below.\n"
+        'Prefer card? → <a href="https://polymarketpulse.app/?lang=en#pro">Pay with Stripe</a>'
+    )
+
+
+def plan_upgrade_hint(update: Update) -> str:
+    if is_english_locale(update):
+        return "→ /upgrade — move to PRO"
+    return "→ /upgrade — перейти на PRO"
+
+
+def main_menu_inline() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton("Top movers", callback_data="menu:movers"), InlineKeyboardButton("Watchlist", callback_data="menu:watchlist")],
+            [InlineKeyboardButton("Inbox", callback_data="menu:inbox"), InlineKeyboardButton("Plan", callback_data="menu:plan")],
+            [InlineKeyboardButton("Add market", callback_data="menu:pick"), InlineKeyboardButton("Threshold", callback_data="menu:threshold")],
+            [InlineKeyboardButton("Upgrade", callback_data="menu:upgrade"), InlineKeyboardButton("Help", callback_data="menu:help")],
+        ]
+    )
+
+
+def quick_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton("/movers"), KeyboardButton("/watchlist")],
+            [KeyboardButton("/inbox"), KeyboardButton("/plan")],
+            [KeyboardButton("/menu"), KeyboardButton("/upgrade")],
+        ],
+        resize_keyboard=True,
+    )
+
+
+def _build_pro_payload(user_id: str) -> str:
+    return f"{PRO_STARS_PAYLOAD_PREFIX}:{user_id}:{int(time.time())}"
+
+
+def _parse_pro_payload(payload: str) -> str | None:
+    if not payload or not payload.startswith(PRO_STARS_PAYLOAD_PREFIX + ":"):
+        return None
+    parts = payload.split(":")
+    if len(parts) < 3:
+        return None
+    return parts[1]
+
+
+async def send_stars_invoice_for_pro(bot, chat_id: int, user_ctx: dict) -> bool:
+    if not TELEGRAM_STARS_ENABLED or TELEGRAM_STARS_PRICE_XTR <= 0:
+        return False
+
+    payload = _build_pro_payload(user_ctx["user_id"])
+    title = "Polymarket Pulse PRO (30 days)"
+    description = (
+        f"PRO: до {PRO_WATCHLIST_LIMIT} рынков в watchlist, "
+        "push-алерты без лимита и email-дайджест."
+    )
+    prices = [LabeledPrice(label="PRO Monthly", amount=TELEGRAM_STARS_PRICE_XTR)]
+    await bot.send_invoice(
+        chat_id=chat_id,
+        title=title,
+        description=description,
+        payload=payload,
+        currency="XTR",
+        prices=prices,
+        provider_token=None,
+        start_parameter="pro-monthly",
+    )
+    return True
+
+
+def _picker_token(chat_id: int, market_id: str) -> str:
+    return hashlib.sha1(f"{chat_id}:{market_id}".encode("utf-8")).hexdigest()[:10]
+
+
+async def send_movers_view(message, *, show_loader: bool = True) -> None:
+    if show_loader:
+        await message.reply_text("Смотрю live movers...")
+    try:
+        rows = await fetch_top_movers_async(limit=3, timeout_sec=10.0)
+    except asyncio.TimeoutError:
+        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        return
+    except Exception:
+        log.exception("/movers failed")
+        await message.reply_text("Ошибка чтения movers из БД.")
+        return
+
+    if rows:
+        await message.reply_text("Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
+        return
+
+    try:
+        rows_30m = await fetch_top_movers_window_async(minutes=30, limit=3, timeout_sec=10.0)
+    except Exception:
+        rows_30m = []
+
+    if rows_30m:
+        await message.reply_text(
+            "В текущем окне движение плоское. Показываю fallback 30m movers:\n\n"
+            + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
+        )
+        return
+
+    try:
+        rows_1h = await fetch_top_movers_1h_async(limit=3, timeout_sec=10.0)
+    except Exception:
+        rows_1h = []
+
+    if rows_1h:
+        await message.reply_text(
+            "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
+            + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
+        )
+        return
+
+    await message.reply_text(
+        "Сейчас нет ненулевых movers.\n"
+        "Проверил окна: latest, 30m и 1h — движение плоское.",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Добавить рынок", callback_data="menu:pick"), InlineKeyboardButton("Сменить threshold", callback_data="menu:threshold")]]
+        ),
+    )
+
+
+async def send_inbox_view(message, user_ctx: dict, *, limit: int = 10, show_loader: bool = True) -> None:
+    if show_loader:
+        await message.reply_text("Читаю ваш inbox...")
+    try:
+        rows = await fetch_inbox_async(user_ctx["user_id"], limit=limit, timeout_sec=10.0)
+    except asyncio.TimeoutError:
+        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        return
+    except Exception:
+        log.exception("/inbox failed")
+        await message.reply_text("Ошибка чтения inbox из БД.")
+        return
+
+    if not rows:
+        try:
+            diag = await fetch_inbox_diagnostics_async(user_ctx["user_id"], user_ctx.get("threshold"), timeout_sec=10.0)
+        except Exception:
+            log.exception("inbox diagnostics failed")
+            diag = {}
+        total = int(diag.get("candidates_total") or 0)
+        over = int(diag.get("over_threshold") or 0)
+        threshold = _fmt_num(user_ctx.get("threshold"), 3)
+        if total > 0 and over == 0:
+            reason = (
+                f"Сигналы есть ({total}), но ниже вашего threshold {threshold}.\n"
+                "Попробуйте /threshold 0.02 или откройте /movers."
+            )
+        elif total == 0:
+            reason = (
+                "Нет live-дельт по вашему watchlist/positions в текущем окне.\n"
+                "Частая причина: закрытые рынки или отсутствие котировок bid/ask."
+            )
+        else:
+            reason = "Нет алертов в текущем окне."
+        await message.reply_text(
+            reason + f"\nТекущий threshold: {threshold}",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Top movers", callback_data="menu:movers"), InlineKeyboardButton("Сменить threshold", callback_data="menu:threshold")]]
+            ),
+        )
+        return
+
+    header = "Inbox alerts:" if limit == 10 else "Inbox alerts (20):"
+    await message.reply_text(header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows))
+
+
+async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = True) -> None:
+    if show_loader:
+        await message.reply_text("Смотрю live изменения вашего watchlist...")
+    try:
+        rows = await fetch_watchlist_snapshot_async(user_ctx["user_id"], limit=10, timeout_sec=10.0)
+    except asyncio.TimeoutError:
+        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        return
+    except Exception:
+        log.exception("/watchlist failed")
+        await message.reply_text("Ошибка чтения watchlist из БД.")
+        return
+
+    if not rows:
+        try:
+            rows_30m = await fetch_watchlist_snapshot_window_async(user_ctx["user_id"], minutes=30, limit=10, timeout_sec=10.0)
+        except Exception:
+            log.exception("watchlist 30m fallback failed")
+            rows_30m = []
+        if rows_30m:
+            await message.reply_text(
+                "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
+                + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
+            )
+            return
+        try:
+            rows_1h = await fetch_watchlist_snapshot_window_async(user_ctx["user_id"], minutes=60, limit=10, timeout_sec=10.0)
+        except Exception:
+            log.exception("watchlist 1h fallback failed")
+            rows_1h = []
+        if rows_1h:
+            await message.reply_text(
+                "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
+                + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
+            )
+            return
+        try:
+            diag = await fetch_watchlist_diagnostics_async(user_ctx["user_id"], timeout_sec=10.0)
+        except Exception:
+            log.exception("watchlist diagnostics failed")
+            diag = {}
+        await message.reply_text(
+            "По вашему watchlist сейчас нет live-изменений.\n"
+            f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
+            f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("Добавить рынок", callback_data="menu:pick"), InlineKeyboardButton("Top movers", callback_data="menu:movers")],
+                    [InlineKeyboardButton("Очистить закрытые", callback_data="menu:cleanup_closed")],
+                ]
+            ),
+        )
+        return
+
+    await message.reply_text("Watchlist live changes:\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
+
+
+def add_watchlist_market_sync(user_ctx: dict, market_id: str) -> str:
+    market_rows = run_db_query(SQL_MARKET_BRIEF, (market_id,), row_factory=dict_row)
+    if not market_rows:
+        return "Рынок не найден."
+
+    exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
+    if exists:
+        return "Этот рынок уже в вашем watchlist."
+
+    plan = str(user_ctx.get("plan") or "free")
+    limit = watchlist_limit_for_plan(plan)
+    if int(user_ctx["watchlist_count"]) >= limit:
+        plan_label = "PRO" if plan == "pro" else "FREE"
+        return (
+            f"Лимит {plan_label}: {limit} рынка. "
+            "Удалите один через /watchlist_remove или измените план через /upgrade"
+        )
+
+    execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    return f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}"
+
+
+def cleanup_closed_watchlist_sync(user_id: str) -> int:
+    with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(SQL_WATCHLIST_REMOVE_CLOSED, (user_id,))
+            deleted = cur.rowcount or 0
+        conn.commit()
+    return int(deleted)
+
+
+def _picker_category_label(category: str) -> str:
+    return {
+        "all": "All",
+        "crypto": "Crypto",
+        "politics": "Politics",
+        "macro": "Macro",
+    }.get(category, "All")
+
+
+async def send_watchlist_picker(
+    message, context: ContextTypes.DEFAULT_TYPE, user_ctx: dict, *, category: str = "all"
+) -> None:
+    rows = await fetch_watchlist_picker_candidates_async(category=category, limit=12, timeout_sec=10.0)
+    if not rows and category == "all":
+        rows = await fetch_top_movers_async(limit=8, timeout_sec=10.0)
+    if not rows and category == "all":
+        rows = await fetch_top_movers_1h_async(limit=8, timeout_sec=10.0)
+    if not rows:
+        await message.reply_text(
+            f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
+            "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
+        )
+        return
+
+    chat_id = message.chat_id
+    picker_map = context.application.bot_data.setdefault("picker_map", {})
+    picker_category = context.application.bot_data.setdefault("picker_category", {})
+    picker_category[str(chat_id)] = category
+    buttons: list[list[InlineKeyboardButton]] = []
+    buttons.append(
+        [
+            InlineKeyboardButton("All", callback_data="menu:pick_cat:all"),
+            InlineKeyboardButton("Crypto", callback_data="menu:pick_cat:crypto"),
+            InlineKeyboardButton("Politics", callback_data="menu:pick_cat:politics"),
+            InlineKeyboardButton("Macro", callback_data="menu:pick_cat:macro"),
+        ]
+    )
+    for row in rows:
+        market_id = str(row["market_id"])
+        token = _picker_token(chat_id, market_id)
+        picker_map[f"{chat_id}:{token}"] = market_id
+        delta = row.get("delta_yes")
+        liq = row.get("liquidity")
+        cat = (row.get("cat_tag") or "other").upper()[:3]
+        prefix = "MOV" if delta is not None else "LIVE"
+        delta_part = _fmt_num(delta, 3, signed=True) if delta is not None else ""
+        liq_part = f" L:{_fmt_num(liq, 0)}" if liq is not None else ""
+        label = f"{cat} {prefix} {delta_part}{liq_part} | {(row.get('question') or 'n/a')[:24]}".strip()
+        buttons.append([InlineKeyboardButton(label, callback_data=f"wlpick:{token}")])
+
+    buttons.append(
+        [
+            InlineKeyboardButton("Обновить список", callback_data="menu:pick_refresh"),
+            InlineKeyboardButton("Открыть full movers", callback_data="menu:movers"),
+        ]
+    )
+    availability = f"Live-кандидатов сейчас: {len(rows)}."
+    if category == "all" and len(rows) < 6:
+        availability += " Окно узкое: добавьте market_id/slug вручную, чтобы не ждать расширения окна."
+    await message.reply_text(
+        f"Выберите рынок для watchlist. Фильтр: {_picker_category_label(category)}.\n"
+        "Нажмите на строку — рынок добавится сразу.\n"
+        f"{availability}\n"
+        "Если нужного рынка нет: /watchlist_add <market_id|slug>",
+        reply_markup=InlineKeyboardMarkup(buttons),
     )
 
 
@@ -409,11 +1281,57 @@ async def fetch_top_movers_1h_async(limit: int = 3, timeout_sec: float = 10.0) -
     )
 
 
+async def fetch_top_movers_window_async(minutes: int, limit: int = 3, timeout_sec: float = 10.0) -> list[dict]:
+    return await asyncio.wait_for(
+        asyncio.to_thread(lambda: run_db_query(SQL_TOP_MOVERS_WINDOW, (minutes, limit), row_factory=dict_row)),
+        timeout=timeout_sec,
+    )
+
+
 async def fetch_watchlist_snapshot_async(user_id: str, limit: int = 10, timeout_sec: float = 10.0) -> list[dict]:
     return await asyncio.wait_for(
         asyncio.to_thread(lambda: run_db_query(SQL_WATCHLIST_SNAPSHOT, (user_id, limit), row_factory=dict_row)),
         timeout=timeout_sec,
     )
+
+
+async def fetch_watchlist_snapshot_window_async(
+    user_id: str, *, minutes: int, limit: int = 10, timeout_sec: float = 10.0
+) -> list[dict]:
+    return await asyncio.wait_for(
+        asyncio.to_thread(
+            lambda: run_db_query(SQL_WATCHLIST_SNAPSHOT_WINDOW, (minutes, user_id, limit), row_factory=dict_row)
+        ),
+        timeout=timeout_sec,
+    )
+
+
+async def fetch_watchlist_diagnostics_async(user_id: str, timeout_sec: float = 10.0) -> dict:
+    rows = await asyncio.wait_for(
+        asyncio.to_thread(lambda: run_db_query(SQL_WATCHLIST_DIAGNOSTICS, (user_id,), row_factory=dict_row)),
+        timeout=timeout_sec,
+    )
+    return rows[0] if rows else {}
+
+
+async def fetch_watchlist_picker_candidates_async(
+    *, category: str = "all", limit: int = 12, timeout_sec: float = 10.0
+) -> list[dict]:
+    return await asyncio.wait_for(
+        asyncio.to_thread(
+            lambda: run_db_query(SQL_WATCHLIST_PICKER_CANDIDATES, (category, limit), row_factory=dict_row)
+        ),
+        timeout=timeout_sec,
+    )
+
+
+async def fetch_inbox_diagnostics_async(user_id: str, threshold: Any, timeout_sec: float = 10.0) -> dict:
+    thr = Decimal(str(threshold or 0.03))
+    rows = await asyncio.wait_for(
+        asyncio.to_thread(lambda: run_db_query(SQL_INBOX_DIAGNOSTICS, (user_id, user_id, thr), row_factory=dict_row)),
+        timeout=timeout_sec,
+    )
+    return rows[0] if rows else {}
 
 
 def sent_today_sync(user_id: str) -> int:
@@ -566,15 +1484,20 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• отслеживает ваши рынки в watchlist\n"
         "• присылает push по движению вероятностей\n\n"
         "Быстрый старт за 60 секунд:\n"
-        "1) /movers — посмотреть 3 live движения\n"
-        "2) /watchlist_add <market_id|slug> — добавить рынок\n"
+        "1) /menu — открыть быстрые кнопки\n"
+        "2) /movers — посмотреть 3 live движения\n"
         "3) /watchlist — увидеть live-дельту по вашему списку\n"
         "4) /threshold 0.03 — настроить чувствительность\n\n"
         f"{user_limits_block(user_ctx)}\n\n"
         "Полезно дальше:\n"
-        "/help — все команды\n"
-        "/limits — текущие лимиты\n"
+        "/help — все команды и расширенные опции\n"
         "/upgrade — как перейти на PRO"
+        ,
+        reply_markup=quick_reply_keyboard(),
+    )
+    await update.message.reply_text(
+        "Быстрое меню:",
+        reply_markup=main_menu_inline(),
     )
     log.info("cmd=/start chat_id=%s tg_user=%s app_user=%s", update.effective_chat.id, update.effective_user.id, user_ctx["user_id"])
 
@@ -583,23 +1506,21 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     await update.message.reply_text(
-        "Команды бота:\n\n"
-        "Онбординг и план:\n"
-        "/start — активация профиля и быстрый старт\n"
-        "/plan — ваш план, threshold и usage\n"
-        "/limits — лимиты FREE/PRO\n"
-        "/upgrade — переход на PRO\n\n"
-        "Сигналы:\n"
+        "Основные команды:\n"
+        "/start — активация профиля\n"
         "/movers — top 3 live movers\n"
+        "/watchlist — live изменения по вашему watchlist\n"
         "/inbox — последние алерты\n"
-        "/inbox20 — расширенный inbox\n\n"
-        "Watchlist:\n"
-        "/watchlist_list — ваш список рынков\n"
+        "/plan — текущий план и usage\n"
+        "/menu — inline-меню действий\n"
+        "/upgrade — переход на PRO\n\n"
+        "Расширенные команды:\n"
+        "/watchlist_list — список рынков\n"
         "/watchlist_add <market_id|slug>\n"
         "/watchlist_remove <market_id|slug>\n"
-        "/watchlist — live изменения по вашему списку\n\n"
-        "Настройка чувствительности:\n"
-        "/threshold 0.03"
+        "/threshold 0.03 — персональный порог\n"
+        "/limits — лимиты FREE/PRO\n"
+        "/inbox20 — расширенный inbox"
     )
 
 
@@ -615,9 +1536,13 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Текущий статус:\n"
         f"{user_limits_block(user_ctx)}\n\n"
-        "Изменить порог: /threshold 0.03\n"
-        "Смотреть лимиты: /limits\n"
-        "Переход на PRO: /upgrade"
+        f"PRO оффер: до {PRO_WATCHLIST_LIMIT} рынков + email-дайджест, эквивалент ${PRO_MONTHLY_USD}/мес в Telegram Stars.\n\n"
+        "Следующий шаг:\n"
+        "1) Добавьте рынок через /watchlist_add\n"
+        "2) Настройте порог через /threshold 0.03\n"
+        "3) Для PRO: /upgrade\n\n"
+        f"{plan_upgrade_hint(update)}",
+        reply_markup=main_menu_inline(),
     )
 
 
@@ -636,8 +1561,10 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• до {FREE_WATCHLIST_LIMIT} рынков в watchlist\n"
         f"• до {FREE_DAILY_ALERT_LIMIT} push-алертов в день\n\n"
         "PRO:\n"
-        "• watchlist без лимита\n"
+        f"• до {PRO_WATCHLIST_LIMIT} рынков в watchlist\n"
         "• push-алерты без лимита\n\n"
+        "• email-дайджест включен\n\n"
+        f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
         f"Ваш текущий usage:\n{user_limits_block(user_ctx)}\n\n"
         "Чтобы перейти на PRO: /upgrade"
     )
@@ -652,12 +1579,28 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         log.exception("/upgrade intent insert failed")
     await update.message.reply_text(
-        "Переход на PRO:\n"
-        "1) Откройте сайт: https://polymarketpulse.app/?lang=ru\n"
-        "2) Оставьте email в waitlist (если ещё не оставляли)\n"
-        "3) Напишите сюда \"хочу PRO\" — мы активируем доступ на вашем user_id\n\n"
-        "Скоро добавим self-serve оплату прямо в боте."
+        upgrade_pitch_text(update),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
+    try:
+        invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx)
+    except Exception:
+        log.exception("stars invoice send failed")
+        invoice_sent = False
+
+    if not invoice_sent:
+        await update.message.reply_text(
+            "Stars-счет временно недоступен.\n"
+            "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru",
+            disable_web_page_preview=True,
+        )
+
+
+async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    await update.message.reply_text("Выберите действие:", reply_markup=main_menu_inline())
 
 
 async def cmd_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -688,58 +1631,14 @@ async def cmd_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_movers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-    await update.message.reply_text("Смотрю live movers...")
-    try:
-        rows = await fetch_top_movers_async(limit=3, timeout_sec=10.0)
-    except asyncio.TimeoutError:
-        await update.message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
-        return
-    except Exception:
-        log.exception("/movers failed")
-        await update.message.reply_text("Ошибка чтения movers из БД.")
-        return
-
-    if rows:
-        await update.message.reply_text("Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
-        return
-
-    # Fallback to 1h movers so UX is not dead in flat short-window periods.
-    try:
-        rows_1h = await fetch_top_movers_1h_async(limit=3, timeout_sec=10.0)
-    except Exception:
-        rows_1h = []
-
-    if rows_1h:
-        await update.message.reply_text(
-            "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
-            + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
-        )
-        return
-
-    await update.message.reply_text("Сейчас нет ненулевых live movers ни в текущем окне last/prev, ни в 1h окне.")
+    await send_movers_view(update.message, show_loader=True)
 
 
 async def cmd_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE, limit: int = 10):
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await update.message.reply_text("Читаю ваш inbox...")
-    try:
-        rows = await fetch_inbox_async(user_ctx["user_id"], limit=limit, timeout_sec=10.0)
-    except asyncio.TimeoutError:
-        await update.message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
-        return
-    except Exception:
-        log.exception("/inbox failed")
-        await update.message.reply_text("Ошибка чтения inbox из БД.")
-        return
-
-    if not rows:
-        await update.message.reply_text("Нет алертов по вашему порогу в текущем окне.")
-        return
-
-    header = "Inbox alerts:" if limit == 10 else "Inbox alerts (20):"
-    await update.message.reply_text(header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows))
+    await send_inbox_view(update.message, user_ctx, limit=limit, show_loader=True)
 
 
 async def cmd_inbox10(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -754,22 +1653,7 @@ async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await update.message.reply_text("Смотрю live изменения вашего watchlist...")
-    try:
-        rows = await fetch_watchlist_snapshot_async(user_ctx["user_id"], limit=10, timeout_sec=10.0)
-    except asyncio.TimeoutError:
-        await update.message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
-        return
-    except Exception:
-        log.exception("/watchlist failed")
-        await update.message.reply_text("Ошибка чтения watchlist из БД.")
-        return
-
-    if not rows:
-        await update.message.reply_text("По вашему watchlist сейчас нет live-изменений.")
-        return
-
-    await update.message.reply_text("Watchlist live changes:\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
+    await send_watchlist_view(update.message, user_ctx, show_loader=True)
 
 
 async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -791,10 +1675,8 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     if not context.args:
-        await update.message.reply_text(
-            "Формат: /watchlist_add <market_id|slug>\n"
-            "Подсказка: сначала откройте /movers и скопируйте market_id нужного рынка."
-        )
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_picker(update.message, context, user_ctx)
         return
 
     ref = context.args[0].strip()
@@ -813,9 +1695,12 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Этот рынок уже в вашем watchlist.")
         return
 
-    if user_ctx["plan"] == "free" and int(user_ctx["watchlist_count"]) >= FREE_WATCHLIST_LIMIT:
+    plan = str(user_ctx.get("plan") or "free")
+    limit = watchlist_limit_for_plan(plan)
+    if int(user_ctx["watchlist_count"]) >= limit:
+        plan_label = "PRO" if plan == "pro" else "FREE"
         await update.message.reply_text(
-            f"Лимит FREE: {FREE_WATCHLIST_LIMIT} рынка. Удалите один через /watchlist_remove или перейдите на PRO: /upgrade"
+            f"Лимит {plan_label}: {limit} рынка. Удалите один через /watchlist_remove или измените план: /upgrade"
         )
         return
 
@@ -872,7 +1757,166 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Неизвестная команда.\n"
         "Используйте /help.\n"
-        "Быстрый старт: /movers, /watchlist_add, /watchlist, /inbox"
+        "Быстрый старт: /menu, /movers, /watchlist, /inbox"
+    )
+
+
+async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not query.message:
+        return
+    await query.answer()
+    data = query.data or ""
+
+    if data == "menu:movers":
+        await send_movers_view(query.message, show_loader=False)
+        return
+    if data == "menu:watchlist":
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_view(query.message, user_ctx, show_loader=False)
+        return
+    if data == "menu:inbox":
+        user_ctx = await resolve_user_context(update)
+        await send_inbox_view(query.message, user_ctx, limit=10, show_loader=False)
+        return
+    if data == "menu:plan":
+        user_ctx = await resolve_user_context(update)
+        await query.message.reply_text(f"Текущий статус:\n{user_limits_block(user_ctx)}", reply_markup=main_menu_inline())
+        return
+    if data == "menu:upgrade":
+        user_ctx = await resolve_user_context(update)
+        await query.message.reply_text(
+            upgrade_pitch_text(update),
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
+        try:
+            invoice_sent = await send_stars_invoice_for_pro(context.bot, query.message.chat_id, user_ctx)
+        except Exception:
+            log.exception("stars invoice send failed from callback")
+            invoice_sent = False
+        if not invoice_sent:
+            await query.message.reply_text(
+                "Stars-счет временно недоступен.\n"
+                "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru",
+                disable_web_page_preview=True,
+            )
+        return
+    if data == "menu:help":
+        await query.message.reply_text("Список команд: /help")
+        return
+    if data == "menu:threshold":
+        user_ctx = await resolve_user_context(update)
+        await query.message.reply_text(
+            f"Ваш порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
+            "Изменить: /threshold 0.03"
+        )
+        return
+    if data == "menu:pick":
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_picker(query.message, context, user_ctx, category="all")
+        return
+    if data.startswith("menu:pick_cat:"):
+        category = data.split(":", 2)[2]
+        if category not in {"all", "crypto", "politics", "macro"}:
+            category = "all"
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_picker(query.message, context, user_ctx, category=category)
+        return
+    if data == "menu:pick_refresh":
+        picker_category = context.application.bot_data.get("picker_category", {})
+        category = picker_category.get(str(query.message.chat_id), "all")
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_picker(query.message, context, user_ctx, category=category)
+        return
+    if data == "menu:cleanup_closed":
+        user_ctx = await resolve_user_context(update)
+        removed = await asyncio.to_thread(cleanup_closed_watchlist_sync, user_ctx["user_id"])
+        await query.message.reply_text(
+            f"Удалено закрытых рынков из watchlist: {removed}\n"
+            "Теперь добавьте live рынок через кнопку «Добавить рынок».",
+            reply_markup=main_menu_inline(),
+        )
+        return
+    if data.startswith("wlpick:"):
+        token = data.split(":", 1)[1]
+        chat_key = f"{query.message.chat_id}:{token}"
+        picker_map = context.application.bot_data.get("picker_map", {})
+        market_id = picker_map.get(chat_key)
+        if not market_id:
+            await query.message.reply_text("Элемент выбора устарел. Откройте /menu и повторите.")
+            return
+        user_ctx = await resolve_user_context(update)
+        result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id)
+        await query.message.reply_text(result)
+        return
+
+
+async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.pre_checkout_query
+    if not query:
+        return
+    payload_user = _parse_pro_payload(query.invoice_payload or "")
+    if not payload_user:
+        await query.answer(ok=False, error_message="Неизвестный продукт. Повторите /upgrade")
+        return
+    await query.answer(ok=True)
+
+
+async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.successful_payment:
+        return
+    payment = update.message.successful_payment
+    if payment.currency != "XTR":
+        await update.message.reply_text("Платеж получен, но валюта не поддерживается.")
+        return
+
+    user_ctx = await resolve_user_context(update)
+    payload_user = _parse_pro_payload(payment.invoice_payload or "")
+    if payload_user and payload_user != user_ctx["user_id"]:
+        log.warning("payment payload user mismatch payload=%s ctx=%s", payload_user, user_ctx["user_id"])
+
+    external_id = payment.telegram_payment_charge_id or payment.provider_payment_charge_id or payment.invoice_payload
+    payload = {
+        "invoice_payload": payment.invoice_payload,
+        "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+        "provider_payment_charge_id": payment.provider_payment_charge_id,
+        "currency": payment.currency,
+        "total_amount": payment.total_amount,
+    }
+    try:
+        applied, renew_at = await asyncio.to_thread(
+            activate_pro_subscription_sync,
+            user_id=user_ctx["user_id"],
+            provider="telegram_stars",
+            external_id=external_id,
+            source="telegram_stars",
+            amount_cents=int(payment.total_amount),
+            currency=payment.currency,
+            payload=payload,
+            email=None,
+            event_type="stars_payment",
+        )
+    except Exception:
+        log.exception("successful payment apply failed")
+        await update.message.reply_text(
+            "Платеж получен, но активация не завершилась автоматически.\n"
+            "Напишите \"оплата прошла\" — активируем вручную."
+        )
+        return
+
+    if not applied:
+        await update.message.reply_text("Платеж уже обработан ранее. PRO активен.")
+        return
+
+    renew_text = ""
+    if isinstance(renew_at, datetime):
+        renew_text = f"\nДействует до: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+    await update.message.reply_text(
+        "Оплата получена. PRO активирован.\n"
+        f"Лимит watchlist: {PRO_WATCHLIST_LIMIT}\n"
+        "Email-дайджест включен."
+        f"{renew_text}"
     )
 
 
@@ -881,20 +1925,18 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def on_post_init(application: Application):
+    try:
+        await asyncio.to_thread(ensure_payment_schema_sync)
+    except Exception:
+        log.exception("payment schema ensure failed")
     await application.bot.set_my_commands(
         [
             BotCommand("start", "Онбординг и профиль"),
-            BotCommand("help", "Список команд"),
-            BotCommand("plan", "Текущий план и лимиты"),
-            BotCommand("limits", "Лимиты Free/Pro"),
-            BotCommand("upgrade", "Как перейти на Pro"),
-            BotCommand("threshold", "Порог алертов"),
             BotCommand("movers", "Top live movers"),
-            BotCommand("inbox", "Последние алерты"),
             BotCommand("watchlist", "Live изменения watchlist"),
-            BotCommand("watchlist_list", "Показать watchlist"),
-            BotCommand("watchlist_add", "Добавить рынок"),
-            BotCommand("watchlist_remove", "Удалить рынок"),
+            BotCommand("inbox", "Последние алерты"),
+            BotCommand("plan", "Текущий план и лимиты"),
+            BotCommand("help", "Все команды"),
         ]
     )
     application.bot_data["push_task"] = application.create_task(push_loop(application))
@@ -922,6 +1964,7 @@ if __name__ == "__main__":
     )
     app.add_error_handler(on_error)
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("menu", cmd_menu))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("plan", cmd_plan))
     app.add_handler(CommandHandler("limits", cmd_limits))
@@ -935,6 +1978,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("watchlist_add", cmd_watchlist_add))
     app.add_handler(CommandHandler("watchlist_remove", cmd_watchlist_remove))
     app.add_handler(CommandHandler("admin_stats", cmd_admin_stats))
+    app.add_handler(PreCheckoutQueryHandler(on_precheckout))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, on_successful_payment))
+    app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
     log.info("Starting bot polling for @polymarket_pulse_bot")
     app.run_polling(drop_pending_updates=True)

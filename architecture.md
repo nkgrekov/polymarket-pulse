@@ -33,9 +33,10 @@ Python service.
 Responsibilities:
 
 • fetch market data  
+• rebalance fetched market pool by category + root-question dedup  
 • normalize responses  
 • write snapshots  
-• maintain universe coverage
+• maintain universe coverage with balanced category pull
 
 Snapshot writes are the critical path.
 
@@ -137,7 +138,23 @@ Also runs:
 • watchlist picker flow uses mover-first candidates ranked by live liquidity (volume proxy), with live-liquidity fallback and callback tokens in bot memory
 • picker supports category-level callback filters (`all`, `crypto`, `politics`, `macro`) on top of liquidity-ranked candidates
 • category filter behavior is strict: no cross-category fallback; empty category returns explicit UX guidance
+• `all` picker mode applies category-balanced quotas and ordering to reduce crypto dominance in candidate list
+• picker UI includes category tags and live-supply hint (candidate count in current window)
+• picker candidate pool includes recent active markets (last 72h seen in snapshots) as fallback when live movers are too narrow
 • `/upgrade` command writes conversion intent into `app.upgrade_intents`
+• monetization offer v1 in bot UX:
+  - FREE: 3 watchlist markets, 20 push/day
+  - PRO: 20 watchlist markets + email digest
+  - pricing target: USD-equivalent monthly payment in Telegram Stars
+  - current configured Stars invoice: `454 XTR`
+• upgrade command UX contract:
+  - send concise PRO offer message first (FREE vs PRO delta + Stripe fallback link)
+  - send Telegram Stars invoice immediately after, in the same handler
+  - no intermediate inline keyboard between message and invoice
+  - `/plan` ends with explicit upgrade CTA line (`/upgrade`) localized by Telegram user locale
+• Telegram Stars payment handlers:
+  - pre-checkout validation handler
+  - successful payment handler that upserts `app.payment_events` and activates `app.subscriptions`
 • adaptive signal windows in read path (`latest`, then `30m`, then `1h`) for movers/watchlist views
 • zero-state diagnostics for inbox/watchlist to distinguish threshold filtering vs missing live quotes
 
@@ -150,9 +167,10 @@ Site + Email API:
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • SEO intent endpoints: `/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
-• site telemetry endpoint: `/api/events` (`page_view`, `tg_click`)
+• site telemetry endpoint: `/api/events` (`page_view`, `tg_click`, `waitlist_intent`)
+• live landing data endpoint: `/api/live-movers-preview` (top 3 movers + sparkline points from DB)
 • attribution enrichment in telemetry: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
-• landing uses dark trading-terminal UI with pain-driven hero, live “Top movers” mock widget, scarcity line, and dual CTA (Telegram primary + email waitlist)
+• landing uses dark trading-terminal UI with pain-driven hero, live DB-powered “Top movers” widget (3 markets + sparkline mini-charts), scarcity line, and dual CTA (Telegram primary + email waitlist)
 • landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`
@@ -163,6 +181,34 @@ Site + Email API:
 • canonical/og/twitter metadata is absolute URL based
 • `hreflang` includes `x-default`
 • sitemap publishes localized EN/RU variants for crawl coverage
+• schema.org JSON-LD is present on landing (`Organization`, `WebSite`) and SEO intent pages (`WebPage`)
+• ops credential inventory for monetization + social distribution lives in `docs/credentials_checklist.md`
+• Stripe monetization endpoints:
+  - `POST /api/stripe/checkout-session`
+  - `GET /stripe/success` (checkout confirmation fallback when webhook is absent)
+  - `POST /api/stripe/webhook` (HMAC-verified)
+• Landing conversion hierarchy preserved: Telegram + waitlist remain primary; Stripe checkout is isolated in a lower-page PRO block
+• Landing PRO block contract (EN/RU):
+  - full-width dark section (`#0d0f0e`), no outer rounded card wrapper
+  - split layout: FREE/PRO comparison rows + stacked CTAs
+  - primary green Stars CTA + secondary outlined Stripe CTA (existing checkout-session flow)
+  - mobile behavior: single-column stack with full-width CTA buttons
+
+## Current User Interaction Surfaces (2026-03-10)
+
+End-user entry points and flows:
+
+• Web entry: `polymarketpulse.app` landing and intent pages (`/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`)  
+• Primary CTA path: web Telegram CTA (hero/sticky/SEO CTA) -> `@polymarket_pulse_bot` with `start` payload attribution  
+• Secondary CTA path: web waitlist form -> `/api/waitlist` -> `/confirm` double opt-in -> email digest channel  
+• Bot activation core: `/start` -> `/menu` + `/movers` -> watchlist add (`/watchlist_add` or picker) -> `/inbox` + push alerts  
+• Signal fallback behavior in bot read paths: `latest -> 30m -> 1h` before zero-state explanation
+
+Telemetry and attribution contract:
+
+• site events: `page_view`, `tg_click`, `waitlist_intent` via `/api/events`  
+• waitlist events: `waitlist_submit`, `confirm_success`, `unsubscribe_success` in `app.site_events`  
+• attribution fields: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 
 ---
 
@@ -206,6 +252,13 @@ market universe
 user positions
 
 Universe refresh is a post-write step with its own timeout budget.
+
+Universe read selection in ingest is category-balanced (caps + top-up), not pure weight sort, to avoid single-topic dominance.
+
+Ingest observability:
+
+• startup log prints fetched market mix (`p/m/c/o`) for top fetch  
+• forced-list log prints selected universe mix (`p/m/c/o`) before snapshot write
 
 Live-only hardening:
 
@@ -270,8 +323,10 @@ Digest orchestration:
 Growth ops:
 
 • competitor scan script: `scripts/growth/competitive_scan.py` (parses polymark.et tool index)  
-• social draft generator: `scripts/growth/generate_social_drafts.py` (DB live views -> RU/EN post drafts)  
+• social draft generator: `scripts/growth/generate_social_drafts.py` (DB live views -> EN/RU drafts for X/Threads, with UTM links + Telegram deep links)  
+• weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)  
 • visual post templates in `assets/social/` (Top3, Breakout, Weekly recap)
+• positioning message pack: `docs/positioning_messages_latest.md` (site/bot/social interception copy)
 
 Operational deploy notes (2026-03-08):
 

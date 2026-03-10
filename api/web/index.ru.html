@@ -33,6 +33,25 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Polymarket Pulse",
+      "url": "https://polymarketpulse.app/",
+      "logo": "https://polymarketpulse.app/favicon-512.png",
+      "sameAs": ["https://t.me/polymarket_pulse_bot"]
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Polymarket Pulse",
+      "url": "https://polymarketpulse.app/",
+      "inLanguage": "ru-RU"
+    }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
 
@@ -272,6 +291,29 @@
       font-size: 14px;
     }
 
+    .spark {
+      margin-top: 8px;
+      width: 100%;
+      height: 28px;
+    }
+
+    .spark svg {
+      display: block;
+      width: 100%;
+      height: 28px;
+    }
+
+    .spark path {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .spark.down path {
+      stroke: var(--negative);
+    }
+
     .move {
       color: var(--text);
     }
@@ -401,6 +443,150 @@
       border-color: var(--accent);
       background: #1a1f1b;
       outline: none;
+    }
+
+    .pro-section {
+      width: 100%;
+      background: #0d0f0e;
+      padding: 48px 0;
+    }
+
+    .pro-inner {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .pro-kicker {
+      margin: 0;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      color: #6b7a6e;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .pro-headline {
+      margin: 10px 0 0;
+      font-family: "Syne", "Segoe UI", sans-serif;
+      font-weight: 800;
+      color: #e8ede9;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      font-size: clamp(32px, 6vw, 48px);
+    }
+
+    .pro-layout {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .pro-rows {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pro-row {
+      background: #131714;
+      border: 1px solid #1e2520;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: baseline;
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      color: #e8ede9;
+    }
+
+    .pro-label {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7a6e;
+    }
+
+    .pro-label.pro {
+      color: #00ff88;
+    }
+
+    .pro-cta-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pro-stars {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #00ff88;
+      border-radius: 11px;
+      background: #00ff88;
+      color: #0a0c0b;
+      font-family: "Space Mono", monospace;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+    }
+
+    .pro-stars:hover,
+    .pro-stars:focus-visible {
+      outline: none;
+      filter: brightness(0.95);
+    }
+
+    .pro-stripe-wrap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pro-stripe-wrap input[type="email"] {
+      min-height: 48px;
+      background: transparent;
+      border: 1px solid #2a332b;
+      color: #e8ede9;
+    }
+
+    .pro-stripe-btn {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #2a332b;
+      border-radius: 10px;
+      background: transparent;
+      color: #8fa88f;
+      font-family: "Space Mono", monospace;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .pro-stripe-btn:hover,
+    .pro-stripe-btn:focus-visible {
+      outline: none;
+      border-color: #8fa88f;
+      color: #e8ede9;
+      background: #131714;
+    }
+
+    .pro-note {
+      min-height: 18px;
+      color: #6b7a6e;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .pro-msg {
+      min-height: 16px;
+      color: #8fa88f;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
     }
 
     .note {
@@ -604,6 +790,9 @@
       .market { max-width: 68%; }
       .proof-grid { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
+      .pro-layout { grid-template-columns: 1fr; }
+      .pro-stars,
+      .pro-stripe-btn { width: 100%; }
       .sticky-tg { display: block; }
       body { padding-bottom: 74px; }
     }
@@ -631,8 +820,8 @@
 
       <div class="grid">
         <article class="card ticker" aria-label="Top Movers mock">
-          <p class="card-title">Top movers · Последние 2ч</p>
-          <div class="rows">
+          <p id="live-movers-title" class="card-title">Top movers · Live сейчас</p>
+          <div id="live-movers-rows" class="rows">
             <div class="row">
               <div class="line-1">
                 <span class="market">Трамп победит на выборах 2028</span>
@@ -737,15 +926,53 @@
         Если и там плоско, по дизайну возвращается 0, чтобы не спамить шумом.
       </div>
     </section>
+
   </div>
+  <section class="pro-section" aria-label="Pro plan">
+    <div class="pro-inner">
+      <p class="pro-kicker">PRO PLAN · $10/MONTH</p>
+      <h3 class="pro-headline">20 markets. No cap. Email digest included.</h3>
+      <div class="pro-layout">
+        <div class="pro-rows">
+          <div class="pro-row">
+            <span class="pro-label">FREE</span>
+            <span>3 watchlist markets · 20 alerts/day</span>
+          </div>
+          <div class="pro-row">
+            <span class="pro-label pro">PRO</span>
+            <span>20 watchlist markets · unlimited alerts · email digest</span>
+          </div>
+        </div>
+        <div class="pro-cta-stack">
+          <a
+            class="pro-stars"
+            href="https://t.me/polymarket_pulse_bot?start=upgrade"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Upgrade in Telegram → ⭐ 454 Stars</a>
+          <div class="pro-stripe-wrap">
+            <input id="pro-email" type="email" autocomplete="email" placeholder="email for Stripe checkout" />
+            <button id="checkout-btn" class="pro-stripe-btn" type="button">Pay with card (Stripe)</button>
+            <div id="pro-msg" class="pro-msg" role="status" aria-live="polite"></div>
+          </div>
+          <div class="pro-note">// Stars upgrade is instant. Stripe checkout sends confirmation to your email.</div>
+        </div>
+      </div>
+    </div>
+  </section>
   <a id="tg-link-sticky" class="sticky-tg" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_ru_sticky">Открыть Telegram-бота</a>
 
   <script>
     const form = document.getElementById('waitlist-form');
-    const msg = document.getElementById('msg');
+    const waitlistMsg = document.getElementById('msg');
     const emailInput = document.getElementById('email');
     const tgLink = document.getElementById('tg-link');
     const tgLinkSticky = document.getElementById('tg-link-sticky');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const proEmail = document.getElementById('pro-email');
+    const proMsg = document.getElementById('pro-msg');
+    const liveRows = document.getElementById('live-movers-rows');
+    const liveTitle = document.getElementById('live-movers-title');
 
     function getAttribution() {
       const p = new URLSearchParams(window.location.search);
@@ -769,21 +996,131 @@
       } catch (_) {}
     }
 
+    function esc(v) {
+      return String(v || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function pct(v) {
+      const n = Number(v);
+      if (Number.isNaN(n)) return 'n/a';
+      return (n * 100).toFixed(1);
+    }
+
+    function pp(v) {
+      const n = Number(v || 0) * 100;
+      const abs = Math.abs(n).toFixed(1);
+      return `${n >= 0 ? '↑' : '↓'}${abs}пп`;
+    }
+
+    function timeAgo(iso) {
+      const ts = Date.parse(iso || '');
+      if (!Number.isFinite(ts)) return 'n/a';
+      const mins = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+      if (mins < 60) return `${mins}м назад`;
+      const hours = Math.floor(mins / 60);
+      return `${hours}ч назад`;
+    }
+
+    function sparkline(values, isDown) {
+      if (!Array.isArray(values) || values.length < 2) return '';
+      const w = 100;
+      const h = 28;
+      const lo = Math.min(...values);
+      const hi = Math.max(...values);
+      const span = hi - lo || 1;
+      const pts = values.map((v, i) => {
+        const x = (i * w) / (values.length - 1);
+        const y = h - ((v - lo) / span) * (h - 2) - 1;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      }).join(' ');
+      const cls = isDown ? 'spark down' : 'spark';
+      return `<div class="${cls}"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="M ${pts.replaceAll(' ', ' L ')}" /></svg></div>`;
+    }
+
+    function renderLiveMovers(rows) {
+      if (!liveRows || !Array.isArray(rows) || rows.length === 0) return;
+      liveRows.innerHTML = rows.map((r) => {
+        const up = Number(r.delta_yes || 0) >= 0;
+        const deltaCls = up ? 'delta-up' : 'delta-down';
+        const spark = sparkline(r.spark || [], !up);
+        return `
+          <div class="row">
+            <div class="line-1">
+              <span class="market">${esc(r.question)}</span>
+              <span class="time">${timeAgo(r.last_bucket)}</span>
+            </div>
+            <div class="line-2">
+              <span class="move">${pct(r.yes_mid_prev)}% → ${pct(r.yes_mid_now)}%</span>
+              <span class="${deltaCls}">${pp(r.delta_yes)}</span>
+            </div>
+            ${spark}
+          </div>
+        `;
+      }).join('');
+      if (liveTitle) {
+        liveTitle.textContent = 'Top movers · Live данные из БД';
+      }
+    }
+
+    async function loadLiveMovers() {
+      try {
+        const res = await fetch('/api/live-movers-preview?limit=3', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data || !Array.isArray(data.rows) || data.rows.length === 0) return;
+        renderLiveMovers(data.rows);
+      } catch (_) {}
+    }
+
     trackEvent('page_view', { ...getAttribution(), placement: 'page' });
+    loadLiveMovers();
+    setInterval(loadLiveMovers, 120000);
     tgLink?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'hero_panel' });
     });
     tgLinkSticky?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
     });
+
+    checkoutBtn?.addEventListener('click', async () => {
+      const email = (proEmail?.value || emailInput.value || '').trim();
+      if (!email) {
+        proMsg.textContent = 'Сначала введите email, затем продолжайте оплату.';
+        return;
+      }
+      proMsg.textContent = 'Переходим в Stripe checkout...';
+      trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_offer' });
+      try {
+        const res = await fetch('/api/stripe/checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            source: 'site',
+            lang: 'ru'
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) throw new Error(data.detail || 'Checkout недоступен');
+        window.location.href = data.url;
+      } catch (err) {
+        proMsg.textContent = 'Ошибка checkout: ' + err.message;
+      }
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = emailInput.value.trim();
       if (!email) {
-        msg.textContent = 'Введите email.';
+        waitlistMsg.textContent = 'Введите email.';
         return;
       }
-      msg.textContent = 'Отправляем...';
+      waitlistMsg.textContent = 'Отправляем...';
       try {
         const res = await fetch('/api/waitlist', {
           method: 'POST',
@@ -796,9 +1133,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Request failed');
-        msg.textContent = data.message || 'Готово. Проверьте почту и подтвердите email.';
+        waitlistMsg.textContent = data.message || 'Готово. Проверьте почту и подтвердите email.';
       } catch (err) {
-        msg.textContent = 'Ошибка: ' + err.message;
+        waitlistMsg.textContent = 'Ошибка: ' + err.message;
       }
     });
   </script>

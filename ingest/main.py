@@ -49,6 +49,91 @@ def make_session():
 
 SESSION = make_session()
 
+
+def classify_market_question(question: str) -> str:
+    q = (question or "").lower()
+    if any(x in q for x in ["trump", "biden", "election", "senate", "president", "iran", "putin", "zelensky", "congress", "war", "nato", "israel", "ukraine"]):
+        return "politics"
+    if any(x in q for x in ["fed", "inflation", "recession", "gdp", "cpi", "interest rate", "oil", "yield", "tariff", "unemployment", "treasury"]):
+        return "macro"
+    if any(x in q for x in ["bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "crypto", "btc", "eth", "memecoin"]):
+        return "crypto"
+    return "other"
+
+
+def market_root_key(question: str, market_id: str) -> str:
+    q = (question or "").strip()
+    if " - " in q:
+        q = q.split(" - ", 1)[0].strip()
+    return q or str(market_id)
+
+
+def rebalance_markets(rows: list[dict], limit: int) -> list[dict]:
+    if not rows:
+        return []
+    limit = max(int(limit or 0), 1)
+
+    # 1) Dedup by root question to collapse minute-market spam.
+    best_by_root: dict[str, dict] = {}
+    for m in rows:
+        mid = str(m.get("market_id") or "")
+        root = market_root_key(str(m.get("question") or ""), mid)
+        current = best_by_root.get(root)
+        liq = float(m.get("liquidity") or 0.0)
+        if current is None or liq > float(current.get("liquidity") or 0.0):
+            best_by_root[root] = m
+
+    deduped = list(best_by_root.values())
+
+    # 2) Category buckets.
+    buckets = {"politics": [], "macro": [], "crypto": [], "other": []}
+    for m in deduped:
+        cat = classify_market_question(str(m.get("question") or ""))
+        buckets.setdefault(cat, []).append(m)
+
+    for cat in buckets:
+        buckets[cat].sort(key=lambda x: float(x.get("liquidity") or 0.0), reverse=True)
+
+    politics_cap = max(3, limit // 8)
+    macro_cap = max(3, limit // 8)
+    crypto_cap = max(8, limit // 2)
+
+    selected: list[dict] = []
+    selected_ids: set[str] = set()
+
+    def take(cat: str, cap: int):
+        taken = 0
+        for m in buckets.get(cat, []):
+            mid = str(m.get("market_id"))
+            if mid in selected_ids:
+                continue
+            selected.append(m)
+            selected_ids.add(mid)
+            taken += 1
+            if taken >= cap or len(selected) >= limit:
+                break
+
+    take("politics", politics_cap)
+    take("macro", macro_cap)
+    take("crypto", crypto_cap)
+
+    # 3) Top-up by liquidity from remaining pool.
+    remaining = sorted(
+        (m for m in deduped if str(m.get("market_id")) not in selected_ids),
+        key=lambda x: float(x.get("liquidity") or 0.0),
+        reverse=True,
+    )
+    for m in remaining:
+        if len(selected) >= limit:
+            break
+        mid = str(m.get("market_id"))
+        if mid in selected_ids:
+            continue
+        selected.append(m)
+        selected_ids.add(mid)
+
+    return selected[:limit]
+
 def _as_list(x):
     if x is None:
         return []
@@ -171,8 +256,9 @@ def fetch_markets(limit: int = 80):
     out = []
     offset = 0
     page = 100
+    scan_target = max(limit * 4, int(os.environ.get("FETCH_SCAN_TARGET", "800")))
 
-    while len(out) < limit:
+    while len(out) < scan_target:
         params = {
             "order": "id",
             "ascending": "false",
@@ -234,12 +320,12 @@ def fetch_markets(limit: int = 80):
                     "no_token_id": no_tid,
                 })
 
-                if len(out) >= limit:
-                    return out
+                if len(out) >= scan_target:
+                    break
 
         offset += page
 
-    return out
+    return rebalance_markets(out, limit)
 
 def extract_yes_no_token_ids(m: dict):
     """
@@ -305,17 +391,119 @@ def fetch_bot_watchlist_market_ids(conn, limit: int = 500) -> list[str]:
         return []
 
 def fetch_market_universe_ids(conn, limit: int = 60) -> list[str]:
+    """
+    Balanced pull from market_universe to avoid one-category dominance
+    (typically crypto minute markets) in forced ingest coverage.
+    """
+    limit = max(int(limit or 0), 1)
+    politics_cap = max(2, limit // 8)
+    macro_cap = max(2, limit // 8)
+    crypto_cap = max(4, limit // 2)
+    other_cap = max(8, limit // 4)
+
     with conn.cursor() as cur:
         cur.execute(
             """
+            with tagged as (
+                select
+                    u.market_id,
+                    u.weight,
+                    case
+                        when lower(m.question) similar to '%%(trump|biden|election|senate|house|president|iran|putin|zelensky|congress|war|ceasefire|nato|israel|ukraine|rfk)%%'
+                            then 'politics'
+                        when lower(m.question) similar to '%%(fed|inflation|recession|gdp|cpi|interest rate|oil|yield|tariff|unemployment|jobs report|treasury)%%'
+                            then 'macro'
+                        when lower(m.question) similar to '%%(bitcoin|ethereum|solana|xrp|bnb|dogecoin|crypto|fdv|btc|eth|memecoin)%%'
+                            then 'crypto'
+                        else 'other'
+                    end as cat_tag
+                from public.market_universe u
+                join public.markets m on m.market_id = u.market_id
+                where coalesce(m.status, 'active') = 'active'
+            ),
+            ranked as (
+                select
+                    t.*,
+                    row_number() over (
+                        partition by t.cat_tag
+                        order by t.weight desc nulls last, t.market_id
+                    ) as cat_rank
+                from tagged t
+            ),
+            seed as (
+                select r.market_id, r.weight, 1 as phase
+                from ranked r
+                where
+                    (r.cat_tag = 'politics' and r.cat_rank <= %s)
+                    or (r.cat_tag = 'macro' and r.cat_rank <= %s)
+                    or (r.cat_tag = 'crypto' and r.cat_rank <= %s)
+                    or (r.cat_tag = 'other' and r.cat_rank <= %s)
+            ),
+            topup as (
+                select r.market_id, r.weight, 2 as phase
+                from ranked r
+                where not exists (
+                    select 1
+                    from seed s
+                    where s.market_id = r.market_id
+                )
+                order by r.weight desc nulls last, r.market_id
+                limit %s
+            ),
+            final as (
+                select * from seed
+                union all
+                select * from topup
+            )
             select market_id
-            from public.market_universe
-            order by weight desc nulls last, updated_at desc, market_id
+            from final
+            order by phase, weight desc nulls last, market_id
             limit %s
             """,
-            (limit,),
+            (politics_cap, macro_cap, crypto_cap, other_cap, limit, limit),
         )
         return [str(r[0]) for r in cur.fetchall()]
+
+
+def fetch_market_universe_mix_stats(conn, market_ids: list[str]) -> dict[str, int]:
+    if not market_ids:
+        return {"total": 0, "politics": 0, "macro": 0, "crypto": 0, "other": 0}
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            with tagged as (
+                select
+                    case
+                        when lower(m.question) similar to '%%(trump|biden|election|senate|house|president|iran|putin|zelensky|congress|war|ceasefire|nato|israel|ukraine|rfk)%%'
+                            then 'politics'
+                        when lower(m.question) similar to '%%(fed|inflation|recession|gdp|cpi|interest rate|oil|yield|tariff|unemployment|jobs report|treasury)%%'
+                            then 'macro'
+                        when lower(m.question) similar to '%%(bitcoin|ethereum|solana|xrp|bnb|dogecoin|crypto|fdv|btc|eth|memecoin)%%'
+                            then 'crypto'
+                        else 'other'
+                    end as cat_tag
+                from public.markets m
+                where m.market_id = any(%s)
+            )
+            select
+                count(*)::int as total,
+                count(*) filter (where cat_tag='politics')::int as politics,
+                count(*) filter (where cat_tag='macro')::int as macro,
+                count(*) filter (where cat_tag='crypto')::int as crypto,
+                count(*) filter (where cat_tag='other')::int as other
+            from tagged
+            """,
+            (market_ids,),
+        )
+        row = cur.fetchone() or (0, 0, 0, 0, 0)
+    return {
+        "total": int(row[0] or 0),
+        "politics": int(row[1] or 0),
+        "macro": int(row[2] or 0),
+        "crypto": int(row[3] or 0),
+        "other": int(row[4] or 0),
+    }
 
 def fetch_position_market_ids(conn, user_id: str) -> list[str]:
     with conn.cursor() as cur:
@@ -434,6 +622,15 @@ def main():
     BOT_WL_LIMIT = int(os.environ.get("BOT_WL_LIMIT", "500"))
 
     mkts = fetch_markets(limit=LIMIT)
+    if mkts:
+        mix = {"politics": 0, "macro": 0, "crypto": 0, "other": 0}
+        for m in mkts:
+            mix[classify_market_question(str(m.get("question") or ""))] += 1
+        print(
+            "INFO: fetched mkts mix: "
+            f"total={len(mkts)} p={mix['politics']} m={mix['macro']} "
+            f"c={mix['crypto']} o={mix['other']}"
+        )
 
     # --- Forced list: manual watchlist + market universe + user positions ---
     forced_ids = []
@@ -450,6 +647,7 @@ def main():
         manual_bot_ids = fetch_bot_watchlist_market_ids(conn, limit=BOT_WL_LIMIT)
         manual_ids = list(dict.fromkeys([*manual_legacy_ids, *manual_bot_ids]))
         universe_ids = fetch_market_universe_ids(conn, limit=AUTO_WL_LIMIT)
+        universe_mix = fetch_market_universe_mix_stats(conn, universe_ids)
         position_ids = fetch_position_market_ids(conn, watch_user)
     finally:
         conn.close()
@@ -460,7 +658,9 @@ def main():
         "INFO: forced ids: "
         f"manual_legacy={len(manual_legacy_ids)} manual_bot={len(manual_bot_ids)} "
         f"manual_total={len(manual_ids)} universe={len(universe_ids)} "
-        f"positions={len(position_ids)} total={len(forced_ids)}"
+        f"positions={len(position_ids)} total={len(forced_ids)} "
+        f"| universe_mix p={universe_mix['politics']} m={universe_mix['macro']} "
+        f"c={universe_mix['crypto']} o={universe_mix['other']}"
     )
 
     # догружаем рынки из gamma /markets/{id}
