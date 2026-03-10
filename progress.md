@@ -68,6 +68,17 @@ Updated Telegram upgrade UX in `bot/main.py`:
 
 ---
 
+# Bot Bilingual UX (2026-03-10)
+
+Bot command layer now supports RU/EN response rendering by Telegram `language_code`:
+
+• locale resolver added (`ru` default, `en` for `en-*`)  
+• key flows localized: `/start`, `/help`, `/plan`, `/limits`, `/upgrade`, `/threshold`, `/movers`, `/inbox`, `/watchlist`, `/watchlist_add`, `/watchlist_remove`, `/watchlist_list`, callback menu paths  
+• Telegram command menu now published in two language sets (`ru`, `en`) via `setMyCommands(language_code=...)`  
+• payment flow texts localized for pre-checkout errors, invoice description, and successful payment confirmations
+
+---
+
 # DB Hardening Update (2026-03-09)
 
 Applied migration:

@@ -152,6 +152,10 @@ Also runs:
   - send Telegram Stars invoice immediately after, in the same handler
   - no intermediate inline keyboard between message and invoice
   - `/plan` ends with explicit upgrade CTA line (`/upgrade`) localized by Telegram user locale
+• bilingual delivery contract:
+  - bot locale is resolved from Telegram `language_code` (`en-*` -> EN, fallback RU)
+  - command/menu copy has RU and EN variants for core command set
+  - Telegram command catalog is registered in two language scopes (`ru`, `en`)
 • Telegram Stars payment handlers:
   - pre-checkout validation handler
   - successful payment handler that upserts `app.payment_events` and activates `app.subscriptions`

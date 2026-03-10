@@ -856,17 +856,31 @@ def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:
         return f"{prev_bucket} -> {last_bucket}"
 
 
-def user_limits_block(user_ctx: dict) -> str:
+def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
     plan = str(user_ctx.get("plan") or "free")
     watchlist_count = int(user_ctx.get("watchlist_count") or 0)
     alerts_today = int(user_ctx.get("alerts_sent_today") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
     if plan == "pro":
+        if locale == "en":
+            return (
+                "Plan: PRO\n"
+                f"Threshold: {threshold}\n"
+                f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
+                f"Alerts today: {alerts_today} (unlimited)"
+            )
         return (
             "План: PRO\n"
             f"Threshold: {threshold}\n"
             f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
             f"Alerts today: {alerts_today} (без лимита)"
+        )
+    if locale == "en":
+        return (
+            "Plan: FREE\n"
+            f"Threshold: {threshold}\n"
+            f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+            f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
         )
     return (
         "План: FREE\n"
@@ -886,6 +900,10 @@ def is_english_locale(update: Update) -> bool:
     tg_user = update.effective_user
     code = (tg_user.language_code or "").lower() if tg_user else ""
     return code.startswith("en")
+
+
+def locale_from_update(update: Update) -> str:
+    return "en" if is_english_locale(update) else "ru"
 
 
 def upgrade_pitch_text(update: Update) -> str:
@@ -947,16 +965,22 @@ def _parse_pro_payload(payload: str) -> str | None:
     return parts[1]
 
 
-async def send_stars_invoice_for_pro(bot, chat_id: int, user_ctx: dict) -> bool:
+async def send_stars_invoice_for_pro(bot, chat_id: int, user_ctx: dict, *, locale: str = "ru") -> bool:
     if not TELEGRAM_STARS_ENABLED or TELEGRAM_STARS_PRICE_XTR <= 0:
         return False
 
     payload = _build_pro_payload(user_ctx["user_id"])
     title = "Polymarket Pulse PRO (30 days)"
-    description = (
-        f"PRO: до {PRO_WATCHLIST_LIMIT} рынков в watchlist, "
-        "push-алерты без лимита и email-дайджест."
-    )
+    if locale == "en":
+        description = (
+            f"PRO: up to {PRO_WATCHLIST_LIMIT} watchlist markets, "
+            "unlimited push alerts, and email digest."
+        )
+    else:
+        description = (
+            f"PRO: до {PRO_WATCHLIST_LIMIT} рынков в watchlist, "
+            "push-алерты без лимита и email-дайджест."
+        )
     prices = [LabeledPrice(label="PRO Monthly", amount=TELEGRAM_STARS_PRICE_XTR)]
     await bot.send_invoice(
         chat_id=chat_id,
@@ -975,17 +999,21 @@ def _picker_token(chat_id: int, market_id: str) -> str:
     return hashlib.sha1(f"{chat_id}:{market_id}".encode("utf-8")).hexdigest()[:10]
 
 
-async def send_movers_view(message, *, show_loader: bool = True) -> None:
+async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = True) -> None:
     if show_loader:
-        await message.reply_text("Смотрю live movers...")
+        await message.reply_text("Scanning live movers..." if locale == "en" else "Смотрю live movers...")
     try:
         rows = await fetch_top_movers_async(limit=3, timeout_sec=10.0)
     except asyncio.TimeoutError:
-        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        await message.reply_text(
+            "Database response timeout. Retry in 10-20 seconds."
+            if locale == "en"
+            else "База отвечает слишком долго. Повторите через 10-20 секунд."
+        )
         return
     except Exception:
         log.exception("/movers failed")
-        await message.reply_text("Ошибка чтения movers из БД.")
+        await message.reply_text("Failed to read movers from DB." if locale == "en" else "Ошибка чтения movers из БД.")
         return
 
     if rows:
@@ -999,7 +1027,11 @@ async def send_movers_view(message, *, show_loader: bool = True) -> None:
 
     if rows_30m:
         await message.reply_text(
-            "В текущем окне движение плоское. Показываю fallback 30m movers:\n\n"
+            (
+                "Current window is flat. Showing fallback 30m movers:\n\n"
+                if locale == "en"
+                else "В текущем окне движение плоское. Показываю fallback 30m movers:\n\n"
+            )
             + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
         )
         return
@@ -1011,31 +1043,49 @@ async def send_movers_view(message, *, show_loader: bool = True) -> None:
 
     if rows_1h:
         await message.reply_text(
-            "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
+            (
+                "Current last/prev window is flat. Showing 1h movers:\n\n"
+                if locale == "en"
+                else "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
+            )
             + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
         )
         return
 
     await message.reply_text(
-        "Сейчас нет ненулевых movers.\n"
-        "Проверил окна: latest, 30m и 1h — движение плоское.",
+        (
+            "No non-zero movers right now.\n"
+            "Checked windows: latest, 30m and 1h. Movement is flat."
+            if locale == "en"
+            else "Сейчас нет ненулевых movers.\n"
+            "Проверил окна: latest, 30m и 1h — движение плоское."
+        ),
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Добавить рынок", callback_data="menu:pick"), InlineKeyboardButton("Сменить threshold", callback_data="menu:threshold")]]
+            [[
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Change threshold" if locale == "en" else "Сменить threshold", callback_data="menu:threshold"),
+            ]]
         ),
     )
 
 
-async def send_inbox_view(message, user_ctx: dict, *, limit: int = 10, show_loader: bool = True) -> None:
+async def send_inbox_view(
+    message, user_ctx: dict, *, locale: str = "ru", limit: int = 10, show_loader: bool = True
+) -> None:
     if show_loader:
-        await message.reply_text("Читаю ваш inbox...")
+        await message.reply_text("Reading your inbox..." if locale == "en" else "Читаю ваш inbox...")
     try:
         rows = await fetch_inbox_async(user_ctx["user_id"], limit=limit, timeout_sec=10.0)
     except asyncio.TimeoutError:
-        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        await message.reply_text(
+            "Database response timeout. Retry in 10-20 seconds."
+            if locale == "en"
+            else "База отвечает слишком долго. Повторите через 10-20 секунд."
+        )
         return
     except Exception:
         log.exception("/inbox failed")
-        await message.reply_text("Ошибка чтения inbox из БД.")
+        await message.reply_text("Failed to read inbox from DB." if locale == "en" else "Ошибка чтения inbox из БД.")
         return
 
     if not rows:
@@ -1049,39 +1099,54 @@ async def send_inbox_view(message, user_ctx: dict, *, limit: int = 10, show_load
         threshold = _fmt_num(user_ctx.get("threshold"), 3)
         if total > 0 and over == 0:
             reason = (
-                f"Сигналы есть ({total}), но ниже вашего threshold {threshold}.\n"
+                f"Signals exist ({total}), but all are below your threshold {threshold}.\n"
+                "Try /threshold 0.02 or open /movers."
+                if locale == "en"
+                else f"Сигналы есть ({total}), но ниже вашего threshold {threshold}.\n"
                 "Попробуйте /threshold 0.02 или откройте /movers."
             )
         elif total == 0:
             reason = (
-                "Нет live-дельт по вашему watchlist/positions в текущем окне.\n"
+                "No live deltas for your watchlist/positions in the current window.\n"
+                "Common reason: closed markets or missing bid/ask quotes."
+                if locale == "en"
+                else "Нет live-дельт по вашему watchlist/positions в текущем окне.\n"
                 "Частая причина: закрытые рынки или отсутствие котировок bid/ask."
             )
         else:
-            reason = "Нет алертов в текущем окне."
+            reason = "No alerts in the current window." if locale == "en" else "Нет алертов в текущем окне."
         await message.reply_text(
-            reason + f"\nТекущий threshold: {threshold}",
+            reason + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}"),
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Top movers", callback_data="menu:movers"), InlineKeyboardButton("Сменить threshold", callback_data="menu:threshold")]]
+                [[
+                    InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+                    InlineKeyboardButton("Change threshold" if locale == "en" else "Сменить threshold", callback_data="menu:threshold"),
+                ]]
             ),
         )
         return
 
-    header = "Inbox alerts:" if limit == 10 else "Inbox alerts (20):"
+    header = "Inbox alerts:" if limit == 10 else ("Inbox alerts (20):" if locale == "en" else "Inbox alerts (20):")
     await message.reply_text(header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows))
 
 
-async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = True) -> None:
+async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", show_loader: bool = True) -> None:
     if show_loader:
-        await message.reply_text("Смотрю live изменения вашего watchlist...")
+        await message.reply_text(
+            "Checking live changes in your watchlist..." if locale == "en" else "Смотрю live изменения вашего watchlist..."
+        )
     try:
         rows = await fetch_watchlist_snapshot_async(user_ctx["user_id"], limit=10, timeout_sec=10.0)
     except asyncio.TimeoutError:
-        await message.reply_text("База отвечает слишком долго. Повторите через 10-20 секунд.")
+        await message.reply_text(
+            "Database response timeout. Retry in 10-20 seconds."
+            if locale == "en"
+            else "База отвечает слишком долго. Повторите через 10-20 секунд."
+        )
         return
     except Exception:
         log.exception("/watchlist failed")
-        await message.reply_text("Ошибка чтения watchlist из БД.")
+        await message.reply_text("Failed to read watchlist from DB." if locale == "en" else "Ошибка чтения watchlist из БД.")
         return
 
     if not rows:
@@ -1092,7 +1157,11 @@ async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = Tr
             rows_30m = []
         if rows_30m:
             await message.reply_text(
-                "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
+                (
+                    "No changes in latest window. Showing 30m fallback:\n\n"
+                    if locale == "en"
+                    else "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
+                )
                 + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
             )
             return
@@ -1103,7 +1172,11 @@ async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = Tr
             rows_1h = []
         if rows_1h:
             await message.reply_text(
-                "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
+                (
+                    "No changes in latest/30m windows. Showing 1h fallback:\n\n"
+                    if locale == "en"
+                    else "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
+                )
                 + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
             )
             return
@@ -1113,13 +1186,22 @@ async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = Tr
             log.exception("watchlist diagnostics failed")
             diag = {}
         await message.reply_text(
-            "По вашему watchlist сейчас нет live-изменений.\n"
-            f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
-            f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}",
+            (
+                "No live changes in your watchlist right now.\n"
+                f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
+                f"closed: {diag.get('wl_closed', 0)} | with quotes in last+prev: {diag.get('wl_with_quotes_both', 0)}"
+                if locale == "en"
+                else "По вашему watchlist сейчас нет live-изменений.\n"
+                f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
+                f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}"
+            ),
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Добавить рынок", callback_data="menu:pick"), InlineKeyboardButton("Top movers", callback_data="menu:movers")],
-                    [InlineKeyboardButton("Очистить закрытые", callback_data="menu:cleanup_closed")],
+                    [
+                        InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                        InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+                    ],
+                    [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")],
                 ]
             ),
         )
@@ -1128,25 +1210,32 @@ async def send_watchlist_view(message, user_ctx: dict, *, show_loader: bool = Tr
     await message.reply_text("Watchlist live changes:\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
 
 
-def add_watchlist_market_sync(user_ctx: dict, market_id: str) -> str:
+def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> str:
     market_rows = run_db_query(SQL_MARKET_BRIEF, (market_id,), row_factory=dict_row)
     if not market_rows:
-        return "Рынок не найден."
+        return "Market not found." if locale == "en" else "Рынок не найден."
 
     exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
     if exists:
-        return "Этот рынок уже в вашем watchlist."
+        return "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist."
 
     plan = str(user_ctx.get("plan") or "free")
     limit = watchlist_limit_for_plan(plan)
     if int(user_ctx["watchlist_count"]) >= limit:
         plan_label = "PRO" if plan == "pro" else "FREE"
+        if locale == "en":
+            return (
+                f"{plan_label} limit: {limit} markets. "
+                "Remove one via /watchlist_remove or upgrade via /upgrade"
+            )
         return (
             f"Лимит {plan_label}: {limit} рынка. "
             "Удалите один через /watchlist_remove или измените план через /upgrade"
         )
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    if locale == "en":
+        return f"Added to watchlist: {market_id} — {market_rows[0]['question']}"
     return f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}"
 
 
@@ -1170,7 +1259,7 @@ def _picker_category_label(category: str) -> str:
 
 
 async def send_watchlist_picker(
-    message, context: ContextTypes.DEFAULT_TYPE, user_ctx: dict, *, category: str = "all"
+    message, context: ContextTypes.DEFAULT_TYPE, user_ctx: dict, *, category: str = "all", locale: str = "ru"
 ) -> None:
     rows = await fetch_watchlist_picker_candidates_async(category=category, limit=12, timeout_sec=10.0)
     if not rows and category == "all":
@@ -1179,8 +1268,13 @@ async def send_watchlist_picker(
         rows = await fetch_top_movers_1h_async(limit=8, timeout_sec=10.0)
     if not rows:
         await message.reply_text(
-            f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
-            "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
+            (
+                f"No live candidates for {_picker_category_label(category)} filter right now.\n"
+                "Try another filter or /watchlist_add <market_id|slug>."
+                if locale == "en"
+                else f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
+                "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
+            )
         )
         return
 
@@ -1212,18 +1306,33 @@ async def send_watchlist_picker(
 
     buttons.append(
         [
-            InlineKeyboardButton("Обновить список", callback_data="menu:pick_refresh"),
-            InlineKeyboardButton("Открыть full movers", callback_data="menu:movers"),
+            InlineKeyboardButton("Refresh list" if locale == "en" else "Обновить список", callback_data="menu:pick_refresh"),
+            InlineKeyboardButton("Open full movers" if locale == "en" else "Открыть full movers", callback_data="menu:movers"),
         ]
     )
-    availability = f"Live-кандидатов сейчас: {len(rows)}."
+    availability = (
+        f"Live candidates now: {len(rows)}."
+        if locale == "en"
+        else f"Live-кандидатов сейчас: {len(rows)}."
+    )
     if category == "all" and len(rows) < 6:
-        availability += " Окно узкое: добавьте market_id/slug вручную, чтобы не ждать расширения окна."
+        availability += (
+            " Narrow window: add market_id/slug manually instead of waiting for broader flow."
+            if locale == "en"
+            else " Окно узкое: добавьте market_id/slug вручную, чтобы не ждать расширения окна."
+        )
     await message.reply_text(
-        f"Выберите рынок для watchlist. Фильтр: {_picker_category_label(category)}.\n"
-        "Нажмите на строку — рынок добавится сразу.\n"
-        f"{availability}\n"
-        "Если нужного рынка нет: /watchlist_add <market_id|slug>",
+        (
+            f"Choose a market for watchlist. Filter: {_picker_category_label(category)}.\n"
+            "Tap a row to add market immediately.\n"
+            f"{availability}\n"
+            "If missing: /watchlist_add <market_id|slug>"
+            if locale == "en"
+            else f"Выберите рынок для watchlist. Фильтр: {_picker_category_label(category)}.\n"
+            "Нажмите на строку — рынок добавится сразу.\n"
+            f"{availability}\n"
+            "Если нужного рынка нет: /watchlist_add <market_id|slug>"
+        ),
         reply_markup=InlineKeyboardMarkup(buttons),
     )
 
@@ -1470,33 +1579,54 @@ async def push_loop(application: Application) -> None:
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     try:
         user_ctx = await resolve_user_context(update)
     except Exception:
         log.exception("/start resolve_user failed")
-        await update.message.reply_text("Не удалось инициализировать профиль. Попробуйте позже.")
+        await update.message.reply_text(
+            "Failed to initialize profile. Try again later."
+            if locale == "en"
+            else "Не удалось инициализировать профиль. Попробуйте позже."
+        )
         return
 
     await update.message.reply_text(
-        "Профиль активирован.\n\n"
-        "Что бот делает:\n"
-        "• показывает top live movers\n"
-        "• отслеживает ваши рынки в watchlist\n"
-        "• присылает push по движению вероятностей\n\n"
-        "Быстрый старт за 60 секунд:\n"
-        "1) /menu — открыть быстрые кнопки\n"
-        "2) /movers — посмотреть 3 live движения\n"
-        "3) /watchlist — увидеть live-дельту по вашему списку\n"
-        "4) /threshold 0.03 — настроить чувствительность\n\n"
-        f"{user_limits_block(user_ctx)}\n\n"
-        "Полезно дальше:\n"
-        "/help — все команды и расширенные опции\n"
-        "/upgrade — как перейти на PRO"
-        ,
+        (
+            "Profile activated.\n\n"
+            "What the bot does:\n"
+            "• shows top live movers\n"
+            "• tracks your watchlist markets\n"
+            "• sends push alerts on probability shifts\n\n"
+            "Quick start in 60 seconds:\n"
+            "1) /menu — open quick actions\n"
+            "2) /movers — view 3 live moves\n"
+            "3) /watchlist — view live delta for your list\n"
+            "4) /threshold 0.03 — set sensitivity\n\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            "Next:\n"
+            "/help — command reference\n"
+            "/upgrade — move to PRO"
+            if locale == "en"
+            else "Профиль активирован.\n\n"
+            "Что бот делает:\n"
+            "• показывает top live movers\n"
+            "• отслеживает ваши рынки в watchlist\n"
+            "• присылает push по движению вероятностей\n\n"
+            "Быстрый старт за 60 секунд:\n"
+            "1) /menu — открыть быстрые кнопки\n"
+            "2) /movers — посмотреть 3 live движения\n"
+            "3) /watchlist — увидеть live-дельту по вашему списку\n"
+            "4) /threshold 0.03 — настроить чувствительность\n\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            "Полезно дальше:\n"
+            "/help — все команды и расширенные опции\n"
+            "/upgrade — как перейти на PRO"
+        ),
         reply_markup=quick_reply_keyboard(),
     )
     await update.message.reply_text(
-        "Быстрое меню:",
+        "Quick menu:" if locale == "en" else "Быстрое меню:",
         reply_markup=main_menu_inline(),
     )
     log.info("cmd=/start chat_id=%s tg_user=%s app_user=%s", update.effective_chat.id, update.effective_user.id, user_ctx["user_id"])
@@ -1505,43 +1635,75 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     await update.message.reply_text(
-        "Основные команды:\n"
-        "/start — активация профиля\n"
-        "/movers — top 3 live movers\n"
-        "/watchlist — live изменения по вашему watchlist\n"
-        "/inbox — последние алерты\n"
-        "/plan — текущий план и usage\n"
-        "/menu — inline-меню действий\n"
-        "/upgrade — переход на PRO\n\n"
-        "Расширенные команды:\n"
-        "/watchlist_list — список рынков\n"
-        "/watchlist_add <market_id|slug>\n"
-        "/watchlist_remove <market_id|slug>\n"
-        "/threshold 0.03 — персональный порог\n"
-        "/limits — лимиты FREE/PRO\n"
-        "/inbox20 — расширенный inbox"
+        (
+            "Core commands:\n"
+            "/start — onboarding and profile\n"
+            "/movers — top 3 live movers\n"
+            "/watchlist — live changes for your watchlist\n"
+            "/inbox — latest alerts\n"
+            "/plan — current plan and usage\n"
+            "/menu — inline action menu\n"
+            "/upgrade — move to PRO\n\n"
+            "Advanced commands:\n"
+            "/watchlist_list — list markets\n"
+            "/watchlist_add <market_id|slug>\n"
+            "/watchlist_remove <market_id|slug>\n"
+            "/threshold 0.03 — personal threshold\n"
+            "/limits — FREE/PRO limits\n"
+            "/inbox20 — extended inbox"
+            if locale == "en"
+            else "Основные команды:\n"
+            "/start — активация профиля\n"
+            "/movers — top 3 live movers\n"
+            "/watchlist — live изменения по вашему watchlist\n"
+            "/inbox — последние алерты\n"
+            "/plan — текущий план и usage\n"
+            "/menu — inline-меню действий\n"
+            "/upgrade — переход на PRO\n\n"
+            "Расширенные команды:\n"
+            "/watchlist_list — список рынков\n"
+            "/watchlist_add <market_id|slug>\n"
+            "/watchlist_remove <market_id|slug>\n"
+            "/threshold 0.03 — персональный порог\n"
+            "/limits — лимиты FREE/PRO\n"
+            "/inbox20 — расширенный inbox"
+        )
     )
 
 
 async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     try:
         user_ctx = await resolve_user_context(update)
     except Exception:
-        await update.message.reply_text("Не удалось прочитать профиль.")
+        await update.message.reply_text("Failed to read profile." if locale == "en" else "Не удалось прочитать профиль.")
         return
 
     await update.message.reply_text(
-        "Текущий статус:\n"
-        f"{user_limits_block(user_ctx)}\n\n"
-        f"PRO оффер: до {PRO_WATCHLIST_LIMIT} рынков + email-дайджест, эквивалент ${PRO_MONTHLY_USD}/мес в Telegram Stars.\n\n"
-        "Следующий шаг:\n"
-        "1) Добавьте рынок через /watchlist_add\n"
-        "2) Настройте порог через /threshold 0.03\n"
-        "3) Для PRO: /upgrade\n\n"
-        f"{plan_upgrade_hint(update)}",
+        (
+            "Current status:\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            f"PRO offer: up to {PRO_WATCHLIST_LIMIT} markets + email digest, "
+            f"about ${PRO_MONTHLY_USD}/month in Telegram Stars.\n\n"
+            "Next step:\n"
+            "1) Add a market via /watchlist_add\n"
+            "2) Set threshold via /threshold 0.03\n"
+            "3) Upgrade: /upgrade\n\n"
+            f"{plan_upgrade_hint(update)}"
+            if locale == "en"
+            else "Текущий статус:\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            f"PRO оффер: до {PRO_WATCHLIST_LIMIT} рынков + email-дайджест, эквивалент ${PRO_MONTHLY_USD}/мес в Telegram Stars.\n\n"
+            "Следующий шаг:\n"
+            "1) Добавьте рынок через /watchlist_add\n"
+            "2) Настройте порог через /threshold 0.03\n"
+            "3) Для PRO: /upgrade\n\n"
+            f"{plan_upgrade_hint(update)}"
+        ),
         reply_markup=main_menu_inline(),
     )
 
@@ -1549,30 +1711,46 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     try:
         user_ctx = await resolve_user_context(update)
     except Exception:
-        await update.message.reply_text("Не удалось прочитать лимиты.")
+        await update.message.reply_text("Failed to read limits." if locale == "en" else "Не удалось прочитать лимиты.")
         return
 
     await update.message.reply_text(
-        "Лимиты и доступ:\n\n"
-        "FREE:\n"
-        f"• до {FREE_WATCHLIST_LIMIT} рынков в watchlist\n"
-        f"• до {FREE_DAILY_ALERT_LIMIT} push-алертов в день\n\n"
-        "PRO:\n"
-        f"• до {PRO_WATCHLIST_LIMIT} рынков в watchlist\n"
-        "• push-алерты без лимита\n\n"
-        "• email-дайджест включен\n\n"
-        f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
-        f"Ваш текущий usage:\n{user_limits_block(user_ctx)}\n\n"
-        "Чтобы перейти на PRO: /upgrade"
+        (
+            "Limits and access:\n\n"
+            "FREE:\n"
+            f"• up to {FREE_WATCHLIST_LIMIT} markets in watchlist\n"
+            f"• up to {FREE_DAILY_ALERT_LIMIT} push alerts/day\n\n"
+            "PRO:\n"
+            f"• up to {PRO_WATCHLIST_LIMIT} markets in watchlist\n"
+            "• unlimited push alerts\n"
+            "• email digest included\n\n"
+            f"PRO price: about ${PRO_MONTHLY_USD}/month in Telegram Stars\n\n"
+            f"Your current usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
+            "Upgrade: /upgrade"
+            if locale == "en"
+            else "Лимиты и доступ:\n\n"
+            "FREE:\n"
+            f"• до {FREE_WATCHLIST_LIMIT} рынков в watchlist\n"
+            f"• до {FREE_DAILY_ALERT_LIMIT} push-алертов в день\n\n"
+            "PRO:\n"
+            f"• до {PRO_WATCHLIST_LIMIT} рынков в watchlist\n"
+            "• push-алерты без лимита\n\n"
+            "• email-дайджест включен\n\n"
+            f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
+            f"Ваш текущий usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
+            "Чтобы перейти на PRO: /upgrade"
+        )
     )
 
 
 async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     user_ctx = await resolve_user_context(update)
     try:
         await asyncio.to_thread(log_upgrade_intent_sync, update, user_ctx)
@@ -1584,15 +1762,20 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True,
     )
     try:
-        invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx)
+        invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx, locale=locale)
     except Exception:
         log.exception("stars invoice send failed")
         invoice_sent = False
 
     if not invoice_sent:
         await update.message.reply_text(
-            "Stars-счет временно недоступен.\n"
-            "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru",
+            (
+                "Stars checkout is temporarily unavailable.\n"
+                "Use the site: https://polymarketpulse.app/telegram-bot?lang=en"
+                if locale == "en"
+                else "Stars-счет временно недоступен.\n"
+                "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru"
+            ),
             disable_web_page_preview=True,
         )
 
@@ -1600,45 +1783,58 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-    await update.message.reply_text("Выберите действие:", reply_markup=main_menu_inline())
+    locale = locale_from_update(update)
+    await update.message.reply_text("Choose action:" if locale == "en" else "Выберите действие:", reply_markup=main_menu_inline())
 
 
 async def cmd_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     if not context.args:
         user_ctx = await resolve_user_context(update)
         await update.message.reply_text(
-            f"Ваш текущий порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
-            "Формат изменения: /threshold 0.03"
+            (
+                f"Your current threshold: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Format: /threshold 0.03"
+                if locale == "en"
+                else f"Ваш текущий порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Формат изменения: /threshold 0.03"
+            )
         )
         return
     try:
         value = Decimal(context.args[0])
     except Exception:
-        await update.message.reply_text("Некорректное значение. Пример: /threshold 0.03")
+        await update.message.reply_text(
+            "Invalid value. Example: /threshold 0.03"
+            if locale == "en"
+            else "Некорректное значение. Пример: /threshold 0.03"
+        )
         return
 
     if value < 0 or value > 1:
-        await update.message.reply_text("Порог должен быть в диапазоне 0..1")
+        await update.message.reply_text("Threshold must be between 0 and 1." if locale == "en" else "Порог должен быть в диапазоне 0..1")
         return
 
     user_ctx = await resolve_user_context(update)
     execute_db_write(SQL_SET_THRESHOLD, (user_ctx["user_id"], value))
-    await update.message.reply_text(f"Порог обновлен: {_fmt_num(value, 3)}")
+    await update.message.reply_text(
+        f"Threshold updated: {_fmt_num(value, 3)}" if locale == "en" else f"Порог обновлен: {_fmt_num(value, 3)}"
+    )
 
 
 async def cmd_movers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-    await send_movers_view(update.message, show_loader=True)
+    await send_movers_view(update.message, locale=locale_from_update(update), show_loader=True)
 
 
 async def cmd_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE, limit: int = 10):
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await send_inbox_view(update.message, user_ctx, limit=limit, show_loader=True)
+    await send_inbox_view(update.message, user_ctx, locale=locale_from_update(update), limit=limit, show_loader=True)
 
 
 async def cmd_inbox10(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1653,30 +1849,36 @@ async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await send_watchlist_view(update.message, user_ctx, show_loader=True)
+    await send_watchlist_view(update.message, user_ctx, locale=locale_from_update(update), show_loader=True)
 
 
 async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     user_ctx = await resolve_user_context(update)
     rows = run_db_query(SQL_WATCHLIST_LIST, (user_ctx["user_id"], 50), row_factory=dict_row)
     if not rows:
-        await update.message.reply_text("Ваш watchlist пуст. Используйте /watchlist_add <market_id|slug>.")
+        await update.message.reply_text(
+            "Your watchlist is empty. Use /watchlist_add <market_id|slug>."
+            if locale == "en"
+            else "Ваш watchlist пуст. Используйте /watchlist_add <market_id|slug>."
+        )
         return
 
     lines = []
     for idx, row in enumerate(rows, start=1):
         lines.append(f"{idx}. {row['market_id']} — {row['question']}")
-    await update.message.reply_text("Ваш watchlist:\n" + "\n".join(lines))
+    await update.message.reply_text(("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines))
 
 
 async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     if not context.args:
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(update.message, context, user_ctx)
+        await send_watchlist_picker(update.message, context, user_ctx, locale=locale)
         return
 
     ref = context.args[0].strip()
@@ -1684,7 +1886,11 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     market_rows = run_db_query(SQL_FIND_MARKET, (ref, ref), row_factory=dict_row)
     if not market_rows:
-        await update.message.reply_text("Рынок не найден. Укажите market_id или slug.")
+        await update.message.reply_text(
+            "Market not found. Provide market_id or slug."
+            if locale == "en"
+            else "Рынок не найден. Укажите market_id или slug."
+        )
         return
 
     market = market_rows[0]
@@ -1692,7 +1898,11 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
     if exists:
-        await update.message.reply_text("Этот рынок уже в вашем watchlist.")
+        await update.message.reply_text(
+            "This market is already in your watchlist."
+            if locale == "en"
+            else "Этот рынок уже в вашем watchlist."
+        )
         return
 
     plan = str(user_ctx.get("plan") or "free")
@@ -1700,19 +1910,32 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if int(user_ctx["watchlist_count"]) >= limit:
         plan_label = "PRO" if plan == "pro" else "FREE"
         await update.message.reply_text(
-            f"Лимит {plan_label}: {limit} рынка. Удалите один через /watchlist_remove или измените план: /upgrade"
+            (
+                f"{plan_label} limit: {limit} markets. Remove one via /watchlist_remove or upgrade: /upgrade"
+                if locale == "en"
+                else f"Лимит {plan_label}: {limit} рынка. Удалите один через /watchlist_remove или измените план: /upgrade"
+            )
         )
         return
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
-    await update.message.reply_text(f"Добавлено в watchlist: {market_id} — {market['question']}")
+    await update.message.reply_text(
+        f"Added to watchlist: {market_id} — {market['question']}"
+        if locale == "en"
+        else f"Добавлено в watchlist: {market_id} — {market['question']}"
+    )
 
 
 async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     if not context.args:
-        await update.message.reply_text("Формат: /watchlist_remove <market_id|slug>")
+        await update.message.reply_text(
+            "Format: /watchlist_remove <market_id|slug>"
+            if locale == "en"
+            else "Формат: /watchlist_remove <market_id|slug>"
+        )
         return
 
     ref = context.args[0].strip()
@@ -1721,7 +1944,9 @@ async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYP
     market_rows = run_db_query(SQL_FIND_MARKET, (ref, ref), row_factory=dict_row)
     market_id = ref if not market_rows else str(market_rows[0]["market_id"])
     execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], market_id))
-    await update.message.reply_text(f"Удалено из watchlist: {market_id}")
+    await update.message.reply_text(
+        f"Removed from watchlist: {market_id}" if locale == "en" else f"Удалено из watchlist: {market_id}"
+    )
 
 
 async def cmd_admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1754,10 +1979,17 @@ async def cmd_admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
+    locale = locale_from_update(update)
     await update.message.reply_text(
-        "Неизвестная команда.\n"
-        "Используйте /help.\n"
-        "Быстрый старт: /menu, /movers, /watchlist, /inbox"
+        (
+            "Unknown command.\n"
+            "Use /help.\n"
+            "Quick start: /menu, /movers, /watchlist, /inbox"
+            if locale == "en"
+            else "Неизвестная команда.\n"
+            "Используйте /help.\n"
+            "Быстрый старт: /menu, /movers, /watchlist, /inbox"
+        )
     )
 
 
@@ -1765,23 +1997,31 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query or not query.message:
         return
+    locale = locale_from_update(update)
     await query.answer()
     data = query.data or ""
 
     if data == "menu:movers":
-        await send_movers_view(query.message, show_loader=False)
+        await send_movers_view(query.message, locale=locale, show_loader=False)
         return
     if data == "menu:watchlist":
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_view(query.message, user_ctx, show_loader=False)
+        await send_watchlist_view(query.message, user_ctx, locale=locale, show_loader=False)
         return
     if data == "menu:inbox":
         user_ctx = await resolve_user_context(update)
-        await send_inbox_view(query.message, user_ctx, limit=10, show_loader=False)
+        await send_inbox_view(query.message, user_ctx, locale=locale, limit=10, show_loader=False)
         return
     if data == "menu:plan":
         user_ctx = await resolve_user_context(update)
-        await query.message.reply_text(f"Текущий статус:\n{user_limits_block(user_ctx)}", reply_markup=main_menu_inline())
+        await query.message.reply_text(
+            (
+                f"Current status:\n{user_limits_block(user_ctx, locale=locale)}"
+                if locale == "en"
+                else f"Текущий статус:\n{user_limits_block(user_ctx, locale=locale)}"
+            ),
+            reply_markup=main_menu_inline(),
+        )
         return
     if data == "menu:upgrade":
         user_ctx = await resolve_user_context(update)
@@ -1791,50 +2031,65 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             disable_web_page_preview=True,
         )
         try:
-            invoice_sent = await send_stars_invoice_for_pro(context.bot, query.message.chat_id, user_ctx)
+            invoice_sent = await send_stars_invoice_for_pro(context.bot, query.message.chat_id, user_ctx, locale=locale)
         except Exception:
             log.exception("stars invoice send failed from callback")
             invoice_sent = False
         if not invoice_sent:
             await query.message.reply_text(
-                "Stars-счет временно недоступен.\n"
-                "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru",
+                (
+                    "Stars checkout is temporarily unavailable.\n"
+                    "Use the site: https://polymarketpulse.app/telegram-bot?lang=en"
+                    if locale == "en"
+                    else "Stars-счет временно недоступен.\n"
+                    "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru"
+                ),
                 disable_web_page_preview=True,
             )
         return
     if data == "menu:help":
-        await query.message.reply_text("Список команд: /help")
+        await query.message.reply_text("Command list: /help" if locale == "en" else "Список команд: /help")
         return
     if data == "menu:threshold":
         user_ctx = await resolve_user_context(update)
         await query.message.reply_text(
-            f"Ваш порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
-            "Изменить: /threshold 0.03"
+            (
+                f"Your threshold: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Change: /threshold 0.03"
+                if locale == "en"
+                else f"Ваш порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Изменить: /threshold 0.03"
+            )
         )
         return
     if data == "menu:pick":
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category="all")
+        await send_watchlist_picker(query.message, context, user_ctx, category="all", locale=locale)
         return
     if data.startswith("menu:pick_cat:"):
         category = data.split(":", 2)[2]
         if category not in {"all", "crypto", "politics", "macro"}:
             category = "all"
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category=category)
+        await send_watchlist_picker(query.message, context, user_ctx, category=category, locale=locale)
         return
     if data == "menu:pick_refresh":
         picker_category = context.application.bot_data.get("picker_category", {})
         category = picker_category.get(str(query.message.chat_id), "all")
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category=category)
+        await send_watchlist_picker(query.message, context, user_ctx, category=category, locale=locale)
         return
     if data == "menu:cleanup_closed":
         user_ctx = await resolve_user_context(update)
         removed = await asyncio.to_thread(cleanup_closed_watchlist_sync, user_ctx["user_id"])
         await query.message.reply_text(
-            f"Удалено закрытых рынков из watchlist: {removed}\n"
-            "Теперь добавьте live рынок через кнопку «Добавить рынок».",
+            (
+                f"Removed closed markets from watchlist: {removed}\n"
+                "Now add a live market via “Add market”."
+                if locale == "en"
+                else f"Удалено закрытых рынков из watchlist: {removed}\n"
+                "Теперь добавьте live рынок через кнопку «Добавить рынок»."
+            ),
             reply_markup=main_menu_inline(),
         )
         return
@@ -1844,10 +2099,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         picker_map = context.application.bot_data.get("picker_map", {})
         market_id = picker_map.get(chat_key)
         if not market_id:
-            await query.message.reply_text("Элемент выбора устарел. Откройте /menu и повторите.")
+            await query.message.reply_text(
+                "Selection item is expired. Open /menu and retry."
+                if locale == "en"
+                else "Элемент выбора устарел. Откройте /menu и повторите."
+            )
             return
         user_ctx = await resolve_user_context(update)
-        result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id)
+        result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
         await query.message.reply_text(result)
         return
 
@@ -1858,7 +2117,11 @@ async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     payload_user = _parse_pro_payload(query.invoice_payload or "")
     if not payload_user:
-        await query.answer(ok=False, error_message="Неизвестный продукт. Повторите /upgrade")
+        locale = "en" if ((query.from_user.language_code or "").lower().startswith("en")) else "ru"
+        await query.answer(
+            ok=False,
+            error_message="Unknown product. Retry /upgrade" if locale == "en" else "Неизвестный продукт. Повторите /upgrade",
+        )
         return
     await query.answer(ok=True)
 
@@ -1866,9 +2129,14 @@ async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.successful_payment:
         return
+    locale = locale_from_update(update)
     payment = update.message.successful_payment
     if payment.currency != "XTR":
-        await update.message.reply_text("Платеж получен, но валюта не поддерживается.")
+        await update.message.reply_text(
+            "Payment received, but this currency is not supported."
+            if locale == "en"
+            else "Платеж получен, но валюта не поддерживается."
+        )
         return
 
     user_ctx = await resolve_user_context(update)
@@ -1900,23 +2168,43 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
     except Exception:
         log.exception("successful payment apply failed")
         await update.message.reply_text(
-            "Платеж получен, но активация не завершилась автоматически.\n"
-            "Напишите \"оплата прошла\" — активируем вручную."
+            (
+                "Payment received, but activation did not complete automatically.\n"
+                "Send “payment completed” and we will activate manually."
+                if locale == "en"
+                else "Платеж получен, но активация не завершилась автоматически.\n"
+                "Напишите \"оплата прошла\" — активируем вручную."
+            )
         )
         return
 
     if not applied:
-        await update.message.reply_text("Платеж уже обработан ранее. PRO активен.")
+        await update.message.reply_text(
+            "This payment was already processed. PRO is active."
+            if locale == "en"
+            else "Платеж уже обработан ранее. PRO активен."
+        )
         return
 
     renew_text = ""
     if isinstance(renew_at, datetime):
-        renew_text = f"\nДействует до: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+        renew_text = (
+            f"\nActive until: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+            if locale == "en"
+            else f"\nДействует до: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+        )
     await update.message.reply_text(
-        "Оплата получена. PRO активирован.\n"
-        f"Лимит watchlist: {PRO_WATCHLIST_LIMIT}\n"
-        "Email-дайджест включен."
-        f"{renew_text}"
+        (
+            "Payment received. PRO activated.\n"
+            f"Watchlist limit: {PRO_WATCHLIST_LIMIT}\n"
+            "Email digest enabled."
+            f"{renew_text}"
+            if locale == "en"
+            else "Оплата получена. PRO активирован.\n"
+            f"Лимит watchlist: {PRO_WATCHLIST_LIMIT}\n"
+            "Email-дайджест включен."
+            f"{renew_text}"
+        )
     )
 
 
@@ -1937,7 +2225,19 @@ async def on_post_init(application: Application):
             BotCommand("inbox", "Последние алерты"),
             BotCommand("plan", "Текущий план и лимиты"),
             BotCommand("help", "Все команды"),
-        ]
+        ],
+        language_code="ru",
+    )
+    await application.bot.set_my_commands(
+        [
+            BotCommand("start", "Onboarding and profile"),
+            BotCommand("movers", "Top live movers"),
+            BotCommand("watchlist", "Live watchlist changes"),
+            BotCommand("inbox", "Latest alerts"),
+            BotCommand("plan", "Current plan and limits"),
+            BotCommand("help", "All commands"),
+        ],
+        language_code="en",
     )
     application.bot_data["push_task"] = application.create_task(push_loop(application))
     log.info("Bot commands menu configured")
