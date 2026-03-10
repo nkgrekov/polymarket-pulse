@@ -79,6 +79,15 @@ Bot command layer now supports RU/EN response rendering by Telegram `language_co
 
 ---
 
+# Bot Profile Metadata (2026-03-10)
+
+Bot startup now sets profile metadata for both locales:
+
+• `setMyDescription` for `en` and `ru`  
+• `setMyShortDescription` for `en` and `ru`
+
+---
+
 # DB Hardening Update (2026-03-09)
 
 Applied migration:

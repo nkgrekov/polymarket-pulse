@@ -156,6 +156,7 @@ Also runs:
   - bot locale is resolved from Telegram `language_code` (`en-*` -> EN, fallback RU)
   - command/menu copy has RU and EN variants for core command set
   - Telegram command catalog is registered in two language scopes (`ru`, `en`)
+  - bot profile metadata is set at startup for both locales (`setMyDescription`, `setMyShortDescription`)
 • Telegram Stars payment handlers:
   - pre-checkout validation handler
   - successful payment handler that upserts `app.payment_events` and activates `app.subscriptions`

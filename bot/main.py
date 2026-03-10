@@ -2217,6 +2217,30 @@ async def on_post_init(application: Application):
         await asyncio.to_thread(ensure_payment_schema_sync)
     except Exception:
         log.exception("payment schema ensure failed")
+    await application.bot.set_my_description(
+        (
+            "Live probability shifts from Polymarket.\n"
+            "Top movers, watchlist alerts, and signal-first inbox.\n"
+            "FREE: 3 markets. PRO: 20 markets + email digest."
+        ),
+        language_code="en",
+    )
+    await application.bot.set_my_description(
+        (
+            "Live-сдвиги вероятностей Polymarket.\n"
+            "Top movers, алерты watchlist и signal-first inbox.\n"
+            "FREE: 3 рынка. PRO: 20 рынков + email-дайджест."
+        ),
+        language_code="ru",
+    )
+    await application.bot.set_my_short_description(
+        "Live Polymarket signals: movers, watchlist alerts, inbox.",
+        language_code="en",
+    )
+    await application.bot.set_my_short_description(
+        "Live сигналы Polymarket: movers, watchlist-алерты, inbox.",
+        language_code="ru",
+    )
     await application.bot.set_my_commands(
         [
             BotCommand("start", "Онбординг и профиль"),
