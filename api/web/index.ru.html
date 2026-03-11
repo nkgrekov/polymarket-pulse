@@ -459,6 +459,31 @@
       outline: none;
     }
 
+    .guide-link {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: #131714;
+      color: var(--muted);
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      font-weight: 600;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .guide-link:hover,
+    .guide-link:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
     .divider {
       margin: 14px 0;
       height: 1px;
@@ -1088,6 +1113,7 @@
           </div>
 
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_ru">Открыть Telegram-бота →</a>
+          <a class="guide-link" href="/how-it-works?lang=ru&placement=main_cta">Как это работает?</a>
 
           <div class="divider"></div>
 

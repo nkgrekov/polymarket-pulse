@@ -35,6 +35,29 @@ Operational risks observed in runtime evidence:
 
 ---
 
+# Bot Guide Surface Update (2026-03-11)
+
+Added dedicated bot guidance surfaces into the web layer:
+
+• `GET /how-it-works` -> scenario-first command onboarding (RU/EN templates)
+• `GET /commands` -> full command reference (RU/EN templates)
+
+Routing and discovery contract:
+
+• both pages are localized through existing `detect_lang(...)` + `?lang=...`
+• both pages are published in `sitemap.xml` (`en` + `ru` variants)
+• landing and SEO `/telegram-bot` include explicit handoff to `/how-it-works`
+• bidirectional nav between guide surfaces:
+  - `/how-it-works` -> `/commands`
+  - `/commands` -> `/how-it-works`
+
+Telemetry contract remains stable:
+
+• no new site event types
+• attribution is captured via existing `page_view` + `details.placement`
+
+---
+
 # Data Pipeline
 
 Polymarket API

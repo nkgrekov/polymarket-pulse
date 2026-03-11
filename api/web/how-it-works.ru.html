@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Как это работает | Гайд по боту Polymarket Pulse</title>
+  <meta name="description" content="Человеческий гайд по командам Telegram-бота Polymarket Pulse на реальных сценариях." />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="Как это работает | Polymarket Pulse" />
+  <meta property="og:description" content="Сценарный гайд по командам бота Polymarket Pulse." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polymarketpulse.app/how-it-works" />
+  <meta property="og:image" content="https://polymarketpulse.app/og-card.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Как это работает | Polymarket Pulse" />
+  <meta name="twitter:description" content="Сценарный гайд по командам бота Polymarket Pulse." />
+  <meta name="twitter:image" content="https://polymarketpulse.app/og-card.svg" />
+  <link rel="canonical" href="https://polymarketpulse.app/how-it-works" />
+  <link rel="alternate" hreflang="ru" href="https://polymarketpulse.app/how-it-works?lang=ru" />
+  <link rel="alternate" hreflang="en" href="https://polymarketpulse.app/how-it-works?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://polymarketpulse.app/how-it-works?lang=en" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J901VRQH4G');
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(1000px 700px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.16;
+    }
+
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal { opacity: 0; animation: rise-in 0.28s ease forwards; }
+    .reveal.delay-1 { animation-delay: 0.08s; }
+    .reveal.delay-2 { animation-delay: 0.16s; }
+    .reveal.delay-3 { animation-delay: 0.24s; }
+    .reveal.delay-4 { animation-delay: 0.32s; }
+    .reveal.delay-5 { animation-delay: 0.4s; }
+    .reveal.delay-6 { animation-delay: 0.48s; }
+    body.ready .reveal { opacity: 1; }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .logo {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .lang a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 11px;
+      transition: border-color 0.2s ease, color 0.2s ease;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .lang a:hover,
+    .lang a:focus-visible {
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(150deg, rgba(19, 23, 20, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+      padding: 28px;
+    }
+
+    .hero-kicker {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 0;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      font-size: clamp(36px, 7vw, 72px);
+      text-transform: uppercase;
+    }
+
+    .hero-copy {
+      margin: 12px 0 0;
+      max-width: 780px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .hero-links {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 46px;
+      border-radius: 12px;
+      padding: 10px 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      border: 1px solid var(--line-soft);
+    }
+
+    .btn-primary {
+      color: #0a0c0b;
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border-color: var(--accent);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: #131714;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .scenarios {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .scenario-card {
+      background: #131714;
+      border: 1px solid #1e2520;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .scenario-kicker {
+      margin: 0;
+      color: #6b7a6e;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .scenario-command {
+      margin: 10px 0 0;
+      color: #00ff88;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(22px, 4vw, 30px);
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+    }
+
+    .scenario-copy {
+      margin: 10px 0 0;
+      color: #8fa88f;
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 960px;
+    }
+
+    .scenario-output {
+      margin: 12px 0 0;
+      border: 1px solid #1e2520;
+      border-radius: 10px;
+      background: #0f120f;
+      padding: 12px;
+      color: #c9d7c9;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .footer-links {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #131714;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: calc(100% - 20px); }
+      .hero { padding: 18px; border-radius: 16px; }
+      .scenario-card { padding: 14px; }
+      h1 { font-size: clamp(30px, 13vw, 48px); }
+      .hero-copy { font-size: 14px; }
+      .scenario-copy { font-size: 14px; }
+      .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar reveal delay-1">
+      <a class="logo" href="/?lang=ru">Polymarket Pulse // Как это работает</a>
+      <div class="lang"><a href="/how-it-works?lang=en">EN</a><a href="/how-it-works?lang=ru">RU</a></div>
+    </div>
+
+    <section class="hero reveal delay-2">
+      <p class="hero-kicker">Сценарный гайд по боту</p>
+      <h1>Пользуйся ботом как трейдер, а не как терминалом.</h1>
+      <p class="hero-copy">Здесь разобран реальный рабочий поток внутри @polymarket_pulse_bot простым языком. Каждый блок: ситуация пользователя, нужная команда и пример того, что вы увидите.</p>
+      <div class="hero-links">
+        <a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=guide_ru">Открыть Telegram-бота</a>
+        <a class="btn btn-secondary" href="/commands?lang=ru&placement=how_it_works_footer">Полный список команд -&gt; /commands</a>
+      </div>
+    </section>
+
+    <section class="scenarios">
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">Только открыл бота первый раз</p>
+        <p class="scenario-command">/start</p>
+        <p class="scenario-copy">Бот активирует профиль, показывает быстрые действия и самый короткий путь к первому сигналу.</p>
+        <pre class="scenario-output">Профиль активирован
+Быстрый старт:
+1) /menu
+2) /movers
+3) /watchlist
+4) /threshold 0.03</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">Хочу быстро увидеть что движется</p>
+        <p class="scenario-command">/movers</p>
+        <p class="scenario-copy">Бот показывает топ-3 рынков по сдвигу вероятности в текущем live-окне и включает fallback на 30m/1h, если окно плоское.</p>
+        <pre class="scenario-output">Trump 2028      34% -&gt; 41%   ↑7пп  · 11м назад
+Recession 2026  48% -&gt; 44%   ↓4пп  · 39м назад
+Fed Cuts July   29% -&gt; 36%   ↑7пп  · 1ч назад</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">Хочу следить за конкретными рынками</p>
+        <p class="scenario-command">/watchlist_add  ·  /watchlist_list  ·  /watchlist_remove  ·  /watchlist</p>
+        <p class="scenario-copy">Добавляете через picker или slug/market_id, проверяете текущий список, убираете неактуальные рынки и смотрите только активный набор.</p>
+        <pre class="scenario-output">/watchlist_add
+-&gt; picker с фильтрами (All/Crypto/Politics/Macro)
+
+/watchlist_list
+-&gt; текущие рынки в вашем watchlist
+
+/watchlist_remove &lt;market_id|slug&gt;
+-&gt; удалить один рынок из watchlist
+
+/watchlist
+-&gt; live-изменения выбранных рынков
+-&gt; fallback 30m/1h при плоском latest</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">Хочу настроить чувствительность алертов</p>
+        <p class="scenario-command">/threshold</p>
+        <p class="scenario-copy">Это ваш персональный минимальный размер движения. Всё ниже порога не попадает в inbox и push.</p>
+        <pre class="scenario-output">/threshold 0.03
+-&gt; Порог обновлен: 0.030
+
+Совет: 0.02 = чувствительнее,
+выше 0.03 = строже фильтрация шума.</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">Хочу проверить, что пропустил</p>
+        <p class="scenario-command">/inbox  ·  /inbox20</p>
+        <p class="scenario-copy">Inbox показывает последние кандидаты сигналов для вашего профиля по убыванию абсолютной дельты и с учетом threshold.</p>
+        <pre class="scenario-output">/inbox
+-&gt; последние алерты (до 10)
+
+/inbox20
+-&gt; расширенный просмотр (до 20)
+
+Если пусто, бот объяснит: это порог или плоский рынок.</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">Хочу понять свой план и лимиты</p>
+        <p class="scenario-command">/plan  ·  /limits</p>
+        <p class="scenario-copy">Показывает текущий usage, лимиты watchlist/алертов и прямой путь к апгрейду.</p>
+        <pre class="scenario-output">План: FREE
+Threshold: 0.030
+Watchlist: 3/3
+Alerts today: 7/20
+
+PRO: до 20 рынков + безлимит алертов + email-дайджест</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-5">
+        <p class="scenario-kicker">Хочу перейти на PRO</p>
+        <p class="scenario-command">/upgrade</p>
+        <p class="scenario-copy">Сначала бот отправляет PRO-оффер, затем сразу инвойс в Telegram Stars; card-путь через Stripe доступен с сайта.</p>
+        <pre class="scenario-output">PRO - 454 Stars / month
+FREE - 3 рынка, 20 алертов/день
+PRO  - 20 рынков, безлимит алертов, email-дайджест
+
+-&gt; инвойс появляется сразу в этом же чате</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-5">
+        <p class="scenario-kicker">Хочу быстрый доступ ко всему</p>
+        <p class="scenario-command">/menu  ·  /help</p>
+        <p class="scenario-copy">Используйте /menu для one-tap действий и /help для полного списка команд без перегруза меню Telegram.</p>
+        <pre class="scenario-output">/menu
+Top movers | Watchlist
+Inbox      | Plan
+Add market | Threshold
+Upgrade    | Help
+
+/help
+core + advanced справочник команд</pre>
+      </article>
+    </section>
+
+    <div class="footer-links reveal delay-6">
+      <a href="/commands?lang=ru&placement=how_it_works_footer">Полный список команд -&gt; /commands</a>
+      <a href="/?lang=ru">На главную</a>
+    </div>
+  </div>
+
+  <script>
+    document.body.classList.add('ready');
+
+    async function trackEvent(eventType, details = {}) {
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_type: eventType, source: 'site', details }),
+          keepalive: true
+        });
+      } catch (_) {}
+    }
+
+    const p = new URLSearchParams(window.location.search);
+    const details = {
+      lang: 'ru',
+      placement: p.get('placement') || 'how_it_works',
+      utm_source: p.get('utm_source') || '',
+      utm_medium: p.get('utm_medium') || '',
+      utm_campaign: p.get('utm_campaign') || ''
+    };
+    trackEvent('page_view', details);
+  </script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Команды | Telegram-бот Polymarket Pulse</title>
+  <meta name="description" content="Полный справочник команд Telegram-бота Polymarket Pulse." />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="Команды | Polymarket Pulse" />
+  <meta property="og:description" content="Полный справочник команд Telegram-бота Polymarket Pulse." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polymarketpulse.app/commands" />
+  <meta property="og:image" content="https://polymarketpulse.app/og-card.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Команды | Polymarket Pulse" />
+  <meta name="twitter:description" content="Полный справочник команд Telegram-бота Polymarket Pulse." />
+  <meta name="twitter:image" content="https://polymarketpulse.app/og-card.svg" />
+  <link rel="canonical" href="https://polymarketpulse.app/commands" />
+  <link rel="alternate" hreflang="ru" href="https://polymarketpulse.app/commands?lang=ru" />
+  <link rel="alternate" hreflang="en" href="https://polymarketpulse.app/commands?lang=en" />
+  <link rel="alternate" hreflang="x-default" href="https://polymarketpulse.app/commands?lang=en" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J901VRQH4G');
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(1000px 700px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.16;
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .logo {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .lang a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .lang a:hover,
+    .lang a:focus-visible {
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .hero,
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #131714;
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 8px 0 0;
+      font-size: clamp(32px, 6vw, 56px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    .kicker,
+    .section-title {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .copy {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .cmd-grid {
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cmd-card {
+      background: #131714;
+      border: 1px solid #1e2520;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .cmd-name {
+      margin: 0;
+      color: #00ff88;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 19px;
+      line-height: 1.1;
+    }
+
+    .cmd-desc {
+      margin: 8px 0 0;
+      color: #8fa88f;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .links a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      background: #131714;
+    }
+
+    .links a:hover,
+    .links a:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
+    @media (max-width: 860px) {
+      .cmd-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: calc(100% - 20px); }
+      h1 { font-size: clamp(28px, 13vw, 44px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="logo" href="/?lang=ru">Polymarket Pulse // Команды</a>
+      <div class="lang"><a href="/commands?lang=en">EN</a><a href="/commands?lang=ru">RU</a></div>
+    </div>
+
+    <section class="hero">
+      <p class="kicker">Полная карта команд бота</p>
+      <h1>Commands</h1>
+      <p class="copy">Это полный справочник команд. Если нужен сценарный формат, откройте “Как это работает?”.</p>
+      <div class="links">
+        <a href="/how-it-works?lang=ru&placement=commands_crosslink">Как это работает? -&gt; /how-it-works</a>
+        <a target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=commands_ru">Открыть Telegram-бота</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-title">Core команды</p>
+      <div class="cmd-grid">
+        <article class="cmd-card"><p class="cmd-name">/start</p><p class="cmd-desc">Активация профиля и быстрый старт.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/menu</p><p class="cmd-desc">Inline-меню one-tap действий.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/help</p><p class="cmd-desc">Список core + advanced команд.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/movers</p><p class="cmd-desc">Top live movers с fallback по окнам.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/watchlist</p><p class="cmd-desc">Live-изменения по вашему watchlist.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/inbox</p><p class="cmd-desc">Последние alert-строки (до 10).</p></article>
+        <article class="cmd-card"><p class="cmd-name">/plan</p><p class="cmd-desc">Текущий план, usage и шаг к апгрейду.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/upgrade</p><p class="cmd-desc">PRO-оффер и мгновенный инвойс Stars.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-title">Advanced команды</p>
+      <div class="cmd-grid">
+        <article class="cmd-card"><p class="cmd-name">/threshold 0.03</p><p class="cmd-desc">Персональный порог фильтрации сигналов.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/watchlist_add &lt;market_id|slug&gt;</p><p class="cmd-desc">Добавление рынка вручную или запуск picker без аргумента.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/watchlist_remove &lt;market_id|slug&gt;</p><p class="cmd-desc">Удаление рынка из watchlist.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/watchlist_list</p><p class="cmd-desc">Список рынков в watchlist.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/limits</p><p class="cmd-desc">Лимиты FREE/PRO и текущий usage.</p></article>
+        <article class="cmd-card"><p class="cmd-name">/inbox20</p><p class="cmd-desc">Расширенный inbox (до 20 строк).</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="section-title">Ограниченный доступ</p>
+      <div class="cmd-grid">
+        <article class="cmd-card"><p class="cmd-name">/admin_stats</p><p class="cmd-desc">Админская сводка (требуется allowlist).</p></article>
+      </div>
+      <div class="links">
+        <a href="/how-it-works?lang=ru&placement=commands_crosslink">Как это работает? -&gt; /how-it-works</a>
+        <a href="/?lang=ru">На главную</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    async function trackEvent(eventType, details = {}) {
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_type: eventType, source: 'site', details }),
+          keepalive: true
+        });
+      } catch (_) {}
+    }
+
+    const p = new URLSearchParams(window.location.search);
+    const details = {
+      lang: 'ru',
+      placement: p.get('placement') || 'commands',
+      utm_source: p.get('utm_source') || '',
+      utm_medium: p.get('utm_medium') || '',
+      utm_campaign: p.get('utm_campaign') || ''
+    };
+    trackEvent('page_view', details);
+  </script>
+</body>
+</html>

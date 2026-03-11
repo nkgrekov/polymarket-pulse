@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How it works | Polymarket Pulse Bot Guide</title>
+  <meta name="description" content="Human-friendly guide to Polymarket Pulse Telegram bot commands with real usage scenarios." />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="How it works | Polymarket Pulse" />
+  <meta property="og:description" content="Scenario-first guide to Polymarket Pulse bot commands." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polymarketpulse.app/how-it-works" />
+  <meta property="og:image" content="https://polymarketpulse.app/og-card.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How it works | Polymarket Pulse" />
+  <meta name="twitter:description" content="Scenario-first guide to Polymarket Pulse bot commands." />
+  <meta name="twitter:image" content="https://polymarketpulse.app/og-card.svg" />
+  <link rel="canonical" href="https://polymarketpulse.app/how-it-works" />
+  <link rel="alternate" hreflang="en" href="https://polymarketpulse.app/how-it-works?lang=en" />
+  <link rel="alternate" hreflang="ru" href="https://polymarketpulse.app/how-it-works?lang=ru" />
+  <link rel="alternate" hreflang="x-default" href="https://polymarketpulse.app/how-it-works?lang=en" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J901VRQH4G');
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(1000px 700px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.16;
+    }
+
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal { opacity: 0; animation: rise-in 0.28s ease forwards; }
+    .reveal.delay-1 { animation-delay: 0.08s; }
+    .reveal.delay-2 { animation-delay: 0.16s; }
+    .reveal.delay-3 { animation-delay: 0.24s; }
+    .reveal.delay-4 { animation-delay: 0.32s; }
+    .reveal.delay-5 { animation-delay: 0.4s; }
+    .reveal.delay-6 { animation-delay: 0.48s; }
+    body.ready .reveal { opacity: 1; }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .logo {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .lang a {
+      color: var(--muted);
+      text-decoration: none;
+      margin-left: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 11px;
+      transition: border-color 0.2s ease, color 0.2s ease;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .lang a:hover,
+    .lang a:focus-visible {
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(150deg, rgba(19, 23, 20, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+      padding: 28px;
+    }
+
+    .hero-kicker {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 10px 0 0;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      font-size: clamp(36px, 7vw, 72px);
+      text-transform: uppercase;
+    }
+
+    .hero-copy {
+      margin: 12px 0 0;
+      max-width: 780px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .hero-links {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 46px;
+      border-radius: 12px;
+      padding: 10px 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      border: 1px solid var(--line-soft);
+    }
+
+    .btn-primary {
+      color: #0a0c0b;
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border-color: var(--accent);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: #131714;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .scenarios {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .scenario-card {
+      background: #131714;
+      border: 1px solid #1e2520;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .scenario-kicker {
+      margin: 0;
+      color: #6b7a6e;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .scenario-command {
+      margin: 10px 0 0;
+      color: #00ff88;
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(22px, 4vw, 30px);
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+    }
+
+    .scenario-copy {
+      margin: 10px 0 0;
+      color: #8fa88f;
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 960px;
+    }
+
+    .scenario-output {
+      margin: 12px 0 0;
+      border: 1px solid #1e2520;
+      border-radius: 10px;
+      background: #0f120f;
+      padding: 12px;
+      color: #c9d7c9;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .footer-links {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #131714;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: calc(100% - 20px); }
+      .hero { padding: 18px; border-radius: 16px; }
+      .scenario-card { padding: 14px; }
+      h1 { font-size: clamp(30px, 13vw, 48px); }
+      .hero-copy { font-size: 14px; }
+      .scenario-copy { font-size: 14px; }
+      .btn { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar reveal delay-1">
+      <a class="logo" href="/?lang=en">Polymarket Pulse // How it works</a>
+      <div class="lang"><a href="/how-it-works?lang=en">EN</a><a href="/how-it-works?lang=ru">RU</a></div>
+    </div>
+
+    <section class="hero reveal delay-2">
+      <p class="hero-kicker">Scenario-first bot guide</p>
+      <h1>Use the bot like a trader, not like a terminal.</h1>
+      <p class="hero-copy">This page explains your real workflow inside @polymarket_pulse_bot with plain language. Every block is one user situation, one command set, and one realistic output shape.</p>
+      <div class="hero-links">
+        <a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=guide_en">Open Telegram Bot</a>
+        <a class="btn btn-secondary" href="/commands?lang=en&placement=how_it_works_footer">Full command list -&gt; /commands</a>
+      </div>
+    </section>
+
+    <section class="scenarios">
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">I just opened the bot for the first time</p>
+        <p class="scenario-command">/start</p>
+        <p class="scenario-copy">Bot activates your profile, shows quick actions, and gives the shortest path to first signal.</p>
+        <pre class="scenario-output">Profile activated
+Quick start:
+1) /menu
+2) /movers
+3) /watchlist
+4) /threshold 0.03</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">I want to quickly see what is moving</p>
+        <p class="scenario-command">/movers</p>
+        <p class="scenario-copy">Bot shows top-3 markets by probability shift in current live window, then falls back to 30m and 1h when needed.</p>
+        <pre class="scenario-output">Trump 2028      34% -&gt; 41%   ↑7pp  · 11m ago
+Recession 2026  48% -&gt; 44%   ↓4pp  · 39m ago
+Fed Cuts July   29% -&gt; 36%   ↑7pp  · 1h ago</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-3">
+        <p class="scenario-kicker">I want to track specific markets</p>
+        <p class="scenario-command">/watchlist_add  ·  /watchlist_list  ·  /watchlist_remove  ·  /watchlist</p>
+        <p class="scenario-copy">Add by picker or slug/market_id, check your current list, remove stale markets, and monitor only your active set.</p>
+        <pre class="scenario-output">/watchlist_add
+-&gt; picker with category filters (All/Crypto/Politics/Macro)
+
+/watchlist_list
+-&gt; current markets in your watchlist
+
+/watchlist_remove &lt;market_id|slug&gt;
+-&gt; remove one market from watchlist
+
+/watchlist
+-&gt; live changes for selected markets
+-&gt; fallback 30m/1h when latest is flat</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">I need less noise and cleaner alerts</p>
+        <p class="scenario-command">/threshold</p>
+        <p class="scenario-copy">This sets your personal minimum move size. If a move is below threshold, it stays out of inbox/push.</p>
+        <pre class="scenario-output">/threshold 0.03
+-&gt; Threshold updated: 0.030
+
+Tip: lower to 0.02 for more sensitivity,
+raise for stricter signal quality.</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">I want to check what I missed</p>
+        <p class="scenario-command">/inbox  ·  /inbox20</p>
+        <p class="scenario-copy">Inbox shows recent signal candidates for your profile, ordered by absolute delta and filtered by your threshold.</p>
+        <pre class="scenario-output">/inbox
+-&gt; latest alerts (up to 10)
+
+/inbox20
+-&gt; extended view (up to 20)
+
+If empty, bot explains whether it is threshold or flat market.</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-4">
+        <p class="scenario-kicker">I want to understand my plan and limits</p>
+        <p class="scenario-command">/plan  ·  /limits</p>
+        <p class="scenario-copy">Shows your current usage, watchlist cap, daily alert cap, and direct upgrade path.</p>
+        <pre class="scenario-output">Plan: FREE
+Threshold: 0.030
+Watchlist: 3/3
+Alerts today: 7/20
+
+PRO: up to 20 markets + unlimited alerts + email digest</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-5">
+        <p class="scenario-kicker">I want to move to PRO</p>
+        <p class="scenario-command">/upgrade</p>
+        <p class="scenario-copy">Bot sends PRO offer first, then immediate Telegram Stars invoice; Stripe card path remains available from site.</p>
+        <pre class="scenario-output">PRO - 454 Stars / month
+FREE - 3 markets, 20 alerts/day
+PRO  - 20 markets, unlimited alerts, email digest
+
+-&gt; invoice appears instantly in the same chat</pre>
+      </article>
+
+      <article class="scenario-card reveal delay-5">
+        <p class="scenario-kicker">I want fast access to everything</p>
+        <p class="scenario-command">/menu  ·  /help</p>
+        <p class="scenario-copy">Use /menu for one-tap inline actions and /help for the full command map without cluttering command menu.</p>
+        <pre class="scenario-output">/menu
+Top movers | Watchlist
+Inbox      | Plan
+Add market | Threshold
+Upgrade    | Help
+
+/help
+core + advanced command reference</pre>
+      </article>
+    </section>
+
+    <div class="footer-links reveal delay-6">
+      <a href="/commands?lang=en&placement=how_it_works_footer">Full command list -&gt; /commands</a>
+      <a href="/?lang=en">Back to homepage</a>
+    </div>
+  </div>
+
+  <script>
+    document.body.classList.add('ready');
+
+    async function trackEvent(eventType, details = {}) {
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_type: eventType, source: 'site', details }),
+          keepalive: true
+        });
+      } catch (_) {}
+    }
+
+    const p = new URLSearchParams(window.location.search);
+    const details = {
+      lang: 'en',
+      placement: p.get('placement') || 'how_it_works',
+      utm_source: p.get('utm_source') || '',
+      utm_medium: p.get('utm_medium') || '',
+      utm_campaign: p.get('utm_campaign') || ''
+    };
+    trackEvent('page_view', details);
+  </script>
+</body>
+</html>

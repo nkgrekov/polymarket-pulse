@@ -79,6 +79,43 @@ Reference estimate for new branded page (based on attached `polycule.pdf` style 
 
 ---
 
+# Bot Guide Pages Rollout (2026-03-11)
+
+Implemented the approved v2 scope for human-friendly command guidance.
+
+New web pages (RU/EN):
+
+• `/how-it-works` (scenario-first command guidance in strict dark card format)
+• `/commands` (full command reference with restricted/admin note)
+
+Added templates:
+
+• `api/web/how-it-works.en.html`
+• `api/web/how-it-works.ru.html`
+• `api/web/commands.en.html`
+• `api/web/commands.ru.html`
+
+Routing/API updates:
+
+• `GET /how-it-works`
+• `GET /commands`
+• sitemap now includes EN/RU variants for both pages
+
+Integration updates:
+
+• main landing (EN/RU): added `How it works? / Как это работает?` near primary Telegram CTA
+• SEO `/telegram-bot` page now includes explicit CTA to `/how-it-works`
+• cross-links wired:
+  - `/how-it-works` -> `/commands` with `placement=how_it_works_footer`
+  - `/commands` -> `/how-it-works` with `placement=commands_crosslink`
+
+Telemetry contract:
+
+• no new `event_type` introduced
+• attribution uses existing `page_view` with `placement` on destination page (`main_cta`, `telegram_bot_page`, `how_it_works_footer`, `commands_crosslink`)
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
