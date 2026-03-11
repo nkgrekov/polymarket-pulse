@@ -14,12 +14,33 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Operational Snapshot (2026-03-11)
+
+Latest scope verification covered `db` migrations/views, ingest code path, bot runtime path, and web/SEO rendering path.
+
+Current live-state highlights:
+
+• ingest freshness is within one 5-minute bucket (`latest market_snapshots bucket lag ~540s` at capture time)
+• live universe contract remains `200` markets with active-only filtering and balanced category rebalance in function layer
+• universe source split at snapshot time: `auto=199`, `manual=1`; no closed markets present in universe
+• bot/user layer remains multi-tenant schema-first (`app.*` + `bot.*`) with Telegram identity resolution and plan lookup through `bot.current_plan(...)`
+• monetization plumbing is deployed (`app.payment_events`, Stars handlers, Stripe endpoints), but no successful payment event is currently stored
+• landing + SEO pages are running one visual contract (dark palette, `Space Grotesk` + `JetBrains Mono`, short reveal animations, shared CTA hierarchy)
+
+Operational risks observed in runtime evidence:
+
+• polling conflict occurred in bot logs (`getUpdates 409`) indicating concurrent bot instance overlap on 2026-03-05
+• local launchd bot service currently not loaded, so local process state does not represent persistent production uptime
+• free-plan historical watchlist rows can exceed current add-flow cap due to legacy records; cap is enforced on new writes in bot command handlers
+
+---
+
 # Data Pipeline
 
-Polymarket API  
-→ ingest pipeline  
-→ Postgres storage  
-→ analytics views  
+Polymarket API
+→ ingest pipeline
+→ Postgres storage
+→ analytics views
 → delivery layer
 
 ---
@@ -32,10 +53,10 @@ Python service.
 
 Responsibilities:
 
-• fetch market data  
-• rebalance fetched market pool by category + root-question dedup  
-• normalize responses  
-• write snapshots  
+• fetch market data
+• rebalance fetched market pool by category + root-question dedup
+• normalize responses
+• write snapshots
 • maintain universe coverage with balanced category pull
 
 Snapshot writes are the critical path.
@@ -58,21 +79,21 @@ Supabase Postgres.
 
 Stores:
 
-markets  
-market_snapshots  
-market_universe  
-user_positions  
-user_watchlist  
-app.users  
-app.identities  
-app.subscriptions  
-app.email_subscribers  
-app.upgrade_intents  
-app.site_events  
-bot.profiles  
-bot.user_settings  
-bot.watchlist  
-bot.alert_events  
+markets
+market_snapshots
+market_universe
+user_positions
+user_watchlist
+app.users
+app.identities
+app.subscriptions
+app.email_subscribers
+app.upgrade_intents
+app.site_events
+bot.profiles
+bot.user_settings
+bot.watchlist
+bot.alert_events
 bot.sent_alerts_log
 
 Derived views compute analytics.
@@ -85,17 +106,17 @@ SQL views calculate signals.
 
 Examples:
 
-top_movers_latest  
-portfolio_snapshot_latest  
-watchlist_snapshot_latest  
-alerts_latest  
-watchlist_alerts_latest  
+top_movers_latest
+portfolio_snapshot_latest
+watchlist_snapshot_latest
+alerts_latest
+watchlist_alerts_latest
 alerts_inbox_latest
 
 These views produce:
 
-• probability deltas  
-• spread signals  
+• probability deltas
+• spread signals
 • portfolio changes
 
 ---
@@ -108,28 +129,28 @@ Reads alerts from `bot` analytics views only.
 
 Commands:
 
-/start  
-/movers  
-/watchlist  
-/inbox  
-/plan  
-/help  
-/menu  
+/start
+/movers
+/watchlist
+/inbox
+/plan
+/help
+/menu
 
 Advanced (typed or via `/help`):
 
-/upgrade  
-/limits  
-/threshold  
-/inbox20  
-/watchlist_list  
-/watchlist_add  
-/watchlist_remove  
+/upgrade
+/limits
+/threshold
+/inbox20
+/watchlist_list
+/watchlist_add
+/watchlist_remove
 /admin_stats
 
 Also runs:
 
-• scheduled push loop  
+• scheduled push loop
 • freemium enforcement (watchlist + daily alert caps)
 • onboarding/plan UX layer (`/start`, `/help`, `/limits`, `/upgrade`) for conversion to paid plan
 • compact Telegram command menu with advanced commands moved to `/help`
@@ -165,8 +186,8 @@ Also runs:
 
 Site + Email API:
 
-• FastAPI app in `api/main.py`  
-• waitlist form + double opt-in  
+• FastAPI app in `api/main.py`
+• waitlist form + double opt-in
 • daily digest worker in `api/digest_job.py` via Resend
 • geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
@@ -176,6 +197,11 @@ Site + Email API:
 • live landing data endpoint: `/api/live-movers-preview` (top 3 movers + sparkline points from DB)
 • attribution enrichment in telemetry: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 • landing uses dark trading-terminal UI with pain-driven hero, live DB-powered “Top movers” widget (3 markets + sparkline mini-charts), scarcity line, and dual CTA (Telegram primary + email waitlist)
+• landing visual contract upgraded to App Store-grade presentation:
+  - typography pair: `Space Grotesk` (display) + `JetBrains Mono` (data/terminal copy)
+  - hero includes product/rating badges and compact signal-performance metrics cards
+  - dedicated `Preview screens` section (3 product-surface cards) added between hero and proof modules
+  - “App Store-grade UX” badge copy removed from EN/RU templates and SEO renderer to reduce marketing noise
 • landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`
@@ -198,21 +224,28 @@ Site + Email API:
   - split layout: FREE/PRO comparison rows + stacked CTAs
   - primary green Stars CTA + secondary outlined Stripe CTA (existing checkout-session flow)
   - mobile behavior: single-column stack with full-width CTA buttons
+• SEO page renderer (`render_seo_page`) now mirrors landing visual system:
+  - badge row, compact stats cards, preview-surface cards, and CTA row hierarchy
+  - same dark palette + typography pair as landing
+• Motion contract for web surfaces:
+  - one-shot reveal animations (`<= 300ms`) for entry/stagger
+  - no infinite decorative animations
+  - mandatory `prefers-reduced-motion` fallback
 
 ## Current User Interaction Surfaces (2026-03-10)
 
 End-user entry points and flows:
 
-• Web entry: `polymarketpulse.app` landing and intent pages (`/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`)  
-• Primary CTA path: web Telegram CTA (hero/sticky/SEO CTA) -> `@polymarket_pulse_bot` with `start` payload attribution  
-• Secondary CTA path: web waitlist form -> `/api/waitlist` -> `/confirm` double opt-in -> email digest channel  
-• Bot activation core: `/start` -> `/menu` + `/movers` -> watchlist add (`/watchlist_add` or picker) -> `/inbox` + push alerts  
+• Web entry: `polymarketpulse.app` landing and intent pages (`/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`)
+• Primary CTA path: web Telegram CTA (hero/sticky/SEO CTA) -> `@polymarket_pulse_bot` with `start` payload attribution
+• Secondary CTA path: web waitlist form -> `/api/waitlist` -> `/confirm` double opt-in -> email digest channel
+• Bot activation core: `/start` -> `/menu` + `/movers` -> watchlist add (`/watchlist_add` or picker) -> `/inbox` + push alerts
 • Signal fallback behavior in bot read paths: `latest -> 30m -> 1h` before zero-state explanation
 
 Telemetry and attribution contract:
 
-• site events: `page_view`, `tg_click`, `waitlist_intent` via `/api/events`  
-• waitlist events: `waitlist_submit`, `confirm_success`, `unsubscribe_success` in `app.site_events`  
+• site events: `page_view`, `tg_click`, `waitlist_intent` via `/api/events`
+• waitlist events: `waitlist_submit`, `confirm_success`, `unsubscribe_success` in `app.site_events`
 • attribution fields: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 
 ---
@@ -223,17 +256,19 @@ All web surfaces (landing + SEO intent pages) must use one visual contract.
 
 Hard rules:
 
-• Dark-only backgrounds (`#0d0f0e` / `#0a0c0b`) and dark cards (`#131714`, border `#1e2520`)  
-• Off-white text (`#e8ede9`) + muted data text (`#8fa88f` / `#6b7a6e`)  
-• Green (`#00ff88`) only for CTA/positive/active states  
-• Red (`#ff4444`) only for negative deltas  
-• No light sections, no yellow CTA variants, no bullet lists on SEO pages  
+• Dark-only backgrounds (`#0d0f0e` / `#0a0c0b`) and dark cards (`#131714`, border `#1e2520`)
+• Off-white text (`#e8ede9`) + muted data text (`#8fa88f` / `#6b7a6e`)
+• Green (`#00ff88`) only for CTA/positive/active states
+• Red (`#ff4444`) only for negative deltas
+• Typography: `Space Grotesk` for display/headings, `JetBrains Mono` for data labels/copy
+• Motion: short one-shot reveal/stagger transitions only (`<=300ms`), no infinite decorative loops
+• No light sections, no yellow CTA variants, no bullet lists on SEO pages
 • Data blocks use shared primitives: dark feature rows, dark intent pills, dark FAQ callouts
 
 Enforcement points in code:
 
-• `api/web/index.en.html`  
-• `api/web/index.ru.html`  
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
 • `api/main.py::render_seo_page`
 
 ---
@@ -244,16 +279,16 @@ Universe defines markets actively tracked.
 
 Sources:
 
-manual — explicit user watchlist markets  
-position — user portfolio markets  
+manual — explicit user watchlist markets
+position — user portfolio markets
 auto — live liquid markets with both latest and previous buckets
 
 Universe ensures ingest coverage.
 
 Current forced list in ingest:
 
-manual watchlist (`public.user_watchlist` + `bot.watchlist`)  
-market universe  
+manual watchlist (`public.user_watchlist` + `bot.watchlist`)
+market universe
 user positions
 
 Universe refresh is a post-write step with its own timeout budget.
@@ -262,13 +297,13 @@ Universe read selection in ingest is category-balanced (caps + top-up), not pure
 
 Ingest observability:
 
-• startup log prints fetched market mix (`p/m/c/o`) for top fetch  
+• startup log prints fetched market mix (`p/m/c/o`) for top fetch
 • forced-list log prints selected universe mix (`p/m/c/o`) before snapshot write
 
 Live-only hardening:
 
-• migration `db/migrations/005_live_only_hardening.sql` enforces `active` status across universe rebuild and snapshot views  
-• `closed` markets are excluded from `public.market_universe` even when passed from manual/position sources  
+• migration `db/migrations/005_live_only_hardening.sql` enforces `active` status across universe rebuild and snapshot views
+• `closed` markets are excluded from `public.market_universe` even when passed from manual/position sources
 • bot watchlist snapshot view is aligned to active-only universe contract
 
 ---
@@ -281,17 +316,17 @@ probability change exceeds per-user threshold.
 
 Alert flow:
 
-market_snapshots  
-→ bot.portfolio_snapshot_latest / bot.watchlist_snapshot_latest  
-→ bot.portfolio_alerts_latest / bot.watchlist_alerts_latest  
-→ bot.alerts_inbox_latest  
+market_snapshots
+→ bot.portfolio_snapshot_latest / bot.watchlist_snapshot_latest
+→ bot.portfolio_alerts_latest / bot.watchlist_alerts_latest
+→ bot.alerts_inbox_latest
 → bot
 
 Live movers flow:
 
-market_snapshots  
-→ market_universe  
-→ top_movers_latest  
+market_snapshots
+→ market_universe
+→ top_movers_latest
 → /movers command
 
 Watchlist flow:
@@ -327,9 +362,9 @@ Digest orchestration:
 
 Growth ops:
 
-• competitor scan script: `scripts/growth/competitive_scan.py` (parses polymark.et tool index)  
-• social draft generator: `scripts/growth/generate_social_drafts.py` (DB live views -> EN/RU drafts for X/Threads, with UTM links + Telegram deep links)  
-• weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)  
+• competitor scan script: `scripts/growth/competitive_scan.py` (parses polymark.et tool index)
+• social draft generator: `scripts/growth/generate_social_drafts.py` (DB live views -> EN/RU drafts for X/Threads, with UTM links + Telegram deep links)
+• weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)
 • visual post templates in `assets/social/` (Top3, Breakout, Weekly recap)
 • positioning message pack: `docs/positioning_messages_latest.md` (site/bot/social interception copy)
 

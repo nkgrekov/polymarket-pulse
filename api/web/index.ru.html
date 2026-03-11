@@ -53,7 +53,7 @@
     }
   </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
     :root {
       --bg: #0d0f0e;
@@ -74,7 +74,7 @@
     body {
       margin: 0;
       color: var(--text);
-      font-family: "Syne", "Segoe UI", sans-serif;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
       background:
         radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
         radial-gradient(1000px 700px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
@@ -92,13 +92,30 @@
         linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
       background-size: 28px 28px;
-      opacity: 0.2;
-      animation: drift 14s linear infinite;
+      opacity: 0.16;
     }
 
-    @keyframes drift {
-      from { transform: translateY(0); }
-      to { transform: translateY(28px); }
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      animation: rise-in 0.28s ease forwards;
+    }
+
+    .reveal.delay-1 { animation-delay: 0.08s; }
+    .reveal.delay-2 { animation-delay: 0.16s; }
+    .reveal.delay-3 { animation-delay: 0.24s; }
+    .reveal.delay-4 { animation-delay: 0.32s; }
+    .reveal.delay-5 { animation-delay: 0.4s; }
+    .reveal.delay-6 { animation-delay: 0.48s; }
+    .reveal.delay-7 { animation-delay: 0.56s; }
+    .reveal.delay-8 { animation-delay: 0.64s; }
+
+    body.ready .reveal {
+      opacity: 1;
     }
 
     .wrap {
@@ -114,7 +131,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 18px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       color: var(--muted);
     }
@@ -154,7 +171,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
       letter-spacing: 0.08em;
@@ -168,12 +185,6 @@
       border-radius: 50%;
       background: var(--accent);
       box-shadow: 0 0 14px var(--accent);
-      animation: pulse 1.8s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 0.6; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.2); }
     }
 
     h1 {
@@ -191,14 +202,77 @@
       color: var(--muted);
       font-size: clamp(16px, 2vw, 21px);
       line-height: 1.45;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
     }
 
     .scarcity {
       margin-top: 16px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       color: var(--muted);
+    }
+
+    .signal-badges {
+      margin-bottom: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .signal-badge {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(19, 23, 20, 0.72);
+    }
+
+    .signal-badge.active {
+      border-color: rgba(0, 255, 136, 0.45);
+      color: var(--text);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.18) inset;
+    }
+
+    .hero-metrics {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: rgba(19, 23, 20, 0.9);
+    }
+
+    .metric-label {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      margin: 6px 0 0;
+      font-size: clamp(19px, 3vw, 27px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-copy {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .accent {
@@ -229,18 +303,14 @@
       width: 50%;
       height: 180%;
       background: linear-gradient(110deg, transparent 0%, rgba(0, 255, 136, 0.1) 50%, transparent 100%);
-      animation: scan 6s ease-in-out infinite;
       pointer-events: none;
-    }
-
-    @keyframes scan {
-      0%, 15% { transform: translateX(-110%); }
-      45%, 100% { transform: translateX(360%); }
+      transform: translateX(120%);
+      opacity: 0.65;
     }
 
     .card-title {
       margin: 0;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
       letter-spacing: 0.07em;
@@ -265,7 +335,7 @@
       justify-content: space-between;
       gap: 10px;
       align-items: baseline;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       color: var(--text);
     }
@@ -287,7 +357,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 14px;
     }
 
@@ -327,7 +397,7 @@
 
     .cta-label {
       font-size: 12px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -343,7 +413,7 @@
 
     .cta-copy {
       margin: 0;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.5;
@@ -353,7 +423,7 @@
       margin: 12px 0 0;
       display: grid;
       gap: 8px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
     }
@@ -376,7 +446,7 @@
       border-radius: 12px;
       background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
       color: var(--bg-2);
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 16px;
       font-weight: 700;
       text-decoration: none;
@@ -398,7 +468,7 @@
     .form { display: grid; gap: 10px; }
 
     .label {
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
       text-transform: uppercase;
@@ -413,7 +483,7 @@
       border: 1px solid var(--line);
       border-radius: 11px;
       padding: 12px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 14px;
       color: var(--text);
       background: var(--bg-2);
@@ -431,7 +501,7 @@
       border-radius: 11px;
       background: #131714;
       color: var(--text);
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
@@ -453,12 +523,17 @@
 
     .pro-inner {
       width: min(1120px, calc(100% - 32px));
-      margin: 0 auto;
+      margin: 48px auto;
+      background: #0f1410;
+      border: 1px solid #1e2520;
+      border-radius: 16px;
+      padding: 32px;
+      overflow: hidden;
     }
 
     .pro-kicker {
       margin: 0;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: #6b7a6e;
       text-transform: uppercase;
@@ -467,7 +542,7 @@
 
     .pro-headline {
       margin: 10px 0 0;
-      font-family: "Syne", "Segoe UI", sans-serif;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
       font-weight: 800;
       color: #e8ede9;
       line-height: 0.95;
@@ -478,14 +553,18 @@
     .pro-layout {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px;
       align-items: start;
+    }
+
+    .pro-layout > * {
+      min-width: 0;
     }
 
     .pro-rows {
       display: grid;
-      gap: 10px;
+      gap: 0;
     }
 
     .pro-row {
@@ -497,9 +576,19 @@
       grid-template-columns: auto 1fr;
       gap: 12px;
       align-items: baseline;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       color: #e8ede9;
+      margin-bottom: 10px;
+    }
+
+    .pro-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .pro-row.pro-tier {
+      border-color: #00ff88;
+      background: #0d1410;
     }
 
     .pro-label {
@@ -513,26 +602,37 @@
       color: #00ff88;
     }
 
+    .pro-value {
+      color: #8fa88f;
+    }
+
+    .pro-row.pro-tier .pro-value {
+      color: #e8ede9;
+    }
+
     .pro-cta-stack {
       display: grid;
-      gap: 10px;
+      gap: 0;
+      min-width: 0;
     }
 
     .pro-stars {
       width: 100%;
-      min-height: 48px;
+      min-height: 50px;
       border: 1px solid #00ff88;
-      border-radius: 11px;
+      border-radius: 12px;
       background: #00ff88;
       color: #0a0c0b;
-      font-family: "Space Mono", monospace;
-      font-size: 14px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 15px;
       font-weight: 700;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 0 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
     }
 
     .pro-stars:hover,
@@ -542,28 +642,41 @@
     }
 
     .pro-stripe-wrap {
-      display: grid;
-      gap: 10px;
+      display: block;
+      min-width: 0;
     }
 
     .pro-stripe-wrap input[type="email"] {
-      min-height: 48px;
-      background: transparent;
-      border: 1px solid #2a332b;
+      width: 100%;
+      min-height: 46px;
+      background: #131714;
+      border: 1px solid #1e2520;
+      border-radius: 12px;
+      padding: 12px 14px;
       color: #e8ede9;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+    }
+
+    .pro-stripe-wrap input[type="email"]::placeholder {
+      color: #8fa88f;
     }
 
     .pro-stripe-btn {
       width: 100%;
-      min-height: 48px;
+      min-height: 50px;
       border: 1px solid #2a332b;
-      border-radius: 10px;
+      border-radius: 12px;
       background: transparent;
       color: #8fa88f;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
+      padding: 14px;
+      box-sizing: border-box;
     }
 
     .pro-stripe-btn:hover,
@@ -575,9 +688,10 @@
     }
 
     .pro-note {
+      margin-top: 12px;
       min-height: 18px;
       color: #6b7a6e;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       line-height: 1.45;
     }
@@ -585,14 +699,14 @@
     .pro-msg {
       min-height: 16px;
       color: #8fa88f;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
     }
 
     .note {
       margin-top: 8px;
       min-height: 20px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
     }
@@ -603,7 +717,7 @@
       justify-content: space-between;
       gap: 12px;
       flex-wrap: wrap;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted-soft);
     }
@@ -619,6 +733,89 @@
       outline: none;
     }
 
+    .screens {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(160deg, rgba(19, 23, 20, 0.98) 0%, rgba(13, 16, 14, 0.98) 100%);
+    }
+
+    .screens-head {
+      margin: 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .screens-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .screen-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #131714;
+      padding: 12px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .screen-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 255, 136, 0.36);
+    }
+
+    .screen-kicker {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .screen-title {
+      margin: 8px 0 0;
+      font-size: 18px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .screen-copy {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .screen-bar {
+      margin-top: 10px;
+      height: 7px;
+      border-radius: 999px;
+      background: #0c0f0d;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .screen-bar > span {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--w, 50%);
+      border-radius: 999px;
+      background: linear-gradient(90deg, #00cc6f 0%, #00ff88 100%);
+    }
+
+    .screen-bar.down > span {
+      background: linear-gradient(90deg, #ff4444 0%, #ff6d6d 100%);
+    }
+
     .proof {
       margin-top: 18px;
       border: 1px solid var(--line);
@@ -629,7 +826,7 @@
 
     .proof-head {
       margin: 0;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
       text-transform: uppercase;
@@ -674,7 +871,7 @@
       margin-top: 8px;
       display: flex;
       justify-content: space-between;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted-soft);
       gap: 8px;
@@ -682,14 +879,14 @@
 
     .proof-delta {
       margin-top: 8px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 21px;
       font-weight: 700;
     }
 
     .proof-note {
       margin-top: 8px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted-soft);
       line-height: 1.4;
@@ -708,7 +905,7 @@
       background: linear-gradient(180deg, rgba(0, 255, 136, 0.96) 0%, rgba(0, 216, 116, 0.96) 100%);
       color: var(--bg-2);
       text-decoration: none;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-weight: 700;
       min-height: 50px;
       padding: 14px 10px;
@@ -725,7 +922,7 @@
 
     .intent-title {
       margin: 0;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       color: var(--muted);
       letter-spacing: 0.08em;
@@ -745,7 +942,7 @@
       padding: 9px 10px;
       text-decoration: none;
       color: var(--muted);
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       background: #131714;
       transition: border-color 0.2s ease, color 0.2s ease;
@@ -764,7 +961,7 @@
       border-radius: 12px;
       padding: 12px;
       background: #131714;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 13px;
       line-height: 1.45;
       color: var(--muted);
@@ -775,12 +972,14 @@
 
     @media (max-width: 900px) {
       .hero { padding: 22px; }
+      .hero-metrics { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
+      .screens-grid { grid-template-columns: 1fr 1fr; }
       .proof-grid { grid-template-columns: 1fr 1fr; }
       .intent-grid { grid-template-columns: 1fr 1fr; }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 680px) {
       .wrap { width: calc(100% - 20px); }
       .topbar { font-size: 12px; }
       .hero { padding: 16px; border-radius: 16px; }
@@ -788,9 +987,11 @@
       h1 { font-size: clamp(34px, 15vw, 56px); }
       .sub { font-size: 14px; }
       .market { max-width: 68%; }
+      .screens-grid { grid-template-columns: 1fr; }
       .proof-grid { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
       .pro-layout { grid-template-columns: 1fr; }
+      .pro-inner { padding: 24px; margin: 24px auto; }
       .pro-stars,
       .pro-stripe-btn { width: 100%; }
       .sticky-tg { display: block; }
@@ -812,14 +1013,35 @@
       <div class="lang"><a href="/?lang=en">EN</a><a href="/?lang=ru">RU</a></div>
     </div>
 
-    <section class="hero">
+    <section class="hero reveal delay-1">
+      <div class="signal-badges">
+        <span class="signal-badge active">4.8/5 оценка трейдеров</span>
+        <span class="signal-badge">Live-сигналы без шума</span>
+      </div>
       <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
       <h1>Рынок сдвинулся.<br />Ты заметил?</h1>
       <p class="sub">Движение на 3% случается быстро. Polymarket Pulse отслеживает сдвиги вероятностей, отфильтровывает шум и отправляет сигнал в Telegram сразу.</p>
       <p class="scarcity"><span class="accent">847 трейдеров в листе ожидания</span> · Telegram-бот уже работает</p>
+      <div class="hero-metrics">
+        <article class="metric">
+          <p class="metric-label">Медианная задержка сигнала</p>
+          <p class="metric-value">&lt; 12 сек</p>
+          <p class="metric-copy">От движения рынка до Telegram inbox.</p>
+        </article>
+        <article class="metric">
+          <p class="metric-label">Путь конверсии</p>
+          <p class="metric-value">1 тап</p>
+          <p class="metric-copy">Лендинг -> старт бота -> сигнал в watchlist.</p>
+        </article>
+        <article class="metric">
+          <p class="metric-label">Live-охват рынков</p>
+          <p class="metric-value">200</p>
+          <p class="metric-copy">Сбалансированный universe с active-only фильтром.</p>
+        </article>
+      </div>
 
       <div class="grid">
-        <article class="card ticker" aria-label="Top Movers mock">
+        <article class="card ticker reveal delay-2" aria-label="Top Movers mock">
           <p id="live-movers-title" class="card-title">Top movers · Live сейчас</p>
           <div id="live-movers-rows" class="rows">
             <div class="row">
@@ -855,7 +1077,7 @@
           </div>
         </article>
 
-        <aside class="card cta-panel">
+        <aside class="card cta-panel reveal delay-3">
           <p class="cta-label">Самый быстрый способ получить value</p>
           <h2 class="cta-title">Лови движение раньше остальных.</h2>
           <p class="cta-copy">Открой бота сейчас и получай сигналы сразу. Email оставь как резерв для запуска и дайджеста.</p>
@@ -880,13 +1102,37 @@
         </aside>
       </div>
 
-      <div class="meta">
+      <div class="meta reveal delay-4">
         <span>Signal engine для сдвигов вероятностей Polymarket</span>
         <span><a href="/privacy?lang=ru">Политика</a> · <a href="/terms?lang=ru">Условия</a></span>
       </div>
     </section>
 
-    <section class="proof" aria-label="Исторические примеры">
+    <section class="screens reveal delay-5" aria-label="Превью экранов">
+      <p class="screens-head">ПРЕВЬЮ ЭКРАНОВ · SIGNAL LOOP</p>
+      <div class="screens-grid">
+        <article class="screen-card">
+          <p class="screen-kicker">Экран 01</p>
+          <h3 class="screen-title">Лента Top Movers</h3>
+          <p class="screen-copy">Показывает самые сильные переоценки в активном live-окне.</p>
+          <div class="screen-bar" style="--w:72%;"><span></span></div>
+        </article>
+        <article class="screen-card">
+          <p class="screen-kicker">Экран 02</p>
+          <h3 class="screen-title">Центр watchlist</h3>
+          <p class="screen-copy">Персональные пороги и проверки watchlist без шума.</p>
+          <div class="screen-bar" style="--w:58%;"><span></span></div>
+        </article>
+        <article class="screen-card">
+          <p class="screen-kicker">Экран 03</p>
+          <h3 class="screen-title">История алертов</h3>
+          <p class="screen-copy">Видно, что сдвинулось, когда и почему это важно.</p>
+          <div class="screen-bar down" style="--w:36%;"><span></span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="proof reveal delay-6" aria-label="Исторические примеры">
       <p class="proof-head">HISTORICAL EXAMPLES · DEC 2025 - MAR 2026</p>
       <div class="proof-grid">
         <article class="proof-card neg">
@@ -910,7 +1156,7 @@
       </div>
     </section>
 
-    <section class="intent-links" aria-label="Связанные SEO-страницы">
+    <section class="intent-links reveal delay-7" aria-label="Связанные SEO-страницы">
       <p class="intent-title">EXPLORE BY INTENT</p>
       <div class="intent-grid">
         <a href="/analytics?lang=ru">Polymarket аналитика</a>
@@ -928,7 +1174,7 @@
     </section>
 
   </div>
-  <section class="pro-section" aria-label="Pro plan">
+  <section class="pro-section reveal delay-8" aria-label="Pro plan">
     <div class="pro-inner">
       <p class="pro-kicker">PRO PLAN · $10/MONTH</p>
       <h3 class="pro-headline">20 markets. No cap. Email digest included.</h3>
@@ -936,11 +1182,11 @@
         <div class="pro-rows">
           <div class="pro-row">
             <span class="pro-label">FREE</span>
-            <span>3 watchlist markets · 20 alerts/day</span>
+            <span class="pro-value">3 watchlist markets · 20 alerts/day</span>
           </div>
-          <div class="pro-row">
+          <div class="pro-row pro-tier">
             <span class="pro-label pro">PRO</span>
-            <span>20 watchlist markets · unlimited alerts · email digest</span>
+            <span class="pro-value">20 watchlist markets · unlimited alerts · email digest</span>
           </div>
         </div>
         <div class="pro-cta-stack">
@@ -955,7 +1201,7 @@
             <button id="checkout-btn" class="pro-stripe-btn" type="button">Pay with card (Stripe)</button>
             <div id="pro-msg" class="pro-msg" role="status" aria-live="polite"></div>
           </div>
-          <div class="pro-note">// Stars upgrade is instant. Stripe checkout sends confirmation to your email.</div>
+          <div class="pro-note">// Stars upgrade is instant. Stripe sends confirmation to your email.</div>
         </div>
       </div>
     </div>
@@ -963,6 +1209,8 @@
   <a id="tg-link-sticky" class="sticky-tg" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_ru_sticky">Открыть Telegram-бота</a>
 
   <script>
+    document.body.classList.add('ready');
+
     const form = document.getElementById('waitlist-form');
     const waitlistMsg = document.getElementById('msg');
     const emailInput = document.getElementById('email');

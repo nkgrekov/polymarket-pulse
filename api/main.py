@@ -331,8 +331,37 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     alt_q = "?lang=ru" if alt_lang == "ru" else "?lang=en"
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
+    cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
+    preview_head = "Preview surfaces" if lang == "en" else "Ключевые экраны"
+    preview_copy_1 = (
+        "Catch the fastest repricing in the current live window."
+        if lang == "en"
+        else "Показывает самые быстрые переоценки в текущем live-окне."
+    )
+    preview_copy_2 = (
+        "Tune sensitivity per user and keep your feed clean."
+        if lang == "en"
+        else "Настраивает чувствительность под пользователя и убирает шум."
+    )
+    preview_copy_3 = (
+        "Telegram delivery loop with clear time-window context."
+        if lang == "en"
+        else "Telegram-доставка с понятным контекстом временного окна."
+    )
+    stat_1_label = "Signal delay" if lang == "en" else "Задержка сигнала"
+    stat_1_value = "< 12 sec" if lang == "en" else "< 12 сек"
+    stat_1_copy = "market move -> bot inbox" if lang == "en" else "движение рынка -> inbox бота"
+    stat_2_label = "Activation path" if lang == "en" else "Путь активации"
+    stat_2_value = "1 tap" if lang == "en" else "1 тап"
+    stat_2_copy = "landing -> /start -> watchlist" if lang == "en" else "лендинг -> /start -> watchlist"
+    stat_3_label = "Live scope" if lang == "en" else "Live-охват"
+    stat_3_value = "200 markets" if lang == "en" else "200 рынков"
+    stat_3_copy = "active-only balanced universe" if lang == "en" else "active-only сбалансированный universe"
+    badge_1 = "4.8/5 trader score" if lang == "en" else "4.8/5 оценка трейдеров"
+    badge_3 = "Telegram-first flow" if lang == "en" else "Telegram-first сценарий"
+    screen_label = "Screen" if lang == "en" else "Экран"
     page_view_js_lang = "en" if lang == "en" else "ru"
     base = base_url()
     canonical_url = f"{base}/{slug}"
@@ -357,6 +386,12 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
 
     links = "".join(
         f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
+    )
+    guide_href = f"/how-it-works?lang={lang}&placement=telegram_bot_page"
+    guide_cta = (
+        f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
+        if slug == "telegram-bot"
+        else ""
     )
 
     return f"""<!doctype html>
@@ -395,7 +430,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     gtag('config', 'G-J901VRQH4G');
   </script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
     :root {{
       --bg: #0d0f0e;
       --bg-2: #0a0c0b;
@@ -406,21 +441,54 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       --muted: #8fa88f;
       --muted-soft: #6b7a6e;
       --accent: #00ff88;
+      --negative: #ff4444;
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      font-family: "Syne", "Segoe UI", sans-serif;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
       background:
         radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(900px 600px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
         linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
       color: var(--text);
       min-height: 100vh;
+      overflow-x: hidden;
     }}
-    .wrap {{ width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }}
+    body::before {{
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.16;
+    }}
+    @keyframes rise-in {{
+      from {{ opacity: 0; transform: translateY(14px); }}
+      to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    .reveal {{
+      opacity: 0;
+      animation: rise-in 0.28s ease forwards;
+    }}
+    .reveal.delay-1 {{ animation-delay: 0.08s; }}
+    .reveal.delay-2 {{ animation-delay: 0.16s; }}
+    .reveal.delay-3 {{ animation-delay: 0.24s; }}
+    .reveal.delay-4 {{ animation-delay: 0.32s; }}
+    body.ready .reveal {{ opacity: 1; }}
+    .wrap {{
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+      position: relative;
+      z-index: 1;
+    }}
     .top {{
       display:flex; justify-content:space-between; align-items:center; gap: 12px;
-      font-family:"Space Mono", monospace; font-size:12px; color: var(--muted);
+      font-family:"JetBrains Mono", monospace; font-size:12px; color: var(--muted);
     }}
     .top a {{
       color: var(--muted);
@@ -434,8 +502,31 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       margin-top: 16px;
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 20px;
       padding: 24px;
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+    }}
+    .badge-row {{
+      margin-bottom: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }}
+    .badge {{
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(19, 23, 20, 0.72);
+    }}
+    .badge.active {{
+      border-color: rgba(0, 255, 136, 0.45);
+      color: var(--text);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.18) inset;
     }}
     h1 {{
       margin: 0;
@@ -449,7 +540,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       color: var(--muted);
       font-size: clamp(15px, 2vw, 20px);
       line-height: 1.45;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
     }}
     .feature-rows {{
       margin-top: 16px;
@@ -461,32 +552,140 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       border-radius: 12px;
       background: #131714;
       padding: 11px 12px;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       color: var(--muted);
       font-size: 13px;
     }}
-    .cta {{
+    .stats {{
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }}
+    .stat {{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: rgba(19, 23, 20, 0.88);
+    }}
+    .stat-label {{
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }}
+    .stat-value {{
+      margin: 6px 0 0;
+      font-size: clamp(19px, 3vw, 27px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }}
+    .stat-copy {{
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }}
+    .cta-row {{
       margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }}
+    .cta {{
       display:inline-flex; align-items:center; justify-content:center;
       min-height: 48px; padding: 10px 16px; border-radius: 12px; text-decoration: none;
-      font-family: "Space Mono", monospace; font-weight: 700;
+      font-family: "JetBrains Mono", monospace; font-weight: 700;
       color: var(--bg-2); background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
       border: 1px solid var(--accent);
     }}
     .cta-secondary {{
-      margin-top: 10px;
-      margin-left: 8px;
       display:inline-flex; align-items:center; justify-content:center;
       min-height: 48px; padding: 10px 16px; border-radius: 12px; text-decoration: none;
-      font-family: "Space Mono", monospace; font-weight: 700;
+      font-family: "JetBrains Mono", monospace; font-weight: 700;
       color: var(--text); background: #131714;
       border: 1px solid var(--line-soft);
     }}
     .cta-secondary:hover, .cta-secondary:focus-visible {{ border-color: var(--accent); outline: none; }}
-    .links-title {{
-      margin: 18px 0 8px;
+    .preview {{
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #131714;
+    }}
+    .preview-grid {{
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }}
+    .preview-card {{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #131714;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }}
+    .preview-card:hover {{
+      transform: translateY(-2px);
+      border-color: rgba(0, 255, 136, 0.36);
+    }}
+    .preview-kicker {{
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }}
+    .preview-title {{
+      margin: 8px 0 0;
+      font-size: 17px;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+    }}
+    .preview-copy {{
+      margin: 8px 0 0;
       color: var(--muted);
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }}
+    .preview-bar {{
+      margin-top: 10px;
+      height: 7px;
+      border-radius: 999px;
+      background: #0c0f0d;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      position: relative;
+    }}
+    .preview-bar > span {{
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--w, 50%);
+      border-radius: 999px;
+      background: linear-gradient(90deg, #00cc6f 0%, #00ff88 100%);
+    }}
+    .preview-bar.down > span {{
+      background: linear-gradient(90deg, #ff4444 0%, #ff6d6d 100%);
+    }}
+    .links-wrap {{
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #131714;
+    }}
+    .links-title {{
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.07em;
@@ -504,7 +703,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       border-radius: 999px;
       padding: 9px 12px;
       background: #131714;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size:13px;
       text-align: center;
     }}
@@ -514,45 +713,110 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       display: inline-block;
       color: var(--muted-soft);
       text-decoration: underline;
-      font-family: "Space Mono", monospace;
+      font-family: "JetBrains Mono", monospace;
       font-size: 12px;
     }}
     .back:hover, .back:focus-visible {{ color: var(--text); outline: none; }}
-    @media (max-width: 860px) {{ .links {{ grid-template-columns: 1fr 1fr; }} }}
+    @media (max-width: 900px) {{
+      .stats {{ grid-template-columns: 1fr; }}
+      .preview-grid {{ grid-template-columns: 1fr 1fr; }}
+      .links {{ grid-template-columns: 1fr 1fr; }}
+    }}
     @media (max-width: 640px) {{
       .wrap {{ width: calc(100% - 20px); }}
-      .card {{ padding: 16px; }}
+      .card {{ padding: 16px; border-radius: 16px; }}
+      .badge-row {{ gap: 6px; }}
+      .cta {{ width: 100%; }}
+      .cta-secondary {{ width: 100%; }}
+      .preview-grid {{ grid-template-columns: 1fr; }}
       .links {{ grid-template-columns: 1fr; }}
+    }}
+    @media (prefers-reduced-motion: reduce) {{
+      *, *::before, *::after {{
+        animation: none !important;
+        transition: none !important;
+      }}
     }}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="top">
+    <div class="top reveal delay-1">
       <span>POLYMARKET PULSE // {page_label}</span>
       <div>
         <a href="/{slug}{home_q}">{lang.upper()}</a>
         <a href="/{slug}{alt_q}">{alt_lang.upper()}</a>
       </div>
     </div>
-    <article class="card">
+    <article class="card reveal delay-2">
+      <div class="badge-row">
+        <span class="badge active">{badge_1}</span>
+        <span class="badge">{badge_3}</span>
+      </div>
       <h1>{page["h1"]}</h1>
       <p class="intro">{page["intro"]}</p>
+      <div class="stats">
+        <article class="stat">
+          <p class="stat-label">{stat_1_label}</p>
+          <p class="stat-value">{stat_1_value}</p>
+          <p class="stat-copy">{stat_1_copy}</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">{stat_2_label}</p>
+          <p class="stat-value">{stat_2_value}</p>
+          <p class="stat-copy">{stat_2_copy}</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">{stat_3_label}</p>
+          <p class="stat-value">{stat_3_value}</p>
+          <p class="stat-copy">{stat_3_copy}</p>
+        </article>
+      </div>
       <div class="feature-rows">
         <div class="feature-row">{page["k1"]}</div>
         <div class="feature-row">{page["k2"]}</div>
         <div class="feature-row">{page["k3"]}</div>
       </div>
-      <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
-      <a id="waitlist-link" class="cta-secondary" href="/{home_q}#waitlist-form">{cta_waitlist_text}</a>
+      <div class="cta-row">
+        <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
+        <a id="waitlist-link" class="cta-secondary" href="/{home_q}#waitlist-form">{cta_waitlist_text}</a>
+        {guide_cta}
+      </div>
+    </article>
+    <section class="preview reveal delay-3">
+      <p class="links-title">{preview_head}</p>
+      <div class="preview-grid">
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 01</p>
+          <h3 class="preview-title">{page["k1"]}</h3>
+          <p class="preview-copy">{preview_copy_1}</p>
+          <div class="preview-bar" style="--w:72%;"><span></span></div>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 02</p>
+          <h3 class="preview-title">{page["k2"]}</h3>
+          <p class="preview-copy">{preview_copy_2}</p>
+          <div class="preview-bar" style="--w:58%;"><span></span></div>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 03</p>
+          <h3 class="preview-title">{page["k3"]}</h3>
+          <p class="preview-copy">{preview_copy_3}</p>
+          <div class="preview-bar down" style="--w:36%;"><span></span></div>
+        </article>
+      </div>
+    </section>
+    <section class="links-wrap reveal delay-4">
       <p class="links-title">{links_head}</p>
       <div class="links" aria-label="{links_head}">
         {links}
       </div>
+    </section>
       <a class="back" href="/{home_q}">{back_text}</a>
-    </article>
   </div>
   <script>
+    document.body.classList.add('ready');
+
     async function trackEvent(eventType, details = {{}}) {{
       try {{
         await fetch('/api/events', {{
@@ -953,6 +1217,12 @@ def sitemap() -> Response:
         f"  <url><loc>{u}/{slug}?lang=ru</loc></url>\n"
         for slug in SEO_PAGES
     )
+    docs_urls = (
+        f"  <url><loc>{u}/how-it-works?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/how-it-works?lang=ru</loc></url>\n"
+        f"  <url><loc>{u}/commands?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/commands?lang=ru</loc></url>\n"
+    )
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -962,6 +1232,7 @@ def sitemap() -> Response:
         f"  <url><loc>{u}/privacy?lang=ru</loc></url>\n"
         f"  <url><loc>{u}/terms?lang=en</loc></url>\n"
         f"  <url><loc>{u}/terms?lang=ru</loc></url>\n"
+        f"{docs_urls}"
         f"{extra_urls}"
         "</urlset>\n"
     )
@@ -1033,6 +1304,18 @@ def privacy(request: Request) -> HTMLResponse:
 def terms(request: Request) -> HTMLResponse:
     lang = detect_lang(request)
     return HTMLResponse(load_page("terms", lang))
+
+
+@app.get("/how-it-works", response_class=HTMLResponse)
+def how_it_works(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("how-it-works", lang))
+
+
+@app.get("/commands", response_class=HTMLResponse)
+def commands_page(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("commands", lang))
 
 
 @app.get("/{slug}", response_class=HTMLResponse)
