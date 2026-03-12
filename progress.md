@@ -214,6 +214,27 @@ C1 outputs locked:
 
 ---
 
+# C1 Implementation on Site Surfaces (2026-03-12)
+
+Applied the finalized C1 positioning pack directly to user-facing web surfaces.
+
+Updated:
+
+• `api/web/index.en.html`  
+• `api/web/index.ru.html`  
+• `api/main.py` (`SEO_PAGES["telegram-bot"]` RU/EN copy)
+
+Implementation details:
+
+• landing hero subcopy now explicitly carries “action over dashboards”  
+• landing FAQ now includes “Why Telegram-first?” with the 60-second activation argument  
+• `/telegram-bot` SEO page now uses the finalized 3-message frame:
+  - action over dashboard overload
+  - 60-second activation
+  - signal quality over noise
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.

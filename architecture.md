@@ -413,6 +413,10 @@ Growth ops:
 • weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)
 • visual post templates in `assets/social/` (Top3, Breakout, Weekly recap)
 • positioning message pack: `docs/positioning_messages_latest.md` (site/bot/social interception copy)
+• C1 site implementation contract:
+  - landing hero carries “action over dashboard” framing
+  - landing FAQ includes explicit “Why Telegram-first?” answer
+  - `/telegram-bot` SEO page copy is synchronized with the 3-message C1 frame
 
 Operational deploy notes (2026-03-08):
 
