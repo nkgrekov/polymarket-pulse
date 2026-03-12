@@ -196,6 +196,24 @@ Current 24h baseline before this hardening:
 
 ---
 
+# Competitive C1 Refresh (2026-03-12)
+
+Completed the current `C1` step from the 14-day plan (competitive intelligence update).
+
+Delivered artifacts:
+
+• refreshed directory scan output: `docs/competitive_sweep_latest.md` (from `scripts/growth/competitive_scan.py`)  
+• new decision-layer gap matrix: `docs/competitive_gap_matrix_2026-03-12.md`  
+• refreshed positioning pack: `docs/positioning_messages_latest.md`
+
+C1 outputs locked:
+
+• top-7 competitor gap table with interception angles  
+• 3 finalized positioning messages for site + bot + social  
+• 7-day execution list for search + Telegram activation + social capture
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
