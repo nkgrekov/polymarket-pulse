@@ -1253,9 +1253,11 @@
     const emailInput = document.getElementById('email');
     const tgLink = document.getElementById('tg-link');
     const tgLinkSticky = document.getElementById('tg-link-sticky');
+    const guideLink = document.querySelector('.guide-link');
     const checkoutBtn = document.getElementById('checkout-btn');
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
+    const proStarsBtn = document.querySelector('.pro-stars');
     const liveRows = document.getElementById('live-movers-rows');
     const liveTitle = document.getElementById('live-movers-title');
 
@@ -1271,11 +1273,23 @@
     }
 
     async function trackEvent(eventType, details = {}) {
+      const payload = JSON.stringify({ event_type: eventType, source: 'site', details });
+      try {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', eventType, details);
+        }
+      } catch (_) {}
+      try {
+        if (navigator.sendBeacon) {
+          const ok = navigator.sendBeacon('/api/events', new Blob([payload], { type: 'application/json' }));
+          if (ok) return;
+        }
+      } catch (_) {}
       try {
         await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ event_type: eventType, source: 'site', details }),
+          body: payload,
           keepalive: true
         });
       } catch (_) {}
@@ -1370,6 +1384,12 @@
     });
     tgLinkSticky?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
+    });
+    guideLink?.addEventListener('click', () => {
+      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'how_it_works_link' });
+    });
+    proStarsBtn?.addEventListener('click', () => {
+      trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });
     });
 
     checkoutBtn?.addEventListener('click', async () => {

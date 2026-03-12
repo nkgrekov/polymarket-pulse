@@ -232,7 +232,7 @@ Site + Email API:
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
 • SEO intent endpoints: `/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
-• site telemetry endpoint: `/api/events` (`page_view`, `tg_click`, `waitlist_intent`)
+• site telemetry endpoint: `/api/events` (`page_view`, `tg_click`, `waitlist_intent`, `checkout_intent`)
 • live landing data endpoint: `/api/live-movers-preview` (top 3 movers + sparkline points from DB)
 • attribution enrichment in telemetry: `placement`, `lang`, `utm_source`, `utm_medium`, `utm_campaign`
 • landing uses dark trading-terminal UI with pain-driven hero, live DB-powered “Top movers” widget (3 markets + sparkline mini-charts), scarcity line, and dual CTA (Telegram primary + email waitlist)
@@ -244,7 +244,10 @@ Site + Email API:
   - hero two-column block (`movers` + `CTA`) now uses equal-height grid/flex alignment to prevent visual seam at column join
 • landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
-• site funnel event tracking in `app.site_events`
+• site funnel event tracking in `app.site_events` with dual-delivery:
+  - GA4 mirror via `gtag('event', ...)`
+  - `sendBeacon` primary delivery + `fetch keepalive` fallback for outbound-click reliability
+• landing conversion placements explicitly tracked: `hero_panel`, `mobile_sticky`, `how_it_works_link`, `pro_offer`, `pro_stars`, `waitlist_form`
 • SEO telemetry events include `waitlist_intent` on intent pages
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 • Resend mail-auth DNS hosted in Cloudflare (`resend._domainkey` + `send.polymarketpulse.app` SPF)

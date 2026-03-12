@@ -169,6 +169,33 @@ Validation against live DB:
 
 ---
 
+# Site Conversion Tracking Hardening (2026-03-12)
+
+Strengthened event delivery reliability for website-to-Telegram conversion tracking.
+
+Updated templates:
+
+• `api/web/index.en.html`  
+• `api/web/index.ru.html`  
+• `api/web/how-it-works.en.html`  
+• `api/web/how-it-works.ru.html`  
+• `api/web/commands.en.html`  
+• `api/web/commands.ru.html`
+
+What changed:
+
+• `trackEvent(...)` now mirrors events to GA4 (`gtag`) and to internal `app.site_events` in parallel  
+• primary transport for `app.site_events` switched to `navigator.sendBeacon(...)` with `fetch(... keepalive)` fallback for better click capture before navigation  
+• added explicit conversion touchpoint tracking on landing:
+  - `waitlist_intent` for “How it works?” CTA
+  - `checkout_intent` for Telegram Stars CTA in PRO section
+
+Current 24h baseline before this hardening:
+
+• `page_view=28`, `tg_click=1` (placement observed: `mobile_sticky`)
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
