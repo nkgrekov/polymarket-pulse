@@ -58,6 +58,19 @@ Telemetry contract remains stable:
 
 ---
 
+# Live Movers Preview Contract Update (2026-03-12)
+
+Landing endpoint `GET /api/live-movers-preview` now uses a snapshot-window spark contract:
+
+• spark source is per-market `market_snapshots` history (up to last 16 points), not a short fixed-hour cut only  
+• points are ordered strictly `ts_bucket ASC` (old -> new) for left-to-right chart consistency  
+• value extraction is yes-side mid with fallback to available side quote when only one side is present  
+• if fewer than 2 points exist for a market, API returns `spark: []` (frontend handles empty sparkline)
+
+To keep visual signal quality on landing, preview row selection prioritizes movers with richer spark history.
+
+---
+
 # Data Pipeline
 
 Polymarket API
@@ -225,6 +238,7 @@ Site + Email API:
   - hero includes product/rating badges and compact signal-performance metrics cards
   - dedicated `Preview screens` section (3 product-surface cards) added between hero and proof modules
   - “App Store-grade UX” badge copy removed from EN/RU templates and SEO renderer to reduce marketing noise
+  - hero two-column block (`movers` + `CTA`) now uses equal-height grid/flex alignment to prevent visual seam at column join
 • landing includes conversion modules: “what you get in 60 seconds”, mobile sticky Telegram CTA, and static `Historical examples` proof block
 • Google Analytics gtag (`G-J901VRQH4G`) injected in landing heads
 • site funnel event tracking in `app.site_events`

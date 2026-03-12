@@ -196,23 +196,32 @@ limit %s;
 """
 
 SQL_LIVE_SPARKLINE_POINTS = """
+with per_bucket as (
+  select
+    ms.market_id,
+    ms.ts_bucket,
+    max(coalesce(((ms.yes_bid + ms.yes_ask) / 2.0), ms.yes_bid, ms.yes_ask))::double precision as yes_mid
+  from public.market_snapshots ms
+  where ms.market_id = any(%s::text[])
+    and (ms.yes_bid is not null or ms.yes_ask is not null)
+  group by ms.market_id, ms.ts_bucket
+),
+ranked as (
+  select
+    market_id,
+    ts_bucket,
+    yes_mid as mid,
+    row_number() over (partition by market_id order by ts_bucket desc) as rn
+  from per_bucket
+  where yes_mid is not null
+)
 select
   market_id,
   ts_bucket,
   mid
-from (
-  select
-    ms.market_id,
-    ms.ts_bucket,
-    max(((ms.yes_bid + ms.yes_ask) / 2.0)) as mid
-  from public.market_snapshots ms
-  where ms.market_id = any(%s::text[])
-    and ms.ts_bucket >= now() - make_interval(hours => %s)
-    and ms.yes_bid is not null
-    and ms.yes_ask is not null
-  group by ms.market_id, ms.ts_bucket
-) t
-order by market_id, ts_bucket;
+from ranked
+where rn <= %s
+order by market_id, ts_bucket asc;
 """
 
 SQL_ENSURE_PAYMENT_EVENTS = """
@@ -1130,20 +1139,26 @@ def _compact_series(values: list[float], max_points: int) -> list[float]:
     return [values[round(i * step)] for i in range(max_points)]
 
 
-def fetch_live_movers_preview(limit: int = 3, history_hours: int = 6, max_points: int = 24) -> list[dict]:
+def fetch_live_movers_preview(
+    limit: int = 3,
+    spark_snapshots: int = 16,
+    max_points: int = 16,
+    min_distinct_points: int = 6,
+) -> list[dict]:
     if not PG_CONN:
         return []
 
     with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_LIVE_MOVERS_PREVIEW, (limit,))
+            candidate_limit = min(36, max(limit, limit * 12))
+            cur.execute(SQL_LIVE_MOVERS_PREVIEW, (candidate_limit,))
             movers = cur.fetchall()
             if not movers:
                 return []
 
             market_ids = [str(r["market_id"]) for r in movers if r.get("market_id")]
-            cur.execute(SQL_LIVE_SPARKLINE_POINTS, (market_ids, history_hours))
+            cur.execute(SQL_LIVE_SPARKLINE_POINTS, (market_ids, max(2, int(spark_snapshots))))
             points = cur.fetchall()
 
     series_by_market: dict[str, list[float]] = defaultdict(list)
@@ -1153,22 +1168,32 @@ def fetch_live_movers_preview(limit: int = 3, history_hours: int = 6, max_points
         if market_id and mid is not None:
             series_by_market[market_id].append(float(mid))
 
-    out: list[dict] = []
+    rich_rows: list[dict] = []
+    fallback_rows: list[dict] = []
     for row in movers:
         market_id = str(row.get("market_id") or "")
         spark = _compact_series(series_by_market.get(market_id, []), max_points=max_points)
-        out.append(
-            {
-                "market_id": market_id,
-                "question": row.get("question") or "",
-                "last_bucket": _to_iso(row.get("last_bucket")),
-                "prev_bucket": _to_iso(row.get("prev_bucket")),
-                "yes_mid_now": float(row.get("yes_mid_now") or 0.0),
-                "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
-                "delta_yes": float(row.get("delta_yes") or 0.0),
-                "spark": spark,
-            }
-        )
+        if len(spark) < 2:
+            spark = []
+        distinct_points = len({round(v, 6) for v in spark})
+
+        payload = {
+            "market_id": market_id,
+            "question": row.get("question") or "",
+            "last_bucket": _to_iso(row.get("last_bucket")),
+            "prev_bucket": _to_iso(row.get("prev_bucket")),
+            "yes_mid_now": float(row.get("yes_mid_now") or 0.0),
+            "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
+            "delta_yes": float(row.get("delta_yes") or 0.0),
+            "spark": spark,
+        }
+
+        if distinct_points >= min_distinct_points:
+            rich_rows.append(payload)
+        else:
+            fallback_rows.append(payload)
+
+    out = (rich_rows + fallback_rows)[:limit]
     return out
 
 
@@ -1351,7 +1376,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
 def live_movers_preview(limit: int = 3) -> JSONResponse:
     safe_limit = max(1, min(int(limit), 6))
     try:
-        rows = fetch_live_movers_preview(limit=safe_limit, history_hours=6, max_points=24)
+        rows = fetch_live_movers_preview(limit=safe_limit, spark_snapshots=16, max_points=16)
     except Exception:
         rows = []
     return JSONResponse(

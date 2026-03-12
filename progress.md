@@ -116,6 +116,41 @@ Telemetry contract:
 
 ---
 
+# Hero Grid Alignment Fix (2026-03-12)
+
+Main landing RU/EN hero grid was adjusted to remove visual seam between movers chart block and CTA panel.
+
+Updated templates:
+
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+
+Layout updates:
+
+• forced equal-height behavior in hero grid (`align-items: stretch`)
+• made both hero columns vertical flex containers (`.ticker`, `.cta-panel`) with `height: 100%`
+• stabilized movers rows block alignment (`align-content: start`) to avoid jagged visual join at the column boundary
+
+---
+
+# Live Movers Sparkline API Fix (2026-03-12)
+
+Fixed landing preview API bug where sparkline arrays were often flat due to weak history sampling.
+
+Updated backend:
+
+• `api/main.py` -> `/api/live-movers-preview` now builds `spark` from last per-market snapshots (up to 16), ordered by `ts_bucket ASC`  
+• spark source now uses per-bucket yes mid fallback logic (`(yes_bid+yes_ask)/2`, fallback to available side)  
+• if a market has fewer than 2 snapshot points, API returns `spark: []`  
+• preview selection now prioritizes movers with richer spark history (`distinct >= 6`) to avoid flat-line cards on landing
+
+Local verification:
+
+• endpoint returns 3 rows with `spark` arrays of length 16  
+• each returned row had `6+` distinct float values in current live dataset
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
