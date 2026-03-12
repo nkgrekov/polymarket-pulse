@@ -319,9 +319,13 @@ limit %s;
 
 SQL_WATCHLIST_PICKER_CANDIDATES = """
 with params as (
-  select %s::text as cat
-), lb as (
-  select last_bucket from public.global_bucket_latest
+  select
+    %s::text as cat,
+    %s::uuid as user_id
+), wl as (
+  select w.market_id
+  from bot.watchlist w
+  where w.user_id = (select user_id from params)
 ), recent_seen as (
   select
     s.market_id,
@@ -329,21 +333,29 @@ with params as (
   from public.market_snapshots s
   where s.ts_bucket >= now() - interval '72 hours'
   group by s.market_id
-), quotes as (
+), quote_src as (
   select
     s.market_id,
-    max(coalesce(s.liquidity, 0)) as liquidity
+    s.ts_bucket,
+    coalesce(s.liquidity, 0)::numeric as liquidity
   from public.market_snapshots s
-  join lb on s.ts_bucket = lb.last_bucket
-  where s.yes_bid is not null
+  where s.ts_bucket >= now() - interval '6 hours'
+    and s.yes_bid is not null
     and s.yes_ask is not null
-  group by s.market_id
+), quotes as (
+  select distinct on (qs.market_id)
+    qs.market_id,
+    qs.ts_bucket as quote_bucket,
+    qs.liquidity
+  from quote_src qs
+  order by qs.market_id, qs.ts_bucket desc
 ), movers_now as (
   select
     t.market_id,
     t.question,
     t.delta_yes as delta_yes,
     q.liquidity,
+    q.quote_bucket,
     1 as prio,
     coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
     lower(t.question) like '%%up or down - %%' as is_micro
@@ -357,6 +369,7 @@ with params as (
     t.question,
     t.delta_yes_1h as delta_yes,
     q.liquidity,
+    q.quote_bucket,
     2 as prio,
     coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
     lower(t.question) like '%%up or down - %%' as is_micro
@@ -370,6 +383,7 @@ with params as (
     m.question,
     null::numeric as delta_yes,
     q.liquidity,
+    q.quote_bucket,
     3 as prio,
     coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
     lower(m.question) like '%%up or down - %%' as is_micro
@@ -384,6 +398,7 @@ with params as (
     m.question,
     null::numeric as delta_yes,
     null::numeric as liquidity,
+    rs.last_seen as quote_bucket,
     4 as prio,
     coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
     lower(m.question) like '%%up or down - %%' as is_micro
@@ -408,10 +423,11 @@ with params as (
     question,
     delta_yes,
     liquidity,
+    quote_bucket,
     prio,
     is_micro
   from pool
-  order by root_key, is_micro, prio, abs(delta_yes) desc nulls last, liquidity desc nulls last
+  order by root_key, is_micro, prio, quote_bucket desc nulls last, abs(delta_yes) desc nulls last, liquidity desc nulls last
 ), tagged as (
   select
     r.*,
@@ -429,14 +445,21 @@ with params as (
   select *
   from tagged
   where
-    (select cat from params) = 'all'
-    or ((select cat from params) = cat_tag)
+    (
+      (select cat from params) = 'all'
+      or ((select cat from params) = cat_tag)
+    )
+    and not exists (
+      select 1
+      from wl
+      where wl.market_id = tagged.market_id
+    )
 ), balanced as (
   select
     f.*,
     row_number() over (
       partition by cat_tag
-      order by is_micro, prio, coalesce(liquidity, 0) desc, abs(delta_yes) desc nulls last, market_id
+      order by is_micro, prio, quote_bucket desc nulls last, coalesce(liquidity, 0) desc, abs(delta_yes) desc nulls last, market_id
     ) as cat_rank
   from filtered f
 ), final as (
@@ -448,7 +471,7 @@ with params as (
       (cat_tag = 'politics' and cat_rank <= 4)
       or (cat_tag = 'macro' and cat_rank <= 4)
       or (cat_tag = 'crypto' and cat_rank <= 4)
-      or (cat_tag = 'other' and cat_rank <= 8)
+      or (cat_tag = 'other' and cat_rank <= 10)
     )
 )
 select
@@ -467,6 +490,7 @@ order by
   end,
   is_micro,
   prio,
+  quote_bucket desc nulls last,
   coalesce(liquidity, 0) desc,
   abs(delta_yes) desc nulls last,
   market_id
@@ -1259,23 +1283,36 @@ def _picker_category_label(category: str) -> str:
 
 
 async def send_watchlist_picker(
-    message, context: ContextTypes.DEFAULT_TYPE, user_ctx: dict, *, category: str = "all", locale: str = "ru"
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    user_ctx: dict,
+    *,
+    category: str = "all",
+    locale: str = "ru",
+    edit_message: bool = False,
 ) -> None:
-    rows = await fetch_watchlist_picker_candidates_async(category=category, limit=12, timeout_sec=10.0)
+    rows = await fetch_watchlist_picker_candidates_async(
+        user_id=user_ctx["user_id"], category=category, limit=16, timeout_sec=10.0
+    )
     if not rows and category == "all":
         rows = await fetch_top_movers_async(limit=8, timeout_sec=10.0)
     if not rows and category == "all":
         rows = await fetch_top_movers_1h_async(limit=8, timeout_sec=10.0)
     if not rows:
-        await message.reply_text(
-            (
-                f"No live candidates for {_picker_category_label(category)} filter right now.\n"
-                "Try another filter or /watchlist_add <market_id|slug>."
-                if locale == "en"
-                else f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
-                "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
-            )
+        text = (
+            f"No live candidates for {_picker_category_label(category)} filter right now.\n"
+            "Try another filter or /watchlist_add <market_id|slug>."
+            if locale == "en"
+            else f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
+            "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
         )
+        if edit_message:
+            try:
+                await message.edit_text(text)
+                return
+            except Exception:
+                log.debug("watchlist picker edit failed; fallback to reply", exc_info=True)
+        await message.reply_text(text)
         return
 
     chat_id = message.chat_id
@@ -1301,7 +1338,7 @@ async def send_watchlist_picker(
         prefix = "MOV" if delta is not None else "LIVE"
         delta_part = _fmt_num(delta, 3, signed=True) if delta is not None else ""
         liq_part = f" L:{_fmt_num(liq, 0)}" if liq is not None else ""
-        label = f"{cat} {prefix} {delta_part}{liq_part} | {(row.get('question') or 'n/a')[:24]}".strip()
+        label = f"{cat} {prefix} {delta_part}{liq_part} | {(row.get('question') or 'n/a')[:36]}".strip()
         buttons.append([InlineKeyboardButton(label, callback_data=f"wlpick:{token}")])
 
     buttons.append(
@@ -1321,20 +1358,24 @@ async def send_watchlist_picker(
             if locale == "en"
             else " Окно узкое: добавьте market_id/slug вручную, чтобы не ждать расширения окна."
         )
-    await message.reply_text(
-        (
-            f"Choose a market for watchlist. Filter: {_picker_category_label(category)}.\n"
-            "Tap a row to add market immediately.\n"
-            f"{availability}\n"
-            "If missing: /watchlist_add <market_id|slug>"
-            if locale == "en"
-            else f"Выберите рынок для watchlist. Фильтр: {_picker_category_label(category)}.\n"
-            "Нажмите на строку — рынок добавится сразу.\n"
-            f"{availability}\n"
-            "Если нужного рынка нет: /watchlist_add <market_id|slug>"
-        ),
-        reply_markup=InlineKeyboardMarkup(buttons),
+    picker_text = (
+        f"Choose a market for watchlist. Filter: {_picker_category_label(category)}.\n"
+        "Tap a row to add market immediately.\n"
+        f"{availability}\n"
+        "If missing: /watchlist_add <market_id|slug>"
+        if locale == "en"
+        else f"Выберите рынок для watchlist. Фильтр: {_picker_category_label(category)}.\n"
+        "Нажмите на строку — рынок добавится сразу.\n"
+        f"{availability}\n"
+        "Если нужного рынка нет: /watchlist_add <market_id|slug>"
     )
+    if edit_message:
+        try:
+            await message.edit_text(picker_text, reply_markup=InlineKeyboardMarkup(buttons))
+            return
+        except Exception:
+            log.debug("watchlist picker edit failed; fallback to reply", exc_info=True)
+    await message.reply_text(picker_text, reply_markup=InlineKeyboardMarkup(buttons))
 
 
 def resolve_user_context_sync(update: Update) -> dict:
@@ -1424,11 +1465,11 @@ async def fetch_watchlist_diagnostics_async(user_id: str, timeout_sec: float = 1
 
 
 async def fetch_watchlist_picker_candidates_async(
-    *, category: str = "all", limit: int = 12, timeout_sec: float = 10.0
+    *, user_id: str, category: str = "all", limit: int = 12, timeout_sec: float = 10.0
 ) -> list[dict]:
     return await asyncio.wait_for(
         asyncio.to_thread(
-            lambda: run_db_query(SQL_WATCHLIST_PICKER_CANDIDATES, (category, limit), row_factory=dict_row)
+            lambda: run_db_query(SQL_WATCHLIST_PICKER_CANDIDATES, (category, user_id, limit), row_factory=dict_row)
         ),
         timeout=timeout_sec,
     )
@@ -2064,20 +2105,24 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if data == "menu:pick":
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category="all", locale=locale)
+        await send_watchlist_picker(query.message, context, user_ctx, category="all", locale=locale, edit_message=True)
         return
     if data.startswith("menu:pick_cat:"):
         category = data.split(":", 2)[2]
         if category not in {"all", "crypto", "politics", "macro"}:
             category = "all"
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category=category, locale=locale)
+        await send_watchlist_picker(
+            query.message, context, user_ctx, category=category, locale=locale, edit_message=True
+        )
         return
     if data == "menu:pick_refresh":
         picker_category = context.application.bot_data.get("picker_category", {})
         category = picker_category.get(str(query.message.chat_id), "all")
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_picker(query.message, context, user_ctx, category=category, locale=locale)
+        await send_watchlist_picker(
+            query.message, context, user_ctx, category=category, locale=locale, edit_message=True
+        )
         return
     if data == "menu:cleanup_closed":
         user_ctx = await resolve_user_context(update)

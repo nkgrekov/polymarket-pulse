@@ -194,8 +194,11 @@ Also runs:
 • callback action menu (`/menu`) with inline buttons for movers/watchlist/inbox/plan/picker/threshold
 • watchlist picker flow uses mover-first candidates ranked by live liquidity (volume proxy), with live-liquidity fallback and callback tokens in bot memory
 • picker supports category-level callback filters (`all`, `crypto`, `politics`, `macro`) on top of liquidity-ranked candidates
+• picker data source uses latest per-market quote from a rolling 6h snapshot window (not strictly one latest bucket), improving candidate breadth during sparse windows
+• picker excludes markets already in user watchlist to keep “add next market” flow actionable
 • category filter behavior is strict: no cross-category fallback; empty category returns explicit UX guidance
 • `all` picker mode applies category-balanced quotas and ordering to reduce crypto dominance in candidate list
+• category/refresh picker callbacks edit existing picker message instead of appending new bot messages, reducing chat noise
 • picker UI includes category tags and live-supply hint (candidate count in current window)
 • picker candidate pool includes recent active markets (last 72h seen in snapshots) as fallback when live movers are too narrow
 • `/upgrade` command writes conversion intent into `app.upgrade_intents`

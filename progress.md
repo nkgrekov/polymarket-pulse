@@ -151,6 +151,24 @@ Local verification:
 
 ---
 
+# Bot Watchlist Picker Widening + UX Cleanup (2026-03-12)
+
+Improved `/watchlist_add` picker quality and reduced callback noise in Telegram.
+
+Updated backend/runtime:
+
+• `bot/main.py` picker SQL now uses the latest available quotes per market from a rolling 6h window (instead of strict latest bucket only)  
+• candidate pool excludes markets already present in the user’s watchlist  
+• `all` filter now returns a broader balanced set (up to 16 candidates) across `politics/macro/crypto/other`  
+• category filter callbacks now edit the existing picker message instead of appending a new message each tap
+
+Validation against live DB:
+
+• `all` filter produced 16 candidates with category mix (`4 politics / 4 macro / 4 crypto / 4 other`)  
+• for a user with existing watchlist entries, picker result had zero intersection with current watchlist
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
