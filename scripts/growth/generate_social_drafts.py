@@ -78,6 +78,17 @@ def hashtags(lang: str, channel: str) -> str:
     return core + " #X"
 
 
+def parse_csv_choices(raw: str, *, allowed: set[str], name: str) -> list[str]:
+    values = [v.strip().lower() for v in (raw or "").split(",") if v.strip()]
+    if not values:
+        raise SystemExit(f"{name} is empty")
+    bad = [v for v in values if v not in allowed]
+    if bad:
+        raise SystemExit(f"Unsupported {name}: {', '.join(sorted(set(bad)))}")
+    # Keep order, deduplicate.
+    return list(dict.fromkeys(values))
+
+
 def post_from_mover(row: dict, *, lang: str, channel: str, base_url: str, campaign: str = "live_movers") -> str:
     question = truncate_question(row.get("question") or "Unknown market")
     prev = fmt_pct(row.get("yes_mid_prev"))
@@ -98,7 +109,7 @@ def post_from_mover(row: dict, *, lang: str, channel: str, base_url: str, campai
     return (
         f"Market moved fast: {question}\n"
         f"Probability: {prev} -> {now} ({delta}, {window})\n"
-        "Why it matters: this move is outside the noise band.\n"
+        "Why it matters: action-first signal, not dashboard noise.\n"
         f"Bot: {bot_link}\n"
         f"Site: {site_link}\n"
         f"{tags}"
@@ -125,7 +136,7 @@ def post_from_alert(row: dict, *, lang: str, channel: str, base_url: str) -> str
     return (
         f"Breakout market: {question}\n"
         f"Move: {prev} -> {now} ({delta}, {window})\n"
-        "Context: surfaced by live inbox signal.\n"
+        "Context: live-only move with thresholded signal quality.\n"
         f"Bot: {bot_link}\n"
         f"Site: {site_link}\n"
         f"{tags}"
@@ -206,8 +217,20 @@ def main() -> None:
         default=0.01,
         help="Minimum absolute delta to include (0.01 = 1 percentage point)",
     )
+    parser.add_argument(
+        "--langs",
+        default="en",
+        help="Comma-separated languages (en,ru). Default: en",
+    )
+    parser.add_argument(
+        "--channels",
+        default="x,threads",
+        help="Comma-separated channels (x,threads). Default: x,threads",
+    )
     parser.add_argument("--base-url", default="https://polymarketpulse.app", help="Base URL for UTM links")
     args = parser.parse_args()
+    langs = parse_csv_choices(args.langs, allowed={"en", "ru"}, name="langs")
+    channels = parse_csv_choices(args.channels, allowed={"x", "threads"}, name="channels")
 
     pg = os.environ.get("PG_CONN", "")
     if not pg:
@@ -225,12 +248,12 @@ def main() -> None:
         f"# Social Drafts ({now})",
         "",
         "Generated from: `public.top_movers_latest` + `bot.alerts_inbox_latest`",
+        f"Mode: langs={','.join(langs)} | channels={','.join(channels)}",
         "",
     ]
-    lines += render_block(lang="en", channel="x", movers=movers, alerts=alerts, base_url=args.base_url)
-    lines += render_block(lang="en", channel="threads", movers=movers, alerts=alerts, base_url=args.base_url)
-    lines += render_block(lang="ru", channel="x", movers=movers, alerts=alerts, base_url=args.base_url)
-    lines += render_block(lang="ru", channel="threads", movers=movers, alerts=alerts, base_url=args.base_url)
+    for lang in langs:
+        for channel in channels:
+            lines += render_block(lang=lang, channel=channel, movers=movers, alerts=alerts, base_url=args.base_url)
 
     p = Path(args.output)
     p.parent.mkdir(parents=True, exist_ok=True)

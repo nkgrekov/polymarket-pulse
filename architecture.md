@@ -410,6 +410,7 @@ Growth ops:
   - `docs/competitive_gap_matrix_2026-03-12.md` (top-7 gap matrix + interception angles + 7-day execution list)
   - `docs/competitive_sweep_latest.md` (top-30 directory baseline and cluster mix)
 • social draft generator: `scripts/growth/generate_social_drafts.py` (DB live views -> EN/RU drafts for X/Threads, with UTM links + Telegram deep links)
+  - current production mode: EN-only publishing (`--langs en`) for X/Threads
 • weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)
 • visual post templates in `assets/social/` (Top3, Breakout, Weekly recap)
 • positioning message pack: `docs/positioning_messages_latest.md` (site/bot/social interception copy)

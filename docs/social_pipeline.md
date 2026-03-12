@@ -10,14 +10,15 @@
 Run:
 
 ```bash
-PG_CONN="postgresql://..." api/.venv/bin/python scripts/growth/generate_social_drafts.py
+PG_CONN="postgresql://..." api/.venv/bin/python scripts/growth/generate_social_drafts.py --langs en --channels x,threads
 ```
 
 Output:
 - `docs/social_drafts_latest.md`
 
 Notes:
-- Generates EN/RU drafts for both channels: `X` and `Threads`
+- Current operating mode: **EN-only** drafts for both channels (`X`, `Threads`)
+- Optional multilingual mode remains available via `--langs en,ru`
 - Includes both links:
   - deep link to bot (`t.me/...start=...`)
   - UTM-tagged site link for attribution

@@ -1,10 +1,15 @@
-# Reels/TikTok Scripts (15-30s) - 2026-03-08
+# Reels/TikTok Scripts (15-30s) - 2026-03-12 (EN-only)
 
 ## Format
 - Hook (0-3s)
 - Data (4-12s)
 - Insight (13-20s)
 - CTA (last 5s)
+
+Messaging frame (must stay consistent):
+- Action over dashboard overload
+- 60-second activation path
+- Signal quality over noise
 
 ## Script Pack (10)
 1. **"Market jumped while you slept"**  

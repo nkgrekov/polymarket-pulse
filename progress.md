@@ -235,6 +235,26 @@ Implementation details:
 
 ---
 
+# C2 Social Pipeline EN-Only Mode (2026-03-12)
+
+Started C2 execution with an English-only social publishing mode.
+
+Updated:
+
+• `scripts/growth/generate_social_drafts.py`  
+• `docs/social_pipeline.md`  
+• `docs/social_drafts_latest.md`  
+• `docs/reels_tiktok_scripts_2026-03-08.md`
+
+Changes:
+
+• social draft generator now supports explicit `--langs` and `--channels` filters (with validation)  
+• default workflow switched to `EN-only` (`--langs en`) for X + Threads  
+• refreshed latest social draft pack generated from live DB with EN-only posts and UTM links  
+• Reels/TikTok script pack marked as EN-only operating mode and aligned with C1 message frame
+
+---
+
 # App Store Visual Refresh (2026-03-10)
 
 Upgraded web visual system to an App Store-grade presentation while keeping the existing dark/green brand contract.
