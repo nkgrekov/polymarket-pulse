@@ -1,32 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-label="Top 3 Movers template">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Top 3 Movers">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#090a0f"/>
-      <stop offset="100%" stop-color="#0f172a"/>
+      <stop offset="0%" stop-color="#0d0f0e"/>
+      <stop offset="100%" stop-color="#101612"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00ff88" stop-opacity="0.0"/>
+      <stop offset="55%" stop-color="#00ff88" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#00ff88" stop-opacity="0.0"/>
     </linearGradient>
   </defs>
-  <rect width="1080" height="1350" fill="url(#bg)"/>
-  <rect x="60" y="60" width="960" height="1230" rx="28" fill="#10131b" stroke="#223149"/>
-  <text x="100" y="140" fill="#9cb1cc" font-size="28" font-family="Fira Code, monospace">POLYMARKET PULSE</text>
-  <text x="100" y="210" fill="#eaf1ff" font-size="64" font-family="Fira Sans, sans-serif" font-weight="700">TOP 3 LIVE MOVERS</text>
-  <text x="100" y="260" fill="#8f9ab2" font-size="28" font-family="Fira Code, monospace">Replace with latest live window data</text>
-  <g transform="translate(100,330)">
-    <rect width="880" height="250" rx="18" fill="#0f1626" stroke="#1f2c42"/>
-    <text x="30" y="70" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">1) [Question]</text>
-    <text x="30" y="130" fill="#c9daef" font-size="28" font-family="Fira Code, monospace">34.0% -> 41.0%</text>
-    <text x="720" y="130" fill="#00ff88" font-size="28" font-family="Fira Code, monospace">+7.0pp</text>
+
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="675" fill="url(#glow)"/>
+
+  <rect x="28" y="28" width="1144" height="619" rx="20" fill="#131714" stroke="#1e2520"/>
+
+  <text x="62" y="72" fill="#8fa88f" font-size="20" font-family="JetBrains Mono, monospace" letter-spacing="2">TOP MOVERS · LIVE DB FEED</text>
+  <text x="62" y="112" fill="#e8ede9" font-size="54" font-family="Space Grotesk, sans-serif" font-weight="700">{{HEADING}}</text>
+
+  <g transform="translate(62,148)">
+    <rect width="1076" height="146" rx="14" fill="#101511" stroke="#1e2520"/>
+    <text x="24" y="48" fill="#e8ede9" font-size="34" font-family="Space Grotesk, sans-serif" font-weight="600">{{Q1}}</text>
+    <text x="24" y="94" fill="#c6d3c9" font-size="30" font-family="JetBrains Mono, monospace">{{MOVE1}}</text>
+    <text x="910" y="94" fill="{{DELTA1_COLOR}}" font-size="32" font-family="JetBrains Mono, monospace" font-weight="700">{{DELTA1}}</text>
   </g>
-  <g transform="translate(100,610)">
-    <rect width="880" height="250" rx="18" fill="#0f1626" stroke="#1f2c42"/>
-    <text x="30" y="70" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">2) [Question]</text>
-    <text x="30" y="130" fill="#c9daef" font-size="28" font-family="Fira Code, monospace">48.0% -> 44.0%</text>
-    <text x="720" y="130" fill="#ff5577" font-size="28" font-family="Fira Code, monospace">-4.0pp</text>
+
+  <g transform="translate(62,314)">
+    <rect width="1076" height="146" rx="14" fill="#101511" stroke="#1e2520"/>
+    <text x="24" y="48" fill="#e8ede9" font-size="34" font-family="Space Grotesk, sans-serif" font-weight="600">{{Q2}}</text>
+    <text x="24" y="94" fill="#c6d3c9" font-size="30" font-family="JetBrains Mono, monospace">{{MOVE2}}</text>
+    <text x="910" y="94" fill="{{DELTA2_COLOR}}" font-size="32" font-family="JetBrains Mono, monospace" font-weight="700">{{DELTA2}}</text>
   </g>
-  <g transform="translate(100,890)">
-    <rect width="880" height="250" rx="18" fill="#0f1626" stroke="#1f2c42"/>
-    <text x="30" y="70" fill="#eaf1ff" font-size="34" font-family="Fira Sans, sans-serif">3) [Question]</text>
-    <text x="30" y="130" fill="#c9daef" font-size="28" font-family="Fira Code, monospace">29.0% -> 36.0%</text>
-    <text x="720" y="130" fill="#00ff88" font-size="28" font-family="Fira Code, monospace">+7.0pp</text>
+
+  <g transform="translate(62,480)">
+    <rect width="1076" height="146" rx="14" fill="#101511" stroke="#1e2520"/>
+    <text x="24" y="48" fill="#e8ede9" font-size="34" font-family="Space Grotesk, sans-serif" font-weight="600">{{Q3}}</text>
+    <text x="24" y="94" fill="#c6d3c9" font-size="30" font-family="JetBrains Mono, monospace">{{MOVE3}}</text>
+    <text x="910" y="94" fill="{{DELTA3_COLOR}}" font-size="32" font-family="JetBrains Mono, monospace" font-weight="700">{{DELTA3}}</text>
   </g>
-  <text x="100" y="1240" fill="#8f9ab2" font-size="30" font-family="Fira Sans, sans-serif">Track live in Telegram: @polymarket_pulse_bot</text>
+
+  <text x="62" y="632" fill="#8fa88f" font-size="22" font-family="JetBrains Mono, monospace">Track live in Telegram: @polymarket_pulse_bot</text>
 </svg>

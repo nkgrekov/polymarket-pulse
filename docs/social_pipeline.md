@@ -50,6 +50,54 @@ Metrics:
 - `assets/social/top3-template.svg`
 - `assets/social/breakout-template.svg`
 - `assets/social/weekly-recap-template.svg`
+- rendered cards (brand style): `assets/social/out/*.svg`
+
+## Brand render (preferred)
+Run:
+
+```bash
+PG_CONN="postgresql://..." \
+api/.venv/bin/python scripts/growth/render_social_cards.py
+```
+
+Output:
+- `assets/social/out/top3-latest.svg`
+- `assets/social/out/breakout-latest.svg`
+- `assets/social/out/weekly-latest.svg`
+- `docs/social_visuals_latest.md`
+
+## 5s shitpost video render (X/Threads/Reels test)
+Run:
+
+```bash
+PG_CONN="postgresql://..." \
+api/.venv/bin/python scripts/growth/render_shitpost_short.py
+```
+
+Output:
+- `assets/social/out/shitpost-live-5s.mp4`
+
+Notes:
+- Uses real live movers from `public.top_movers_latest`.
+- Current format is vertical `1080x1920`, 5 seconds, with branded dark/green glitch overlay.
+
+## Placid render (template-driven visuals)
+Run:
+
+```bash
+PG_CONN="postgresql://..." \
+PLACID_MCP_URL="https://mcp.placid.app/acd20e21-35dd-416d-bf42-295506237044" \
+PLACID_API_KEY="placid-..." \
+python3 scripts/growth/generate_social_visuals.py
+```
+
+Output:
+- `docs/social_visuals_latest.md`
+
+Current template mapping:
+- `top3` -> `qpfepwdjvsuxv`
+- `breakout` -> `1h9uyopu3rarv`
+- `weekly` -> `m6nbvjbbyarrj`
 
 ## Daily cadence (manual publishing)
 1. X: 2-3 posts/day (Top3 + Breakout)

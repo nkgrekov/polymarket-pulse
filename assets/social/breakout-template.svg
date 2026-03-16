@@ -1,17 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-label="Breakout template">
-  <rect width="1080" height="1350" fill="#0a0a0f"/>
-  <rect x="60" y="60" width="960" height="1230" rx="28" fill="#10131b" stroke="#223149"/>
-  <text x="100" y="140" fill="#9cb1cc" font-size="28" font-family="Fira Code, monospace">POLYMARKET PULSE</text>
-  <text x="100" y="220" fill="#eaf1ff" font-size="70" font-family="Fira Sans, sans-serif" font-weight="700">SINGLE-MARKET</text>
-  <text x="100" y="300" fill="#eaf1ff" font-size="70" font-family="Fira Sans, sans-serif" font-weight="700">BREAKOUT</text>
-  <rect x="100" y="380" width="880" height="500" rx="20" fill="#0f1626" stroke="#1f2c42"/>
-  <text x="140" y="460" fill="#eaf1ff" font-size="42" font-family="Fira Sans, sans-serif">[Market question goes here]</text>
-  <text x="140" y="560" fill="#c9daef" font-size="34" font-family="Fira Code, monospace">Prev: 32.0%</text>
-  <text x="140" y="630" fill="#c9daef" font-size="34" font-family="Fira Code, monospace">Now: 41.5%</text>
-  <text x="140" y="700" fill="#00ff88" font-size="40" font-family="Fira Code, monospace">Delta: +9.5pp</text>
-  <text x="140" y="770" fill="#8f9ab2" font-size="28" font-family="Fira Code, monospace">Window: 55m</text>
-  <rect x="100" y="930" width="880" height="170" rx="16" fill="#111a2a" stroke="#253149"/>
-  <text x="140" y="1000" fill="#d7e7ff" font-size="32" font-family="Fira Sans, sans-serif">Insight: this move is outside noise.</text>
-  <text x="140" y="1060" fill="#8f9ab2" font-size="28" font-family="Fira Code, monospace">CTA: @polymarket_pulse_bot</text>
-  <text x="100" y="1240" fill="#8f9ab2" font-size="30" font-family="Fira Sans, sans-serif">Signals > noise</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Single market breakout">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0f0e"/>
+      <stop offset="100%" stop-color="#111912"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="28" y="28" width="1144" height="619" rx="20" fill="#131714" stroke="#1e2520"/>
+
+  <text x="62" y="74" fill="#8fa88f" font-size="20" font-family="JetBrains Mono, monospace" letter-spacing="2">SINGLE BREAKOUT · SIGNAL FIRST</text>
+  <text x="62" y="120" fill="#e8ede9" font-size="54" font-family="Space Grotesk, sans-serif" font-weight="700">{{HEADING}}</text>
+
+  <rect x="62" y="156" width="1076" height="308" rx="16" fill="#101511" stroke="#1e2520"/>
+  <text x="90" y="214" fill="#e8ede9" font-size="34" font-family="Space Grotesk, sans-serif" font-weight="600">{{QUESTION}}</text>
+  <text x="90" y="274" fill="#c6d3c9" font-size="30" font-family="JetBrains Mono, monospace">Prev: {{PREV}}  →  Now: {{NOW}}</text>
+  <text x="90" y="330" fill="{{DELTA_COLOR}}" font-size="36" font-family="JetBrains Mono, monospace" font-weight="700">Δ {{DELTA}}</text>
+  <text x="90" y="380" fill="#8fa88f" font-size="26" font-family="JetBrains Mono, monospace">Window: {{WINDOW}}</text>
+  <text x="90" y="430" fill="#8fa88f" font-size="24" font-family="JetBrains Mono, monospace">Market: {{MARKET_ID}}</text>
+
+  <rect x="62" y="490" width="1076" height="136" rx="14" fill="#101511" stroke="#1e2520"/>
+  <text x="90" y="548" fill="#e8ede9" font-size="30" font-family="Space Grotesk, sans-serif" font-weight="600">{{INSIGHT}}</text>
+  <text x="90" y="596" fill="#8fa88f" font-size="24" font-family="JetBrains Mono, monospace">Open Telegram Bot → @polymarket_pulse_bot</text>
 </svg>
