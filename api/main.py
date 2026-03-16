@@ -483,8 +483,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     screen_label = "Screen" if lang == "en" else "Экран"
     page_view_js_lang = "en" if lang == "en" else "ru"
     base = base_url()
-    canonical_url = f"{base}/{slug}"
-    lang_url = f"{base}/{slug}{home_q}"
+    lang_param = "ru" if lang == "ru" else "en"
+    canonical_url = f"{base}/{slug}?lang={lang_param}"
+    lang_url = canonical_url
     alt_lang_url = f"{base}/{slug}{alt_q}"
     x_default_url = f"{base}/{slug}?lang=en"
     og_image_url = f"{base}/og-card.svg"
@@ -1877,30 +1878,29 @@ def robots() -> PlainTextResponse:
 @app.get("/sitemap.xml")
 def sitemap() -> Response:
     u = base_url()
-    extra_urls = "".join(
-        f"  <url><loc>{u}/{slug}?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/{slug}?lang=ru</loc></url>\n"
-        for slug in SEO_PAGES
-    )
-    docs_urls = (
-        f"  <url><loc>{u}/how-it-works?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/how-it-works?lang=ru</loc></url>\n"
-        f"  <url><loc>{u}/commands?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/commands?lang=ru</loc></url>\n"
-        f"  <url><loc>{u}/trader-bot?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/trader-bot?lang=ru</loc></url>\n"
-    )
+
+    def sitemap_entry(path: str, lang: str) -> str:
+        alt_lang = "ru" if lang == "en" else "en"
+        resolved_path = path or "/"
+        href = f"{u}{resolved_path}?lang={lang}"
+        alt_href = f"{u}{resolved_path}?lang={alt_lang}"
+        x_default_href = f"{u}{resolved_path}?lang=en"
+        return (
+            "  <url>\n"
+            f"    <loc>{href}</loc>\n"
+            f'    <xhtml:link rel="alternate" hreflang="{lang}" href="{href}" />\n'
+            f'    <xhtml:link rel="alternate" hreflang="{alt_lang}" href="{alt_href}" />\n'
+            f'    <xhtml:link rel="alternate" hreflang="x-default" href="{x_default_href}" />\n'
+            "  </url>\n"
+        )
+
+    content_urls = ["", *[f"/{slug}" for slug in SEO_PAGES], "/how-it-works", "/commands", "/trader-bot"]
+    entries = "".join(sitemap_entry(path, lang) for path in content_urls for lang in ("en", "ru"))
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"  <url><loc>{u}/?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/?lang=ru</loc></url>\n"
-        f"  <url><loc>{u}/privacy?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/privacy?lang=ru</loc></url>\n"
-        f"  <url><loc>{u}/terms?lang=en</loc></url>\n"
-        f"  <url><loc>{u}/terms?lang=ru</loc></url>\n"
-        f"{docs_urls}"
-        f"{extra_urls}"
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        f"{entries}"
         "</urlset>\n"
     )
     return Response(content=content, media_type="application/xml")

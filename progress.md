@@ -14,6 +14,42 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# GSC Indexing Hygiene Pass (2026-03-16)
+
+Addressed the first structural SEO inconsistency that was hurting indexing clarity in Google Search Console.
+
+What was wrong before:
+
+• sitemap listed localized `?lang=en|ru` URLs
+• many page templates declared canonical URLs without the `?lang=` parameter
+• Google therefore saw part of the site as "localized URL in sitemap" vs "different canonical target"
+• legal pages (`/privacy`, `/terms`) were also spending crawl attention despite not being acquisition pages
+
+What was changed:
+
+• `api/main.py` sitemap now emits a single consistent set of localized URLs with `xhtml:link` hreflang alternates
+• SEO page renderer now uses self-canonical localized URLs for query-param language variants
+• static templates for:
+  - landing
+  - commands
+  - how-it-works
+  - trader-bot
+  now self-canonicalize to their own `?lang=` URL and align OG metadata to the same URL
+• `/privacy` and `/terms` were downgraded to `noindex,follow`
+• legal pages were removed from sitemap so crawl budget stays focused on acquisition/intent pages
+
+Expected outcome:
+
+• fewer "canonical variant" signals in GSC
+• clearer indexing contract for English/Russian content pages
+• better crawl focus on homepage, intent pages, `/telegram-bot`, `/trader-bot`, `/commands`, and `/how-it-works`
+
+Important note:
+
+• GSC redirect examples for `http://` and `www.` are still normal and expected as long as they resolve to `https://polymarketpulse.app/`
+
+---
+
 # Signer Session Layer V0 (2026-03-15)
 
 Added the first signer/delegation bridge for the sibling `Trader` product.
@@ -133,6 +169,15 @@ Follow-up UX tightening:
   - when `/watchlist` or `/inbox` are empty, the bot now proposes up to 2 one-tap live replacement candidates instead of dead-ending on text-only fallback
   - execution handoff from `Pulse` no longer routes through the website when triggered inside Telegram; it now deep-links directly into `@PolymarketPulse_trader_bot`
   - reply keyboard in `Pulse` now uses human-readable labels instead of raw slash commands, with internal text routing kept in bot handlers
+  - recovery candidates can now act as true replacements when watchlist is already full:
+    - bot removes the oldest/closed market first
+    - then inserts the live candidate
+    - user gets replacement confirmation instead of a limit error
+  - `/plan` is now shorter and more action-oriented:
+    - current usage first
+    - then either remaining FREE slots or current PRO advantage
+    - action buttons for add / threshold / upgrade / trade
+  - `/upgrade` now reuses the same action-oriented button layer instead of ending as isolated payment copy
 • `Trader` signer path is now easier to read without opening `/signer` every time:
   - `/connect` includes signer state summary (`not_started`, `opened`, `signed`, `verified`)
   - `/risk` includes the same signer-state summary next to wallet readiness

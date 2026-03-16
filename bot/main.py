@@ -622,6 +622,21 @@ where user_id = %s::uuid
   and market_id = %s;
 """
 
+SQL_WATCHLIST_REPLACE_TARGET = """
+select
+  w.market_id,
+  m.question,
+  coalesce(m.status, 'active') as status,
+  w.created_at
+from bot.watchlist w
+join public.markets m on m.market_id = w.market_id
+where w.user_id = %s::uuid
+order by
+  case when coalesce(m.status, 'active') = 'closed' then 0 else 1 end,
+  w.created_at asc
+limit 1;
+"""
+
 SQL_WATCHLIST_REMOVE_CLOSED = """
 delete from bot.watchlist w
 using public.markets m
@@ -1170,6 +1185,34 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
+def plan_action_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarkup:
+    if pro:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                    InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+                ],
+                [
+                    InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+                    InlineKeyboardButton("Trade" if locale == "en" else "Трейд", callback_data="menu:trade"),
+                ],
+            ]
+        )
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Upgrade" if locale == "en" else "Апгрейд", callback_data="menu:upgrade"),
+            ],
+            [
+                InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+                InlineKeyboardButton("Trade" if locale == "en" else "Трейд", callback_data="menu:trade"),
+            ],
+        ]
+    )
+
+
 async def build_recovery_inline(
     message,
     context: ContextTypes.DEFAULT_TYPE,
@@ -1195,6 +1238,8 @@ async def build_recovery_inline(
 
     chat_id = message.chat_id
     picker_map = context.application.bot_data.setdefault("picker_map", {})
+    limit = watchlist_limit_for_plan(str(user_ctx.get("plan") or "free"))
+    replace_mode = int(user_ctx.get("watchlist_count") or 0) >= limit
     buttons: list[list[InlineKeyboardButton]] = []
     for row in rows[:2]:
         market_id = str(row["market_id"])
@@ -1203,7 +1248,7 @@ async def build_recovery_inline(
         delta = row.get("delta_yes")
         prefix = _fmt_num(delta, 3, signed=True) if delta is not None else "LIVE"
         label = f"{prefix} | {(row.get('question') or 'n/a')[:28]}".strip()
-        buttons.append([InlineKeyboardButton(label, callback_data=f"wlpick:{token}")])
+        buttons.append([InlineKeyboardButton(label, callback_data=f"{'wlreplace' if replace_mode else 'wlpick'}:{token}")])
     buttons.append(
         [
             InlineKeyboardButton("Top movers", callback_data="menu:movers"),
@@ -1637,6 +1682,37 @@ def cleanup_closed_watchlist_sync(user_id: str) -> int:
             deleted = cur.rowcount or 0
         conn.commit()
     return int(deleted)
+
+
+def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> str:
+    market_rows = run_db_query(SQL_MARKET_BRIEF, (market_id,), row_factory=dict_row)
+    if not market_rows:
+        return "Market not found." if locale == "en" else "Рынок не найден."
+
+    exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
+    if exists:
+        return "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist."
+
+    target_rows = run_db_query(SQL_WATCHLIST_REPLACE_TARGET, (user_ctx["user_id"],), row_factory=dict_row)
+    if not target_rows:
+        return add_watchlist_market_sync(user_ctx, market_id, locale=locale)
+
+    target = target_rows[0]
+    execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], target["market_id"]))
+    execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    if locale == "en":
+        return (
+            f"Replaced watchlist market: {target['market_id']} -> {market_id}\n"
+            f"Removed: {target['question']}\n"
+            f"Added: {market_rows[0]['question']}\n"
+            "Next: open Watchlist or Inbox to check if the new market is more active."
+        )
+    return (
+        f"Заменил рынок в watchlist: {target['market_id']} -> {market_id}\n"
+        f"Убрали: {target['question']}\n"
+        f"Добавили: {market_rows[0]['question']}\n"
+        "Дальше: откройте Watchlist или Inbox и проверьте, стал ли новый рынок активнее."
+    )
 
 
 def _picker_category_label(category: str) -> str:
@@ -2156,31 +2232,24 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Failed to read profile." if locale == "en" else "Не удалось прочитать профиль.")
         return
 
-    await update.message.reply_text(
-        (
-            "Current status:\n"
-            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-            f"PRO offer: up to {PRO_WATCHLIST_LIMIT} markets + email digest, "
-            f"about ${PRO_MONTHLY_USD}/month in Telegram Stars.\n\n"
-            "Next step:\n"
-            "1) Add a market via /watchlist_add\n"
-            "2) Set threshold via /threshold 0.03\n"
-            "3) Upgrade: /upgrade\n"
-            "4) Execution alpha: /trade\n\n"
-            f"{plan_upgrade_hint(update)}"
+    is_pro = str(user_ctx.get("plan") or "free") == "pro"
+    watchlist_left = max(0, watchlist_limit_for_plan(str(user_ctx.get("plan") or "free")) - int(user_ctx.get("watchlist_count") or 0))
+    text = (
+        "Current plan\n\n"
+        f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+        + (
+            f"FREE gives you {watchlist_left} watchlist slot(s) left today.\n"
+            f"PRO unlocks {PRO_WATCHLIST_LIMIT} markets, unlimited alerts, and email digest."
+            if not is_pro and locale == "en"
+            else f"До лимита FREE сейчас осталось {watchlist_left} слота(ов) в watchlist.\n"
+            f"PRO открывает {PRO_WATCHLIST_LIMIT} рынков, безлимитные алерты и email-дайджест."
+            if not is_pro
+            else "You already have PRO. Best next step: add another market or tighten threshold."
             if locale == "en"
-            else "Текущий статус:\n"
-            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-            f"PRO оффер: до {PRO_WATCHLIST_LIMIT} рынков + email-дайджест, эквивалент ${PRO_MONTHLY_USD}/мес в Telegram Stars.\n\n"
-            "Следующий шаг:\n"
-            "1) Добавьте рынок через /watchlist_add\n"
-            "2) Настройте порог через /threshold 0.03\n"
-            "3) Для PRO: /upgrade\n"
-            "4) Для execution alpha: /trade\n\n"
-            f"{plan_upgrade_hint(update)}"
-        ),
-        reply_markup=main_menu_inline(),
+            else "У вас уже PRO. Лучший следующий шаг: добавить ещё рынок или подтянуть threshold."
+        )
     )
+    await update.message.reply_text(text, reply_markup=plan_action_inline(locale, pro=is_pro))
 
 
 async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2237,6 +2306,7 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upgrade_pitch_text(update),
         parse_mode="HTML",
         disable_web_page_preview=True,
+        reply_markup=plan_action_inline(locale, pro=False),
     )
     try:
         invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx, locale=locale)
@@ -2583,6 +2653,19 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 disable_web_page_preview=True,
             )
         return
+    if data == "menu:trade":
+        user_ctx = await resolve_user_context(update)
+        try:
+            await asyncio.to_thread(log_trade_interest_sync, update, user_ctx, market_id=None, source="pulse_bot_menu")
+        except Exception:
+            log.exception("menu trade interest insert failed")
+        await query.message.reply_text(
+            trade_pitch_text(update),
+            parse_mode="HTML",
+            reply_markup=trader_alpha_keyboard(locale=locale, placement="bot_trade_menu"),
+            disable_web_page_preview=True,
+        )
+        return
     if data == "menu:help":
         await query.message.reply_text("Command list: /help" if locale == "en" else "Список команд: /help")
         return
@@ -2647,6 +2730,22 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
+        await query.message.reply_text(result, reply_markup=watchlist_added_inline(locale))
+        return
+    if data.startswith("wlreplace:"):
+        token = data.split(":", 1)[1]
+        chat_key = f"{query.message.chat_id}:{token}"
+        picker_map = context.application.bot_data.get("picker_map", {})
+        market_id = picker_map.get(chat_key)
+        if not market_id:
+            await query.message.reply_text(
+                "Replacement item is expired. Open /menu and retry."
+                if locale == "en"
+                else "Элемент замены устарел. Откройте /menu и повторите."
+            )
+            return
+        user_ctx = await resolve_user_context(update)
+        result = await asyncio.to_thread(replace_watchlist_market_sync, user_ctx, market_id, locale=locale)
         await query.message.reply_text(result, reply_markup=watchlist_added_inline(locale))
         return
 

@@ -14,6 +14,44 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Search Indexing Contract Pass (2026-03-16)
+
+The public site now uses a more explicit indexing contract for localized pages.
+
+Previous inconsistency:
+
+• localized pages were discoverable and listed in sitemap as `?lang=en|ru`
+• several templates and the SEO renderer pointed canonical URLs to the same path without the query parameter
+• this created a weak duplicate/variant signal for Google on a young domain
+
+Current contract:
+
+• acquisition/content pages self-canonicalize to their own localized URL
+  - `/?lang=en`
+  - `/?lang=ru`
+  - `/<slug>?lang=en|ru`
+• `hreflang` alternates remain explicit for `en`, `ru`, and `x-default`
+• sitemap now includes only indexable acquisition/content surfaces:
+  - homepage
+  - SEO intent pages
+  - `/how-it-works`
+  - `/commands`
+  - `/trader-bot`
+• sitemap now includes `xhtml:link` hreflang alternates per URL entry
+
+Legal-page contract:
+
+• `/privacy` and `/terms` remain available to users
+• but they are now `noindex,follow`
+• they are intentionally excluded from sitemap so crawl focus remains on acquisition and product pages
+
+Operational implication:
+
+• GSC redirect reports for `http://` and `www.` should still be treated as normal canonicalization behavior
+• the meaningful indexing KPI is whether the canonical localized URLs start moving from "discovered" into "indexed"
+
+---
+
 # Signer Session Layer (2026-03-15)
 
 Execution alpha now includes a dedicated signer-session bridge between `trader_bot` and the main site runtime.
@@ -149,7 +187,15 @@ Pulse post-add flow extension:
   - `/watchlist` and `/inbox` can render up to 2 one-tap live replacement candidates
   - fallback still keeps access to `Top movers` and full picker
   - closed-market cleanup action remains available when relevant
+• recovery candidates now support watchlist replacement semantics:
+  - if user is already at watchlist limit, callback path switches from `add` to `replace`
+  - replacement target is selected deterministically from current watchlist (`closed` first, then oldest)
+  - this avoids dead-end limit errors in first-value recovery states
 • execution handoff from `Pulse` inline surfaces now uses a Telegram deep-link into `@PolymarketPulse_trader_bot` instead of bouncing the user through the website inside Telegram
+• `/plan` and `/upgrade` are now treated as activation surfaces, not just information surfaces:
+  - current usage is summarized first
+  - next action buttons are embedded directly in the reply
+  - this keeps upgrade/threshold/add flows one tap away from plan-state inspection
 
 Trader signer-state extension:
 
