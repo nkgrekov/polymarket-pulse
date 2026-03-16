@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from urllib.parse import quote
 
 import psycopg
 from dotenv import load_dotenv
@@ -50,6 +51,7 @@ TELEGRAM_STARS_PRICE_XTR = int(os.environ.get("TELEGRAM_STARS_PRICE_XTR", "454")
 PRO_STARS_PAYLOAD_PREFIX = "pro_monthly_stars"
 WATCHLIST_PICKER_MIN_LIQUIDITY = Decimal(os.environ.get("WATCHLIST_PICKER_MIN_LIQUIDITY", "1000"))
 TRADER_ALPHA_URL = os.environ.get("TRADER_ALPHA_URL", "https://polymarketpulse.app/trader-bot")
+TRADER_BOT_USERNAME = os.environ.get("TRADER_BOT_USERNAME", "PolymarketPulse_trader_bot")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -1011,10 +1013,14 @@ def build_trader_alpha_url(
     market_id: str | None = None,
 ) -> str:
     lang = "en" if locale == "en" else "ru"
-    url = f"{TRADER_ALPHA_URL}?lang={lang}&placement={placement}"
+    placement_safe = "".join(ch if ch.isalnum() or ch in {"_", "-"} else "-" for ch in placement)[:24]
+    parts = [f"lang-{lang}", f"src-{placement_safe}"]
     if market_id:
-        url += f"&market_id={market_id}"
-    return url
+        market_safe = "".join(ch for ch in str(market_id) if ch.isalnum() or ch in {"_", "-"})[:24]
+        if market_safe:
+            parts.append(f"m-{market_safe}")
+    payload = "_".join(parts)[:64]
+    return f"tg://resolve?domain={TRADER_BOT_USERNAME}&start={quote(payload)}"
 
 
 def trade_pitch_text(update: Update, *, market_id: str | None = None) -> str:
@@ -1164,13 +1170,65 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
-def quick_reply_keyboard() -> ReplyKeyboardMarkup:
+async def build_recovery_inline(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    user_ctx: dict,
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
+    try:
+        rows = await fetch_watchlist_picker_candidates_async(
+            user_id=user_ctx["user_id"], category="all", limit=2, timeout_sec=10.0
+        )
+    except Exception:
+        log.exception("recovery picker failed")
+        rows = []
+
+    if not rows:
+        return InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+            ]]
+        )
+
+    chat_id = message.chat_id
+    picker_map = context.application.bot_data.setdefault("picker_map", {})
+    buttons: list[list[InlineKeyboardButton]] = []
+    for row in rows[:2]:
+        market_id = str(row["market_id"])
+        token = _picker_token(chat_id, market_id)
+        picker_map[f"{chat_id}:{token}"] = market_id
+        delta = row.get("delta_yes")
+        prefix = _fmt_num(delta, 3, signed=True) if delta is not None else "LIVE"
+        label = f"{prefix} | {(row.get('question') or 'n/a')[:28]}".strip()
+        buttons.append([InlineKeyboardButton(label, callback_data=f"wlpick:{token}")])
+    buttons.append(
+        [
+            InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+            InlineKeyboardButton("Full picker" if locale == "en" else "Полный picker", callback_data="menu:pick"),
+        ]
+    )
+    return InlineKeyboardMarkup(buttons)
+
+
+def quick_reply_keyboard(locale: str = "ru") -> ReplyKeyboardMarkup:
+    labels = (
+        [
+            ["Top movers", "Watchlist"],
+            ["Inbox", "Plan"],
+            ["Menu", "Upgrade"],
+        ]
+        if locale == "en"
+        else [
+            ["Топ муверы", "Вотчлист"],
+            ["Инбокс", "План"],
+            ["Меню", "Апгрейд"],
+        ]
+    )
     return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton("/movers"), KeyboardButton("/watchlist")],
-            [KeyboardButton("/inbox"), KeyboardButton("/plan")],
-            [KeyboardButton("/menu"), KeyboardButton("/upgrade")],
-        ],
+        keyboard=[[KeyboardButton(cell) for cell in row] for row in labels],
         resize_keyboard=True,
     )
 
@@ -1313,7 +1371,13 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
 
 
 async def send_inbox_view(
-    message, user_ctx: dict, *, locale: str = "ru", limit: int = 10, show_loader: bool = True
+    message,
+    user_ctx: dict,
+    *,
+    locale: str = "ru",
+    limit: int = 10,
+    show_loader: bool = True,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
     if show_loader:
         await message.reply_text("Reading your inbox..." if locale == "en" else "Читаю ваш inbox...")
@@ -1358,14 +1422,19 @@ async def send_inbox_view(
             )
         else:
             reason = "No alerts in the current window." if locale == "en" else "Нет алертов в текущем окне."
-        await message.reply_text(
-            reason + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}"),
-            reply_markup=InlineKeyboardMarkup(
+        reply_markup = (
+            await build_recovery_inline(message, context, user_ctx, locale=locale)
+            if context is not None
+            else InlineKeyboardMarkup(
                 [[
                     InlineKeyboardButton("Top movers", callback_data="menu:movers"),
                     InlineKeyboardButton("Change threshold" if locale == "en" else "Сменить threshold", callback_data="menu:threshold"),
                 ]]
-            ),
+            )
+        )
+        await message.reply_text(
+            reason + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}"),
+            reply_markup=reply_markup,
         )
         return
 
@@ -1380,7 +1449,14 @@ async def send_inbox_view(
     )
 
 
-async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", show_loader: bool = True) -> None:
+async def send_watchlist_view(
+    message,
+    user_ctx: dict,
+    *,
+    locale: str = "ru",
+    show_loader: bool = True,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
+) -> None:
     if show_loader:
         await message.reply_text(
             "Checking live changes in your watchlist..." if locale == "en" else "Смотрю live изменения вашего watchlist..."
@@ -1445,6 +1521,23 @@ async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", sh
         except Exception:
             log.exception("watchlist diagnostics failed")
             diag = {}
+        reply_markup = (
+            await build_recovery_inline(message, context, user_ctx, locale=locale)
+            if context is not None
+            else InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                        InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+                    ],
+                    [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")],
+                ]
+            )
+        )
+        if context is not None and int(diag.get("wl_closed", 0) or 0) > 0:
+            rows = list(reply_markup.inline_keyboard)
+            rows.append([InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")])
+            reply_markup = InlineKeyboardMarkup(rows)
         await message.reply_text(
             (
                 "No live changes in your watchlist right now.\n"
@@ -1455,15 +1548,7 @@ async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", sh
                 f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
                 f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}"
             ),
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
-                        InlineKeyboardButton("Top movers", callback_data="menu:movers"),
-                    ],
-                    [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")],
-                ]
-            ),
+            reply_markup=reply_markup,
         )
         return
 
@@ -1976,7 +2061,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/upgrade — как перейти на PRO\n"
             "/trade — execution alpha"
         ),
-        reply_markup=quick_reply_keyboard(),
+        reply_markup=quick_reply_keyboard(locale),
     )
     await update.message.reply_text(
         (
@@ -2243,7 +2328,14 @@ async def cmd_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE, limit: i
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await send_inbox_view(update.message, user_ctx, locale=locale_from_update(update), limit=limit, show_loader=True)
+    await send_inbox_view(
+        update.message,
+        user_ctx,
+        locale=locale_from_update(update),
+        limit=limit,
+        show_loader=True,
+        context=context,
+    )
 
 
 async def cmd_inbox10(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2258,7 +2350,13 @@ async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     user_ctx = await resolve_user_context(update)
-    await send_watchlist_view(update.message, user_ctx, locale=locale_from_update(update), show_loader=True)
+    await send_watchlist_view(
+        update.message,
+        user_ctx,
+        locale=locale_from_update(update),
+        show_loader=True,
+        context=context,
+    )
 
 
 async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2404,6 +2502,33 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def on_menu_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if not message or not message.text:
+        return
+    text = message.text.strip()
+    routes = {
+        "Top movers": cmd_movers,
+        "Топ муверы": cmd_movers,
+        "Watchlist": cmd_watchlist,
+        "Вотчлист": cmd_watchlist,
+        "Inbox": cmd_inbox10,
+        "Инбокс": cmd_inbox10,
+        "Plan": cmd_plan,
+        "План": cmd_plan,
+        "Menu": cmd_menu,
+        "Меню": cmd_menu,
+        "Upgrade": cmd_upgrade,
+        "Апгрейд": cmd_upgrade,
+        "Help": cmd_help,
+        "Помощь": cmd_help,
+    }
+    handler = routes.get(text)
+    if handler is None:
+        return
+    await handler(update, context)
+
+
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query or not query.message:
@@ -2417,11 +2542,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if data == "menu:watchlist":
         user_ctx = await resolve_user_context(update)
-        await send_watchlist_view(query.message, user_ctx, locale=locale, show_loader=False)
+        await send_watchlist_view(query.message, user_ctx, locale=locale, show_loader=False, context=context)
         return
     if data == "menu:inbox":
         user_ctx = await resolve_user_context(update)
-        await send_inbox_view(query.message, user_ctx, locale=locale, limit=10, show_loader=False)
+        await send_inbox_view(query.message, user_ctx, locale=locale, limit=10, show_loader=False, context=context)
         return
     if data == "menu:plan":
         user_ctx = await resolve_user_context(update)
@@ -2721,6 +2846,7 @@ if __name__ == "__main__":
     app.add_handler(PreCheckoutQueryHandler(on_precheckout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, on_successful_payment))
     app.add_handler(CallbackQueryHandler(on_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_menu_text))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
     log.info("Starting bot polling for @polymarket_pulse_bot")
     app.run_polling(drop_pending_updates=True)

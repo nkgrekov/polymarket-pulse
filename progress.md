@@ -130,10 +130,15 @@ Follow-up UX tightening:
     - no quotes yet
     - already closed
   - `/start` empty-watchlist onboarding still renders up to 3 one-tap live candidates first
+  - when `/watchlist` or `/inbox` are empty, the bot now proposes up to 2 one-tap live replacement candidates instead of dead-ending on text-only fallback
+  - execution handoff from `Pulse` no longer routes through the website when triggered inside Telegram; it now deep-links directly into `@PolymarketPulse_trader_bot`
+  - reply keyboard in `Pulse` now uses human-readable labels instead of raw slash commands, with internal text routing kept in bot handlers
 • `Trader` signer path is now easier to read without opening `/signer` every time:
   - `/connect` includes signer state summary (`not_started`, `opened`, `signed`, `verified`)
   - `/risk` includes the same signer-state summary next to wallet readiness
   - this makes the path `connect -> signer -> approval -> ready_for_dry_run` visible directly in the bot surface
+  - `/start` now also shows current execution readiness when a primary wallet already exists, so returning alpha users immediately see whether they are blocked, pending, or ready
+  - reply keyboard in `Trader` now uses human-readable labels instead of raw slash commands, with text taps routed to the existing command handlers
 
 ---
 

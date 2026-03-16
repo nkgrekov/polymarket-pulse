@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 load_dotenv()
 
@@ -579,13 +579,22 @@ def txt(lang: str, key: str, **kwargs: Any) -> str:
     return template.format(**kwargs)
 
 
-def main_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
+def main_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    labels = (
         [
-            ["/markets", "/positions"],
-            ["/rules", "/connect"],
-            ["/agent", "/help"],
-        ],
+            ["Markets", "Positions"],
+            ["Rules", "Connect wallet"],
+            ["Agent", "Help"],
+        ]
+        if lang == "en"
+        else [
+            ["Рынки", "Позиции"],
+            ["Правила", "Подключить кошелёк"],
+            ["Агент", "Помощь"],
+        ]
+    )
+    return ReplyKeyboardMarkup(
+        labels,
         resize_keyboard=True,
     )
 
@@ -871,12 +880,28 @@ def order_guard_reason(lang: str, guard: dict[str, Any], usd: Decimal) -> str | 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id, account_id, lang = resolve_identity(update)
-    log_event(user_id, account_id, "start", {"entry": "start"})
+    payload = context.args[0] if context.args else None
+    log_event(user_id, account_id, "start", {"entry": "start", "payload": payload})
+    wallet = db_fetch_one(SQL_PRIMARY_WALLET, (account_id,))
     await update.effective_message.reply_text(
         txt(lang, "start"),
         parse_mode="HTML",
-        reply_markup=main_keyboard(),
+        reply_markup=main_keyboard(lang),
     )
+    if wallet:
+        await update.effective_message.reply_text(
+            (
+                "<b>Current execution readiness</b>\n\n"
+                if lang == "en"
+                else "<b>Текущая execution readiness</b>\n\n"
+            )
+            + render_wallet_status(lang, wallet)
+            + "\n"
+            + wallet_next_line(lang, wallet)
+            + "\n"
+            + signer_status_summary(lang, account_id, wallet),
+            parse_mode="HTML",
+        )
     await update.effective_message.reply_text(
         txt(lang, "help"),
         parse_mode="HTML",
@@ -888,7 +913,32 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id, account_id, lang = resolve_identity(update)
     log_event(user_id, account_id, "help_open")
-    await update.effective_message.reply_text(txt(lang, "help"), parse_mode="HTML", reply_markup=main_keyboard())
+    await update.effective_message.reply_text(txt(lang, "help"), parse_mode="HTML", reply_markup=main_keyboard(lang))
+
+
+async def on_menu_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.effective_message
+    if not message or not message.text:
+        return
+    text = message.text.strip()
+    routes = {
+        "Markets": cmd_markets,
+        "Рынки": cmd_markets,
+        "Positions": cmd_positions,
+        "Позиции": cmd_positions,
+        "Rules": cmd_rules,
+        "Правила": cmd_rules,
+        "Connect wallet": cmd_connect,
+        "Подключить кошелёк": cmd_connect,
+        "Agent": cmd_agent,
+        "Агент": cmd_agent,
+        "Help": cmd_help,
+        "Помощь": cmd_help,
+    }
+    handler = routes.get(text)
+    if handler is None:
+        return
+    await handler(update, context)
 
 
 async def cmd_connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1282,6 +1332,7 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("risk", cmd_risk))
     app.add_handler(CommandHandler("pause", cmd_pause))
     app.add_handler(CommandHandler("agent", cmd_agent))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_menu_text))
     return app
 
 

@@ -145,6 +145,11 @@ Pulse post-add flow extension:
   - has no quotes in `last+prev`
   - is already closed
 • this keeps activation honest: user sees immediately whether the chosen market is ready for signal surfaces or likely to stay quiet for now
+• empty-state recovery is now action-oriented:
+  - `/watchlist` and `/inbox` can render up to 2 one-tap live replacement candidates
+  - fallback still keeps access to `Top movers` and full picker
+  - closed-market cleanup action remains available when relevant
+• execution handoff from `Pulse` inline surfaces now uses a Telegram deep-link into `@PolymarketPulse_trader_bot` instead of bouncing the user through the website inside Telegram
 
 Trader signer-state extension:
 
@@ -155,6 +160,9 @@ Trader signer-state extension:
   - `signed`
   - `verified`
 • this makes the alpha approval funnel legible without exposing internal DB terminology or requiring site navigation on every check
+• `/start` now also includes current execution readiness when a primary wallet already exists, so returning users see status before diving into deeper commands
+• both bots now use human-labeled reply keyboards rather than slash-command text on the keyboard surface
+• a thin text-routing layer maps those labels back into the same command handlers, so the UX is cleaner without changing bot logic contracts
 
 ---
 
