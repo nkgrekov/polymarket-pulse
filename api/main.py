@@ -60,13 +60,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "dashboard": {
         "en": {
-            "title": "Polymarket Dashboard Alternative - Signal Feed | Polymarket Pulse",
-            "description": "A simple Polymarket dashboard alternative focused on live movers, watchlists, and actionable alerts.",
-            "h1": "A dashboard alternative for normal users.",
-            "intro": "No complex terminal required. Open Telegram and see what actually moved right now.",
-            "k1": "One feed for movers, inbox, and watchlist",
-            "k2": "Clear delta + time window for each signal",
-            "k3": "Freemium model with upgrade path to Pro",
+            "title": "Polymarket Dashboard Alternative - Fast Signals, Not Dashboard Overload",
+            "description": "A Polymarket dashboard alternative built for action: live movers, watchlists, and clear Telegram alerts without terminal overload.",
+            "h1": "A Polymarket dashboard alternative built for action.",
+            "intro": "Skip the widget sprawl. Pulse gives you one fast surface for movers, watchlist deltas, and inbox signals so you can react instead of browsing.",
+            "k1": "One feed for movers, inbox, and watchlist deltas",
+            "k2": "Clear delta plus time-window context on every signal",
+            "k3": "Freemium path into Pro without dashboard clutter",
         },
         "ru": {
             "title": "Альтернатива Polymarket dashboard - signal feed | Polymarket Pulse",
@@ -120,13 +120,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "top-movers": {
         "en": {
-            "title": "Polymarket Top Movers - Live Probability Shifts",
-            "description": "See Polymarket top movers by probability change and track market momentum via Telegram.",
-            "h1": "Top movers in one tap.",
-            "intro": "When the short window is flat, fallback logic surfaces the strongest 1h moves.",
-            "k1": "Latest window movers with delta",
-            "k2": "1h fallback when market is flat",
-            "k3": "Direct add-to-watchlist flow",
+            "title": "Polymarket Top Movers - Fastest Live Probability Shifts",
+            "description": "See Polymarket top movers by probability change, catch the fastest repricing, and push the move straight into Telegram.",
+            "h1": "Catch the fastest movers before the tab crowd does.",
+            "intro": "When a live window wakes up, Pulse surfaces the move fast. When it stays flat, fallback logic expands the view instead of faking activity.",
+            "k1": "Latest repricing window ranked by meaningful delta",
+            "k2": "Adaptive fallback when the short window is quiet",
+            "k3": "One-tap move from mover to watchlist tracking",
         },
         "ru": {
             "title": "Polymarket Top Movers - live сдвиги вероятностей",
@@ -140,13 +140,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "watchlist-alerts": {
         "en": {
-            "title": "Polymarket Watchlist Alerts - Custom Market Tracking",
-            "description": "Create your Polymarket watchlist and get custom Telegram alerts when selected markets move.",
-            "h1": "Watchlist alerts that stay actionable.",
-            "intro": "Add the markets that matter to you and tune sensitivity with per-user threshold.",
-            "k1": "Free plan: 3 markets and 20 alerts/day",
-            "k2": "Pro plan: 20 watchlist markets, unlimited alerts, email digest",
-            "k3": "Clear /plan and /upgrade flow in Telegram",
+            "title": "Polymarket Watchlist Alerts - Low-Noise Market Tracking in Telegram",
+            "description": "Build a Polymarket watchlist, tune your threshold, and get low-noise Telegram alerts when selected markets actually move.",
+            "h1": "Watchlist alerts for markets you actually care about.",
+            "intro": "Pin the markets that matter, set your own threshold, and let Telegram surface only the repricing worth reacting to.",
+            "k1": "Free plan: 3 markets and 20 alerts per day",
+            "k2": "Pro plan: 20 markets, unlimited alerts, email digest",
+            "k3": "Clear /plan and /upgrade path inside the bot",
         },
         "ru": {
             "title": "Polymarket Watchlist Alerts - кастомное отслеживание рынков",
@@ -305,6 +305,10 @@ SEO_PAGE_LINKS: dict[str, list[str]] = {
 }
 
 SEO_PAGE_CTA_NOTE: dict[str, dict[str, str]] = {
+    "dashboard": {
+        "en": "Use the bot for the move itself, not for another dashboard tab that waits to be ignored.",
+        "ru": "Используйте бота ради самого движения, а не ради ещё одной dashboard-вкладки, которую легко забыть.",
+    },
     "analytics": {
         "en": "Open the bot, pin one market, and see whether the latest repricing actually deserves attention.",
         "ru": "Откройте бота, закрепите один рынок и сразу увидите, заслуживает ли последнее движение внимания.",

@@ -52,6 +52,23 @@ Operational implication:
 
 ---
 
+# Full EN Acquisition Copy Consistency (2026-03-16)
+
+The shared SEO renderer now carries a more consistent action-first copy layer across the full English acquisition set.
+
+Additional surfaces aligned in this pass:
+
+• `/dashboard`
+• `/top-movers`
+• `/watchlist-alerts`
+
+Renderer implication:
+
+• the same page-aware CTA note and conversion copy model now spans the complete EN acquisition set, not just the initial high-intent trio
+• this reduces messaging drift between intent pages and keeps the acquisition layer closer to the actual Telegram-first product flow
+
+---
+
 # EN Intent CTR Layer (2026-03-16)
 
 The FastAPI-rendered SEO pages now carry a slightly stronger conversion contract on the highest-intent English surfaces.

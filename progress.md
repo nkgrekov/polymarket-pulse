@@ -50,6 +50,30 @@ Important note:
 
 ---
 
+# Remaining EN Intent Pages Copy Pass (2026-03-16)
+
+Closed the same CTR/copy gap on the remaining English acquisition pages.
+
+Pages tightened:
+
+• `/dashboard`
+• `/top-movers`
+• `/watchlist-alerts`
+
+What changed:
+
+• stronger search-facing titles and descriptions
+• H1/intro copy now leans into action, speed, and low-noise market tracking
+• clearer feature bullets around adaptive windows, watchlist flow, and action-first Telegram UX
+• added page-aware CTA support note for the dashboard-alternative page as well
+
+Result:
+
+• the EN intent layer now has a more consistent voice across all primary acquisition pages
+• pages describe a single funnel more clearly: search -> Telegram -> watchlist -> signal
+
+---
+
 # EN Intent CTR Copy Polish (2026-03-16)
 
 Applied a tighter conversion-oriented copy pass to the highest-intent English SEO pages.
