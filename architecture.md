@@ -52,6 +52,27 @@ Operational implication:
 
 ---
 
+# Manual Social Operator Batch (2026-03-16)
+
+The growth layer now includes a ready-to-publish operator artifact for manual distribution.
+
+Artifact:
+
+• `docs/social_posting_batch_2026-03-16.md`
+
+Contract:
+
+• social publishing can continue even while API posting is blocked
+• UTM-tagged manual posting remains compatible with GA4 + `app.site_events` attribution
+• short-form videos are prioritized only for the strongest first 3 posts, not for the whole batch
+
+X delivery state:
+
+• auth/write scope is valid
+• automated posting remains blocked by account credits rather than by permissions
+
+---
+
 # Pain-First Social Content Layer (2026-03-16)
 
 The growth layer now has a defined content operating model instead of ad-hoc posting ideas.

@@ -50,6 +50,30 @@ Important note:
 
 ---
 
+# Ready-to-Post Social Batch (2026-03-16)
+
+Converted the social sprint into a manual operator batch that can be published immediately.
+
+Artifact added:
+
+• `docs/social_posting_batch_2026-03-16.md`
+
+What is inside:
+
+• 5 ready-to-post X posts
+• 3 Threads variants
+• 1 X thread outline
+• UTM-tagged links for each pain theme
+• mapping to the first 3 short-form clips worth rendering
+
+Operational reality:
+
+• X write auth is valid now
+• API posting is still blocked by `402 CreditsDepleted`
+• manual posting is the correct mode until X credits are added
+
+---
+
 # Pain-First Social Sprint + X Access Check (2026-03-16)
 
 Prepared the next growth layer as an operational social sprint instead of abstract marketing notes.
