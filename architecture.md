@@ -52,6 +52,27 @@ Operational implication:
 
 ---
 
+# Intent Page Enrichment Layer (2026-03-16)
+
+The English SEO pages now have a stronger content and telemetry contract.
+
+Renderer contract additions in `api/main.py`:
+
+• each SEO intent page can now expose a dedicated FAQ block from `SEO_PAGE_FAQ`
+• the same FAQ content is serialized into `FAQPage` JSON-LD
+• related links are now curated via `SEO_PAGE_LINKS` rather than generated as a flat list of every other page
+• dynamic SEO pages now emit the same dual-tracking behavior as static pages:
+  - GA4 via `window.gtag(...)`
+  - backend telemetry via `/api/events` into `app.site_events`
+
+Why this shape is preferable:
+
+• it increases page specificity without exploding the number of templates
+• it keeps internal linking aligned with the actual acquisition funnel (`analytics -> signals -> telegram-bot -> trader-bot`)
+• it preserves the current FastAPI-rendered SEO page model while making those pages less thin and more measurable
+
+---
+
 # EN-Only Public Site Mode (2026-03-16)
 
 The public website now operates in an English-first SEO mode.

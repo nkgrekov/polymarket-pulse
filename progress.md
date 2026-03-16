@@ -50,6 +50,33 @@ Important note:
 
 ---
 
+# Intent Page Enrichment + GA4 Alignment (2026-03-16)
+
+Strengthened the English intent-page layer after the EN-only SEO switch.
+
+What changed:
+
+• `api/main.py` SEO renderer now injects per-page FAQ blocks for:
+  - analytics
+  - dashboard
+  - signals
+  - telegram-bot
+  - top-movers
+  - watchlist-alerts
+• the same FAQ content is now emitted as `FAQPage` structured data
+• related-page linking is no longer generic; each intent page now points to a curated set of next-step pages
+• dynamic SEO pages now send events into both tracking layers:
+  - `gtag` / GA4
+  - `app.site_events` via `/api/events`
+
+Why this matters:
+
+• richer intent pages give Google more useful page-specific content than a thin keyword shell
+• curated internal links make the crawl graph and user path cleaner
+• dual-tracking is now consistent between static pages and dynamically rendered SEO pages
+
+---
+
 # EN-Only Site SEO Mode (2026-03-16)
 
 Shifted the public website into an English-first indexing mode to reduce duplicate-localization noise on a young domain.

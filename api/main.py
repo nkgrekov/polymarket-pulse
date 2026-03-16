@@ -160,6 +160,150 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
 }
 
+SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
+    "analytics": {
+        "en": [
+            {
+                "q": "What makes this different from a normal Polymarket dashboard?",
+                "a": "Polymarket Pulse prioritizes live repricing and actionability. Instead of asking you to scan charts manually, it surfaces movers, watchlist deltas, and alert-ready changes directly in Telegram.",
+            },
+            {
+                "q": "Do I need to connect a wallet to use the analytics layer?",
+                "a": "No. The analytics and signal layer works without wallet connection. Wallet and execution flows live in the separate Trader product.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Чем это отличается от обычного Polymarket dashboard?",
+                "a": "Polymarket Pulse делает упор на live-переоценку и actionability. Вместо того чтобы заставлять вас вручную сканировать графики, он приносит movers, watchlist-дельты и алерты прямо в Telegram.",
+            },
+            {
+                "q": "Нужно ли подключать кошелёк для аналитического слоя?",
+                "a": "Нет. Analytics и signal-слой работают без кошелька. Wallet и execution живут в отдельном Trader-продукте.",
+            },
+        ],
+    },
+    "dashboard": {
+        "en": [
+            {
+                "q": "Why use this instead of a dashboard tab that shows more widgets?",
+                "a": "Because most users do not need more widgets. They need one clear answer: what moved, by how much, and whether it matters right now.",
+            },
+            {
+                "q": "Can I still track specific markets?",
+                "a": "Yes. The watchlist flow lets you pin markets that matter and only surface them when their move clears your threshold.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Зачем это вместо dashboard-а с большим количеством виджетов?",
+                "a": "Потому что большинству пользователей не нужны новые виджеты. Им нужен один ясный ответ: что сдвинулось, насколько и важно ли это прямо сейчас.",
+            },
+            {
+                "q": "Можно ли всё равно отслеживать конкретные рынки?",
+                "a": "Да. Watchlist позволяет закрепить важные рынки и показывать их только когда движение проходит ваш порог.",
+            },
+        ],
+    },
+    "signals": {
+        "en": [
+            {
+                "q": "How do Polymarket signals stay low-noise?",
+                "a": "Signals are filtered by user threshold, deduplicated across repeated windows, and intentionally return quiet states when the market is flat.",
+            },
+            {
+                "q": "What happens if the short window shows no meaningful move?",
+                "a": "Pulse falls back to a wider window instead of forcing fake activity. If nothing meaningful moved, it stays quiet on purpose.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Как сигналы Polymarket остаются низкошумными?",
+                "a": "Сигналы фильтруются персональным threshold, дедуплицируются между повторяющимися окнами и специально показывают тихое состояние, если рынок плоский.",
+            },
+            {
+                "q": "Что происходит, если в коротком окне нет значимого движения?",
+                "a": "Pulse делает fallback на более широкое окно, а не выдумывает активность. Если ничего важного не сдвинулось, бот специально молчит.",
+            },
+        ],
+    },
+    "telegram-bot": {
+        "en": [
+            {
+                "q": "How fast can a new user get to first value?",
+                "a": "The intended path is simple: open the bot, add one live market, and get your first useful signal in under 60 seconds.",
+            },
+            {
+                "q": "Why do /movers or /inbox sometimes show zero?",
+                "a": "That is intentional. If current repricing is flat, Pulse falls back to a wider window and stays quiet if the market still is not moving.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Как быстро новый пользователь получает первую ценность?",
+                "a": "Сценарий простой: открыть бота, добавить один live-рынок и получить первый полезный сигнал меньше чем за 60 секунд.",
+            },
+            {
+                "q": "Почему /movers или /inbox иногда показывают ноль?",
+                "a": "Это намеренно. Если текущий repricing плоский, Pulse делает fallback на более широкое окно и молчит, если рынок всё ещё не движется.",
+            },
+        ],
+    },
+    "top-movers": {
+        "en": [
+            {
+                "q": "Are top movers ranked only by raw delta?",
+                "a": "The public movers surface is delta-first, but the broader product also uses liquidity and live coverage logic for better candidate quality and watchlist suggestions.",
+            },
+            {
+                "q": "Can I add a mover directly to my watchlist?",
+                "a": "Yes. The bot supports one-tap add and replacement flows so live movers can become watchlist markets immediately.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Ранжируются ли top movers только по сырой дельте?",
+                "a": "Публичная movers-поверхность delta-first, но сам продукт также использует ликвидность и live-coverage логику для лучшего качества кандидатов и watchlist-подсказок.",
+            },
+            {
+                "q": "Можно ли добавить mover прямо в watchlist?",
+                "a": "Да. Бот поддерживает сценарий one-tap add и replacement, так что live movers можно сразу превращать в watchlist-рынки.",
+            },
+        ],
+    },
+    "watchlist-alerts": {
+        "en": [
+            {
+                "q": "What does the free plan include?",
+                "a": "Free currently includes 3 watchlist markets and 20 alerts per day. Pro extends that to 20 markets, unlimited alerts, and email digest.",
+            },
+            {
+                "q": "Why might a watchlist market stay quiet after I add it?",
+                "a": "The market may be closed, may not have current bid/ask quotes, or may not have cleared your threshold in the latest window.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Что входит в free-план?",
+                "a": "Free сейчас включает 3 рынка в watchlist и 20 алертов в день. Pro расширяет это до 20 рынков, безлимитных алертов и email-дайджеста.",
+            },
+            {
+                "q": "Почему рынок в watchlist может молчать после добавления?",
+                "a": "Рынок может быть закрыт, может не иметь текущих bid/ask котировок или не пройти ваш threshold в последнем окне.",
+            },
+        ],
+    },
+}
+
+SEO_PAGE_LINKS: dict[str, list[str]] = {
+    "analytics": ["signals", "top-movers", "telegram-bot", "watchlist-alerts"],
+    "dashboard": ["analytics", "telegram-bot", "signals", "watchlist-alerts"],
+    "signals": ["telegram-bot", "watchlist-alerts", "top-movers", "analytics"],
+    "telegram-bot": ["signals", "top-movers", "watchlist-alerts", "analytics"],
+    "top-movers": ["watchlist-alerts", "telegram-bot", "signals", "analytics"],
+    "watchlist-alerts": ["signals", "telegram-bot", "top-movers", "analytics"],
+}
+
 
 class WaitlistRequest(BaseModel):
     email: EmailStr
@@ -450,6 +594,8 @@ def base_url() -> str:
 
 def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     page = SEO_PAGES[slug][lang]
+    faq_items = SEO_PAGE_FAQ.get(slug, {}).get(lang, [])
+    related_page_slugs = SEO_PAGE_LINKS.get(slug, [name for name in SEO_PAGES if name != slug])
     page_label = slug.replace("-", " ").upper()
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
@@ -457,6 +603,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     cta_trade_text = "Join Trader Alpha" if lang == "en" else "Вступить в Trader Alpha"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
+    faq_head = "Common questions" if lang == "en" else "Частые вопросы"
     preview_head = "Preview surfaces" if lang == "en" else "Ключевые экраны"
     preview_copy_1 = (
         "Catch the fastest repricing in the current live window."
@@ -504,8 +651,46 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         },
         ensure_ascii=False,
     )
+    faq_schema = ""
+    if faq_items:
+        faq_schema = json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": item["q"],
+                        "acceptedAnswer": {"@type": "Answer", "text": item["a"]},
+                    }
+                    for item in faq_items
+                ],
+            },
+            ensure_ascii=False,
+        )
+    faq_schema_tag = f'<script type="application/ld+json">{faq_schema}</script>' if faq_schema else ""
+    faq_cards = "".join(
+        f'<article class="faq-card"><h3 class="faq-question">{html.escape(item["q"])}</h3><p class="faq-answer">{html.escape(item["a"])}</p></article>'
+        for item in faq_items
+    )
+    faq_block = (
+        f"""
+    <section class="links-wrap reveal delay-4">
+      <p class="links-title">{faq_head}</p>
+      <div class="faq-grid">
+        {faq_cards}
+      </div>
+    </section>
+"""
+        if faq_items
+        else ""
+    )
 
-    links = "".join(f'<a href="/{name}">{SEO_PAGES[name]["en"]["h1"]}</a>' for name in SEO_PAGES if name != slug)
+    links = "".join(
+        f'<a href="/{name}">{SEO_PAGES[name]["en"]["h1"]}</a>'
+        for name in related_page_slugs
+        if name in SEO_PAGES and name != slug
+    )
     trade_href = f"/trader-bot?placement=seo_{slug}"
     links += f'<a href="{trade_href}">{cta_trade_text}</a>'
     guide_href = f"/how-it-works?placement=telegram_bot_page"
@@ -592,6 +777,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
   <script type="application/ld+json">{page_schema}</script>
+  {faq_schema_tag}
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -852,6 +1038,31 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       padding: 14px;
       background: #131714;
     }}
+    .faq-grid {{
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }}
+    .faq-card {{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: #0f1410;
+    }}
+    .faq-question {{
+      margin: 0;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.25;
+    }}
+    .faq-answer {{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }}
     .links-title {{
       margin: 0 0 8px;
       color: var(--muted);
@@ -891,6 +1102,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       .stats {{ grid-template-columns: 1fr; }}
       .preview-grid {{ grid-template-columns: 1fr 1fr; }}
       .links {{ grid-template-columns: 1fr 1fr; }}
+      .faq-grid {{ grid-template-columns: 1fr; }}
     }}
     @media (max-width: 640px) {{
       .wrap {{ width: calc(100% - 20px); }}
@@ -977,6 +1189,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
     </section>
     {compare_block}
+    {faq_block}
     <section class="links-wrap reveal delay-4">
       <p class="links-title">{links_head}</p>
       <div class="links" aria-label="{links_head}">
@@ -989,6 +1202,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     document.body.classList.add('ready');
 
     async function trackEvent(eventType, details = {{}}) {{
+      try {{
+        if (typeof window.gtag === 'function') {{
+          window.gtag('event', eventType, details);
+        }}
+      }} catch (_) {{}}
       try {{
         await fetch('/api/events', {{
           method: 'POST',
