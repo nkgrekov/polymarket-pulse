@@ -3,6 +3,7 @@ import json
 import secrets
 import hashlib
 import hmac
+import html
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -179,6 +180,20 @@ class StripeCheckoutRequest(BaseModel):
     lang: Literal["ru", "en"] | None = None
 
 
+class TraderAlphaRequest(BaseModel):
+    email: EmailStr
+    user_id: str | None = None
+    telegram_id: int | None = None
+    chat_id: int | None = None
+    source: str = "site"
+    details: dict | None = None
+
+
+class TraderSignerSubmitRequest(BaseModel):
+    token: str
+    signed_payload: str
+
+
 SQL_LIVE_MOVERS_PREVIEW = """
 select
   market_id,
@@ -292,6 +307,100 @@ set plan = 'pro',
 where user_id = %s::uuid;
 """
 
+SQL_ENSURE_TRADE_ALPHA_WAITLIST = """
+create schema if not exists trade;
+
+create table if not exists trade.alpha_waitlist (
+  id bigserial primary key,
+  email text not null unique,
+  user_id uuid references app.users(id) on delete set null,
+  telegram_id bigint,
+  chat_id bigint,
+  source text not null default 'site',
+  status text not null default 'new',
+  use_case text not null default 'execution_alpha',
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (source in ('site', 'pulse_bot', 'telegram_bot', 'x', 'threads', 'manual')),
+  check (status in ('new', 'review', 'approved', 'declined'))
+);
+"""
+
+SQL_TRADE_ALPHA_WAITLIST_UPSERT = """
+insert into trade.alpha_waitlist (
+  email,
+  user_id,
+  telegram_id,
+  chat_id,
+  source,
+  status,
+  use_case,
+  details
+)
+values (%s, %s::uuid, %s, %s, %s, 'new', 'execution_alpha', %s)
+on conflict (email) do update
+set user_id = coalesce(trade.alpha_waitlist.user_id, excluded.user_id),
+    telegram_id = coalesce(trade.alpha_waitlist.telegram_id, excluded.telegram_id),
+    chat_id = coalesce(trade.alpha_waitlist.chat_id, excluded.chat_id),
+    source = excluded.source,
+    details = trade.alpha_waitlist.details || excluded.details,
+    updated_at = now()
+returning id;
+"""
+
+SQL_SIGNER_SESSION_LOOKUP = """
+select
+  ss.id,
+  ss.account_id,
+  a.user_id,
+  ss.wallet_link_id,
+  ss.session_token,
+  ss.status,
+  ss.challenge_text,
+  ss.signed_payload,
+  ss.verified_at,
+  ss.expires_at,
+  ss.created_at,
+  wl.wallet_address,
+  wl.status as wallet_status,
+  wl.signer_kind
+from trade.signer_sessions ss
+join trade.accounts a on a.id = ss.account_id
+join trade.wallet_links wl on wl.id = ss.wallet_link_id
+where ss.session_token = %s
+limit 1;
+"""
+
+SQL_SIGNER_SESSION_OPEN = """
+update trade.signer_sessions
+set status = 'opened',
+    updated_at = now()
+where id = %s
+  and status = 'new'
+returning id;
+"""
+
+SQL_SIGNER_SESSION_SUBMIT = """
+update trade.signer_sessions
+set status = case when status = 'verified' then 'verified' else 'signed' end,
+    signed_payload = %s::jsonb,
+    updated_at = now()
+where id = %s
+returning id, status, expires_at, verified_at;
+"""
+
+SQL_SIGNER_ACTIVITY = """
+insert into trade.activity_events (
+  user_id,
+  account_id,
+  event_type,
+  source,
+  market_id,
+  details
+) values (%s::uuid, %s, %s, 'site', null, %s::jsonb);
+"""
+
 
 def detect_lang(request: Request, explicit: str | None = None) -> Literal["ru", "en"]:
     if explicit in {"ru", "en"}:
@@ -341,6 +450,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
     cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
+    cta_trade_text = "Join Trader Alpha" if lang == "en" else "Вступить в Trader Alpha"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
     preview_head = "Preview surfaces" if lang == "en" else "Ключевые экраны"
@@ -396,9 +506,63 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     links = "".join(
         f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
     )
+    trade_href = f"/trader-bot?lang={lang}&placement=seo_{slug}"
+    links += f'<a href="{trade_href}">{cta_trade_text}</a>'
     guide_href = f"/how-it-works?lang={lang}&placement=telegram_bot_page"
     guide_cta = (
         f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
+        if slug == "telegram-bot"
+        else ""
+    )
+    trade_cta = (
+        f'<a id="trade-link" class="cta-secondary" href="{trade_href}">{cta_trade_text}</a>'
+        if slug == "telegram-bot"
+        else ""
+    )
+    compare_head = "Why Pulse instead of another dashboard" if lang == "en" else "Почему Pulse, а не ещё один dashboard"
+    compare_title = (
+        "Normal-user speed beats terminal cosplay."
+        if lang == "en"
+        else "Скорость для нормального пользователя важнее терминального косплея."
+    )
+    compare_1 = (
+        "<strong>Dashboard tools</strong> make you search for a move. <strong>Pulse</strong> pushes the move into Telegram."
+        if lang == "en"
+        else "<strong>Dashboard-инструменты</strong> заставляют вас искать движение. <strong>Pulse</strong> приносит его прямо в Telegram."
+    )
+    compare_2 = (
+        "<strong>Copy-trading bots</strong> start from someone else's behavior. <strong>Pulse + Trader</strong> starts from actual repricing."
+        if lang == "en"
+        else "<strong>Copy-trading боты</strong> стартуют с чужого поведения. <strong>Pulse + Trader</strong> стартует с реального repricing."
+    )
+    compare_3 = (
+        "<strong>Our edge</strong>: signal first, action second, execution third. That keeps noise low and intent high."
+        if lang == "en"
+        else "<strong>Наш угол атаки</strong>: сначала сигнал, потом действие, затем execution. Так шум ниже, а намерение сильнее."
+    )
+    compare_block = (
+        f"""
+    <section class="links-wrap reveal delay-4">
+      <p class="links-title">{compare_head}</p>
+      <div class="preview-grid">
+        <article class="preview-card">
+          <p class="preview-kicker">01</p>
+          <h3 class="preview-title">{compare_title}</h3>
+          <p class="preview-copy">{compare_1}</p>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">02</p>
+          <h3 class="preview-title">Pulse -> Trader</h3>
+          <p class="preview-copy">{compare_2}</p>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">03</p>
+          <h3 class="preview-title">Signal-first stack</h3>
+          <p class="preview-copy">{compare_3}</p>
+        </article>
+      </div>
+    </section>
+"""
         if slug == "telegram-bot"
         else ""
     )
@@ -790,6 +954,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
         <a id="waitlist-link" class="cta-secondary" href="/{home_q}#waitlist-form">{cta_waitlist_text}</a>
         {guide_cta}
+        {trade_cta}
       </div>
     </article>
     <section class="preview reveal delay-3">
@@ -815,6 +980,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         </article>
       </div>
     </section>
+    {compare_block}
     <section class="links-wrap reveal delay-4">
       <p class="links-title">{links_head}</p>
       <div class="links" aria-label="{links_head}">
@@ -851,6 +1017,451 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     document.getElementById('waitlist-link')?.addEventListener('click', () => {{
       trackEvent('waitlist_intent', {{ ...details, placement: 'seo_waitlist' }});
     }});
+    document.getElementById('trade-link')?.addEventListener('click', () => {{
+      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_trader_alpha' }});
+    }});
+  </script>
+</body>
+</html>
+"""
+
+
+def fetch_signer_session(token: str) -> dict | None:
+    if not PG_CONN:
+        return None
+    with psycopg.connect(PG_CONN, connect_timeout=5, row_factory=psycopg.rows.dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(SQL_SIGNER_SESSION_LOOKUP, (token,))
+            return cur.fetchone()
+
+
+def touch_signer_session_open(session_id: int) -> None:
+    if not PG_CONN:
+        return
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '5000ms'")
+            cur.execute(SQL_SIGNER_SESSION_OPEN, (session_id,))
+        conn.commit()
+
+
+def save_signer_payload(token: str, signed_payload: str, request: Request) -> dict:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    session = fetch_signer_session(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="signer_session_not_found")
+    expires_at = session.get("expires_at")
+    if expires_at and expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="signer_session_expired")
+
+    clean_payload = signed_payload.strip()
+    if not clean_payload:
+        raise HTTPException(status_code=400, detail="signed_payload_required")
+
+    payload_obj = {
+        "raw": clean_payload,
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "user_agent": request.headers.get("user-agent"),
+        "ip": request.client.host if request.client else None,
+    }
+
+    with psycopg.connect(PG_CONN, connect_timeout=8, row_factory=psycopg.rows.dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(SQL_SIGNER_SESSION_SUBMIT, (Jsonb(payload_obj), session["id"]))
+            updated = cur.fetchone()
+            cur.execute(
+                SQL_SIGNER_ACTIVITY,
+                (
+                    session["user_id"],
+                    session["account_id"],
+                    "signer_payload_submitted",
+                    Jsonb(
+                        {
+                            "session_token": token,
+                            "wallet": session["wallet_address"],
+                            "status": updated["status"] if updated else "signed",
+                        }
+                    ),
+                ),
+            )
+        conn.commit()
+
+    return {
+        "wallet": session["wallet_address"],
+        "status": updated["status"] if updated else "signed",
+        "expires_at": _to_iso(updated["expires_at"] if updated else session.get("expires_at")),
+        "verified_at": _to_iso(updated["verified_at"] if updated else session.get("verified_at")),
+    }
+
+
+def render_trader_connect_page(session: dict, lang: Literal["ru", "en"]) -> str:
+    base = base_url()
+    title = "Trader signer session" if lang == "en" else "Signer-session Trader"
+    intro = (
+        "This page stores your signed payload for alpha review. It does not unlock live execution by itself."
+        if lang == "en"
+        else "Эта страница сохраняет signed payload для alpha-review. Сама по себе она не включает live execution."
+    )
+    kicker = "SIGNER SESSION · ALPHA" if lang == "en" else "SIGNER SESSION · ALPHA"
+    submit_label = "Store signed payload" if lang == "en" else "Сохранить signed payload"
+    challenge_label = "Challenge" if lang == "en" else "Challenge"
+    payload_label = "Signed payload" if lang == "en" else "Signed payload"
+    payload_placeholder = (
+        "Paste signature / signed message / wallet-exported payload here"
+        if lang == "en"
+        else "Вставьте сюда signature / signed message / payload из кошелька"
+    )
+    status_note = (
+        "// After submit, session moves to signed. A real verify/activation layer is still required."
+        if lang == "en"
+        else "// После submit сессия перейдёт в signed. Реальный verify/activation слой всё ещё нужен."
+    )
+    open_bot = "Open Trader bot" if lang == "en" else "Открыть Trader-бота"
+    open_trader_page = "Trader page" if lang == "en" else "Страница Trader"
+    success_wait = (
+        "Payload stored. Session is now signed and ready for the next verify layer."
+        if lang == "en"
+        else "Payload сохранён. Сессия теперь в статусе signed и готова к следующему verify-слою."
+    )
+    expired = False
+    if session.get("expires_at"):
+        try:
+            expired = session["expires_at"] < datetime.now(timezone.utc)
+        except Exception:
+            expired = False
+    wallet = html.escape(str(session.get("wallet_address") or "n/a"))
+    status = html.escape(str(session.get("status") or "n/a"))
+    wallet_status = html.escape(str(session.get("wallet_status") or "n/a"))
+    signer_kind = html.escape(str(session.get("signer_kind") or "n/a"))
+    challenge = html.escape(str(session.get("challenge_text") or ""))
+    expires_at = html.escape(_to_iso(session.get("expires_at")) or "n/a")
+    verified_at = html.escape(_to_iso(session.get("verified_at")) or "n/a")
+    token = html.escape(str(session.get("session_token") or ""))
+    disabled_attr = "disabled" if expired else ""
+    disabled_copy = (
+        "This signer session has expired. Return to Telegram and run /signer again."
+        if lang == "en"
+        else "Эта signer-session истекла. Вернитесь в Telegram и снова запустите /signer."
+    )
+    return f"""<!doctype html>
+<html lang="{lang}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+    :root {{
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+      --danger: #ff5a5a;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 55%, var(--bg-2) 100%);
+    }}
+    .wrap {{
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }}
+    .top {{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }}
+    .card {{
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 24px 72px rgba(0,0,0,0.42);
+    }}
+    .kicker {{
+      margin: 0 0 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--muted-soft);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }}
+    h1 {{
+      margin: 0;
+      line-height: 0.96;
+      font-size: clamp(32px, 7vw, 56px);
+      text-transform: uppercase;
+      letter-spacing: -0.03em;
+    }}
+    .intro {{
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+      font-family: "JetBrains Mono", monospace;
+    }}
+    .grid {{
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 18px;
+      align-items: start;
+    }}
+    .stack {{
+      display: grid;
+      gap: 12px;
+    }}
+    .panel {{
+      background: #131714;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }}
+    .label {{
+      margin: 0 0 8px;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .value, .mono, textarea {{
+      font-family: "JetBrains Mono", monospace;
+    }}
+    .value {{
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-word;
+    }}
+    .status-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }}
+    .status-pill {{
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #0f1410;
+    }}
+    .status-pill strong {{
+      display: block;
+      margin-top: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+    }}
+    pre {{
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+    }}
+    textarea {{
+      width: 100%;
+      min-height: 220px;
+      background: #0d0f0e;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 13px;
+      resize: vertical;
+    }}
+    button, .cta {{
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      color: #0a0c0b;
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .ghost {{
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line-soft);
+      background: transparent;
+      color: var(--muted);
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      font-weight: 700;
+    }}
+    .note {{
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }}
+    .result {{
+      min-height: 18px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }}
+    .result.ok {{ color: var(--accent); }}
+    .result.err {{ color: var(--danger); }}
+    @media (max-width: 760px) {{
+      .wrap {{ width: calc(100% - 20px); }}
+      .card {{ padding: 16px; border-radius: 16px; }}
+      .grid {{ grid-template-columns: 1fr; }}
+      .status-grid {{ grid-template-columns: 1fr; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <span>POLYMARKET PULSE // SIGNER</span>
+      <span>{kicker}</span>
+    </div>
+    <article class="card">
+      <p class="kicker">{kicker}</p>
+      <h1>{title}</h1>
+      <p class="intro">{intro}</p>
+      <div class="grid">
+        <div class="stack">
+          <section class="panel">
+            <p class="label">Session</p>
+            <div class="status-grid">
+              <div class="status-pill">
+                <span class="label">wallet</span>
+                <strong>{wallet}</strong>
+              </div>
+              <div class="status-pill">
+                <span class="label">session status</span>
+                <strong id="status-value">{status}</strong>
+              </div>
+              <div class="status-pill">
+                <span class="label">wallet status</span>
+                <strong>{wallet_status}</strong>
+              </div>
+              <div class="status-pill">
+                <span class="label">signer kind</span>
+                <strong>{signer_kind}</strong>
+              </div>
+              <div class="status-pill">
+                <span class="label">expires_at</span>
+                <strong>{expires_at}</strong>
+              </div>
+              <div class="status-pill">
+                <span class="label">verified_at</span>
+                <strong id="verified-value">{verified_at}</strong>
+              </div>
+            </div>
+          </section>
+          <section class="panel">
+            <p class="label">{challenge_label}</p>
+            <pre>{challenge}</pre>
+          </section>
+        </div>
+        <div class="stack">
+          <section class="panel">
+            <p class="label">{payload_label}</p>
+            <textarea id="signed-payload" placeholder="{html.escape(payload_placeholder)}" {disabled_attr}></textarea>
+            <div style="height:10px"></div>
+            <button id="submit-btn" {disabled_attr}>{submit_label}</button>
+            <p class="note">{status_note}</p>
+            <p id="result" class="result">{html.escape(disabled_copy if expired else "")}</p>
+          </section>
+          <section class="panel">
+            <a class="cta" href="https://t.me/PolymarketPulse_trader_bot">{open_bot}</a>
+            <div style="height:10px"></div>
+            <a class="ghost" href="{base}/trader-bot?lang={lang}">{open_trader_page}</a>
+            <p class="note">{html.escape(success_wait)}</p>
+          </section>
+        </div>
+      </div>
+    </article>
+  </div>
+  <script>
+    const token = {json.dumps(session.get("session_token") or "")};
+    const lang = {json.dumps(lang)};
+    const resultEl = document.getElementById("result");
+    const statusEl = document.getElementById("status-value");
+    const verifiedEl = document.getElementById("verified-value");
+    const submitBtn = document.getElementById("submit-btn");
+    const textarea = document.getElementById("signed-payload");
+
+    async function submitPayload() {{
+      const signedPayload = textarea.value.trim();
+      if (!signedPayload) {{
+        resultEl.className = "result err";
+        resultEl.textContent = lang === "en"
+          ? "Paste the signed payload first."
+          : "Сначала вставьте signed payload.";
+        return;
+      }}
+      submitBtn.disabled = true;
+      resultEl.className = "result";
+      resultEl.textContent = lang === "en" ? "Saving..." : "Сохраняю...";
+      try {{
+        const res = await fetch("/api/trader-signer/submit", {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{ token, signed_payload: signedPayload }})
+        }});
+        const data = await res.json();
+        if (!res.ok) {{
+          throw new Error(data.detail || "request_failed");
+        }}
+        statusEl.textContent = data.status || "signed";
+        verifiedEl.textContent = data.verified_at || "n/a";
+        resultEl.className = "result ok";
+        resultEl.textContent = lang === "en"
+          ? "Payload stored. Session is now signed."
+          : "Payload сохранён. Сессия теперь в статусе signed.";
+      }} catch (err) {{
+        resultEl.className = "result err";
+        resultEl.textContent = (lang === "en"
+          ? "Could not save signer payload: "
+          : "Не удалось сохранить signer payload: ") + err.message;
+      }} finally {{
+        submitBtn.disabled = false;
+      }}
+    }}
+
+    submitBtn?.addEventListener("click", submitPayload);
   </script>
 </body>
 </html>
@@ -1002,6 +1613,10 @@ def ensure_payment_schema(cur) -> None:
     cur.execute(SQL_ENSURE_PAYMENT_EVENTS)
 
 
+def ensure_trade_alpha_schema(cur) -> None:
+    cur.execute(SQL_ENSURE_TRADE_ALPHA_WAITLIST)
+
+
 def resolve_user_id_for_email(cur, email: str, preferred_user_id: str | None = None) -> str:
     clean_email = email.strip().lower()
     if preferred_user_id:
@@ -1119,6 +1734,31 @@ def activate_pro_from_payment(
             cur.execute(SQL_PROFILE_SET_PRO, (user_id,))
         conn.commit()
     return True, user_id
+
+
+def upsert_trade_alpha_waitlist(data: TraderAlphaRequest) -> int:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+
+    clean_email = data.email.strip().lower()
+    with psycopg.connect(PG_CONN, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            ensure_trade_alpha_schema(cur)
+            cur.execute(
+                SQL_TRADE_ALPHA_WAITLIST_UPSERT,
+                (
+                    clean_email,
+                    data.user_id,
+                    data.telegram_id,
+                    data.chat_id,
+                    data.source,
+                    Jsonb(data.details or {}),
+                ),
+            )
+            row_id = int(cur.fetchone()[0])
+        conn.commit()
+    return row_id
 
 
 def _to_iso(v: datetime | None) -> str | None:
@@ -1247,6 +1887,8 @@ def sitemap() -> Response:
         f"  <url><loc>{u}/how-it-works?lang=ru</loc></url>\n"
         f"  <url><loc>{u}/commands?lang=en</loc></url>\n"
         f"  <url><loc>{u}/commands?lang=ru</loc></url>\n"
+        f"  <url><loc>{u}/trader-bot?lang=en</loc></url>\n"
+        f"  <url><loc>{u}/trader-bot?lang=ru</loc></url>\n"
     )
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -1343,6 +1985,36 @@ def commands_page(request: Request) -> HTMLResponse:
     return HTMLResponse(load_page("commands", lang))
 
 
+@app.get("/trader-bot", response_class=HTMLResponse)
+def trader_bot_page(request: Request) -> HTMLResponse:
+    lang = detect_lang(request)
+    return HTMLResponse(load_page("trader-bot", lang))
+
+
+@app.get("/trader-connect", response_class=HTMLResponse)
+def trader_connect_page(request: Request, token: str) -> HTMLResponse:
+    lang = detect_lang(request)
+    session = fetch_signer_session(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="signer_session_not_found")
+    if session.get("status") == "new":
+        touch_signer_session_open(int(session["id"]))
+        session = fetch_signer_session(token) or session
+
+    log_site_event(
+        event_type="page_view",
+        request=request,
+        lang=lang,
+        source="site",
+        details={
+            "placement": "trader_signer_page",
+            "product": "trader",
+            "session_status": session.get("status"),
+        },
+    )
+    return HTMLResponse(render_trader_connect_page(session, lang))
+
+
 @app.get("/{slug}", response_class=HTMLResponse)
 def seo_page(slug: str, request: Request) -> HTMLResponse:
     if slug not in SEO_PAGES:
@@ -1370,6 +2042,41 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
         details=merged_details,
     )
     return JSONResponse({"ok": True})
+
+
+@app.post("/api/trader-alpha")
+def trader_alpha(data: TraderAlphaRequest, request: Request) -> JSONResponse:
+    req_lang = detect_lang(request)
+    details = enrich_details(request, data.details, fallback_lang=req_lang, fallback_placement="trader_alpha_form")
+    row_id = upsert_trade_alpha_waitlist(data)
+    log_site_event(
+        event_type="waitlist_submit",
+        request=request,
+        lang=req_lang,
+        email=data.email,
+        source=(data.source or "site").strip()[:64] or "site",
+        details={**details, "product": "trader_alpha", "alpha_id": row_id},
+    )
+    return JSONResponse({"ok": True, "message": "alpha_waitlist_saved", "id": row_id})
+
+
+@app.post("/api/trader-signer/submit")
+def trader_signer_submit(data: TraderSignerSubmitRequest, request: Request) -> JSONResponse:
+    req_lang = detect_lang(request)
+    saved = save_signer_payload(data.token, data.signed_payload, request)
+    log_site_event(
+        event_type="page_view",
+        request=request,
+        lang=req_lang,
+        source="site",
+        details={
+            "placement": "trader_signer_submit",
+            "product": "trader",
+            "status": saved["status"],
+            "wallet": saved["wallet"],
+        },
+    )
+    return JSONResponse({"ok": True, **saved})
 
 
 @app.get("/api/live-movers-preview")

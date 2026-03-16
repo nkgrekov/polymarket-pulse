@@ -14,6 +14,238 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Signer Session Layer (2026-03-15)
+
+Execution alpha now includes a dedicated signer-session bridge between `trader_bot` and the main site runtime.
+
+New data contract:
+
+• `trade.signer_sessions`
+
+State model:
+
+• `new`
+• `opened`
+• `signed`
+• `verified`
+• `expired`
+• `revoked`
+
+Current runtime behavior:
+
+• `trader_bot:/signer` creates/reuses signer sessions tied to the primary wallet in `trade.wallet_links`
+• the bot emits:
+  - challenge text
+  - signer-session status
+  - direct URL into `GET /trader-connect?token=...`
+• `GET /trader-connect` is served by `api/main.py` and marks `new -> opened`
+• `POST /api/trader-signer/submit` stores signed payload into `trade.signer_sessions.signed_payload` and marks the session `signed`
+• `trade.activity_events` receives site-side signer submission telemetry
+
+Boundary that remains explicit:
+
+• signer session storage is now real
+• signer verification is not yet real
+• wallet activation is still not granted automatically from signer-session submission
+• execution worker therefore still uses `trade.wallet_links.status` as the hard execution gate
+
+Why this shape is correct:
+
+• keeps `Pulse` and `Trader` separate while reusing the main site runtime for signer UX
+• creates a production-safe transition layer before cryptographic verification and live routing
+• avoids faking "connected signer" state before actual verification exists
+
+---
+
+# Manual Signer Activation Contract (2026-03-15)
+
+Added the next alpha bridge after signer payload capture.
+
+Runtime shape:
+
+• site captures signer payload -> `trade.signer_sessions.status='signed'`
+• operator review activates session through `trade.activate_signer_session(...)`
+• activation updates both signer-session state and wallet execution readiness
+
+Activation side-effects:
+
+• `trade.signer_sessions.status='verified'`
+• `trade.signer_sessions.verified_at` populated
+• `trade.wallet_links.status='active'`
+• `trade.wallet_links.signer_kind='session'`
+• `trade.wallet_links.signer_ref` set to operator-provided ref or session token fallback
+• `trade.activity_events.event_type='signer_activated'`
+
+Operational interface:
+
+• local/manual alpha review script:
+  - `scripts/ops/activate_signer_session.py`
+
+Why this is the right interim architecture:
+
+• it keeps live execution gated behind explicit human approval during alpha
+• it avoids pretending we have cryptographic auto-verification before we actually do
+• it gives `trade-worker` a real transition path from `requires_signer:*` to executable wallet state
+
+---
+
+# Pulse Start Activation Layer (2026-03-15)
+
+`Pulse` onboarding now includes a dedicated activation CTA layer before the general menu.
+
+Runtime behavior in `/start`:
+
+• first message still explains the product and current limits
+• second message now presents focused onboarding actions:
+  - add first market
+  - top movers
+  - plan
+  - help
+• generic quick menu is still sent after that for broader navigation
+
+Reason:
+
+• this preserves the compact command architecture from the 14-day plan
+• but it reduces friction on the `tg_click -> /start -> watchlist_add` path, which remains the primary KPI on the Pulse rail
+
+Extended onboarding behavior:
+
+• if watchlist is empty, `/start` now also renders up to 3 live one-tap candidate markets
+• these buttons reuse the same picker token/callback contract as the full watchlist picker
+• fallback remains the full picker (`menu:pick`) if the user wants a broader set
+
+Trader operator loop extension:
+
+• pending signer review is now supported by `scripts/ops/list_signer_sessions.py`
+• activation remains explicit and human-gated through `scripts/ops/activate_signer_session.py`
+
+Readiness UX extension:
+
+• `Trader` command layer now computes a user-visible readiness line from primary wallet state
+• readiness states are still simple but operational:
+  - `ready_for_dry_run` when primary wallet is `active`
+  - signer-blocked when wallet is still `pending`
+• this readiness copy is surfaced in `/connect`, `/risk`, and draft-order confirmations
+• `/order` now acts as the first user-facing execution-state surface on top of `trade-worker`:
+  - pending drafts render as `queued_for_worker`
+  - rejected drafts render `blocked` with actionable next steps
+  - accepted dry-run drafts render `accepted_by_dry_run_worker` with explicit alpha-only wording
+
+Pulse post-add flow extension:
+
+• watchlist add success is no longer a dead-end text response
+• bot now returns next-step inline actions after add:
+  - `Watchlist`
+  - `Inbox`
+  - `Threshold`
+  - `Add one more`
+• add success now also computes a per-market first-value state from live data:
+  - has quotes in `last+prev`
+  - has partial quotes only
+  - has no quotes in `last+prev`
+  - is already closed
+• this keeps activation honest: user sees immediately whether the chosen market is ready for signal surfaces or likely to stay quiet for now
+
+Trader signer-state extension:
+
+• signer status is no longer isolated inside `/signer`
+• `/connect` and `/risk` now surface signer-session state as a separate UX layer:
+  - `not_started`
+  - `opened`
+  - `signed`
+  - `verified`
+• this makes the alpha approval funnel legible without exposing internal DB terminology or requiring site navigation on every check
+
+---
+
+# Trader Bot Runtime Layer (2026-03-14)
+
+The dual-product architecture now includes an actual sibling Telegram runtime for execution alpha:
+
+• `Pulse bot` = signal/discovery/intelligence (`@polymarket_pulse_bot`)
+• `Trader bot` = execution-control alpha (`@PolymarketPulse_trader_bot`)
+
+Implementation boundary:
+
+• the trader bot is isolated in `trader_bot/`
+• it reuses the shared identity layer (`app.*`, `bot.resolve_or_create_user_from_telegram(...)`)
+• it writes only into the dedicated execution schema (`trade.*`) for trader-specific state and telemetry
+
+Current trader-bot runtime contract:
+
+• `/connect` -> `trade.wallet_links`
+• `/buy` + `/sell` -> `trade.orders` (`pending` draft state only)
+• `/positions` -> `trade.positions_cache`
+• `/follow` -> `trade.follow_sources` + `trade.follow_rules`
+• `/rules` -> `trade.agent_rules`
+• `/risk` + `/pause` -> `trade.risk_state`
+• `/agent` -> `trade.agent_decisions`
+• all command intent -> `trade.activity_events`
+
+Deployment state:
+
+• trader-bot now runs as a separate Railway production service: `trader-bot`
+• deploy path is monorepo-scoped via `railway up -s trader-bot --path-as-root trader_bot`
+• production runtime confirms Telegram polling for `@PolymarketPulse_trader_bot`
+
+Execution worker layer:
+
+• separate service `trade-worker` now owns the first execution state-machine loop
+• deploy path is monorepo-scoped via `railway up -s trade-worker --path-as-root trade_worker`
+• current worker mode is deliberately `dry_run`
+• worker contract:
+  - reads `trade.orders.status='pending'`
+  - checks signer/wallet/risk constraints
+  - updates order status to `submitted` (dry-run) or `rejected`
+  - emits `trade.activity_events`
+  - increments `trade.risk_state` counters on accepted dry-run submissions
+
+Trader UX/readiness contract:
+
+• `/connect` acts as both setter and readiness inspector
+• `/order` now reflects worker-state feedback per draft order via `trade.activity_events`
+• `/risk` includes wallet/signature readiness context so the user sees why execution is not yet live
+
+Pulse acquisition/positioning contract:
+
+• `/telegram-bot` SEO page now includes an explicit comparison layer:
+  - dashboard overload vs action-first Telegram flow
+  - copy-trading vs signal-first execution handoff
+  - `Pulse -> Trader` as the core product stack
+
+Important operational truth:
+
+• trader-bot v0 is a control-plane/runtime scaffold, not a live execution engine
+• no signer delegation, order routing, fill reconciliation, or Polymarket submission is active yet
+• stored orders represent alpha drafts so the next execution worker layer has a clean contract
+
+---
+
+# Dual-Product Extension (2026-03-13)
+
+Competitive response architecture is now explicitly dual-product:
+
+• `Pulse` = signal/discovery/intelligence layer  
+• `Trader` = execution layer (alpha foundation only, sibling product)
+
+Hard boundary:
+
+• current Pulse bot remains signal-first and does not absorb trade execution codepaths
+• execution is exposed as a sibling lane through handoff surfaces, not as a hidden submenu inside Pulse
+
+Current implementation level:
+
+• site + Pulse bot can now hand users into execution alpha intent
+• data layer and schema contract for future execution bot exist
+• actual order-routing / wallet signing / execution worker are not public yet
+
+This keeps the manifesto intact:
+
+• we are still building the intelligence layer first  
+• trade execution becomes an adjacent expansion, not a pivot away from signals
+
+---
+
 # Operational Snapshot (2026-03-11)
 
 Latest scope verification covered `db` migrations/views, ingest code path, bot runtime path, and web/SEO rendering path.
@@ -32,6 +264,29 @@ Operational risks observed in runtime evidence:
 • polling conflict occurred in bot logs (`getUpdates 409`) indicating concurrent bot instance overlap on 2026-03-05
 • local launchd bot service currently not loaded, so local process state does not represent persistent production uptime
 • free-plan historical watchlist rows can exceed current add-flow cap due to legacy records; cap is enforced on new writes in bot command handlers
+
+---
+
+# Polymarket Referral / Builder Feasibility Snapshot (2026-03-12)
+
+External program state validated against current public docs:
+
+• `polymarket.com` public docs currently expose Builder Program mechanics (tiers, weekly rewards, order attribution, and revshare), not a simple consumer invite-link flow in developer/help surfaces.
+• order attribution in Builder Program is tied to CLOB order flow and requires builder credentials plus attribution metadata in requests (`POLY_BET_ID`, `POLY_SIGNATURE`, `POLY_TIMESTAMP`, `POLY_API_KEY`, `POLY_PASS_PHRASE`, `X-BUILDER-ID`).
+• Help Center geoblock policy still applies to platform usage (regional restrictions and anti-VPN enforcement).
+• separate `polymarketexchange.com` Terms publish a Referral Incentive Program notice dated 2026-01-16, effective 2026-02-02 (US exchange track, distinct from builder API docs).
+
+Architecture implication for Polymarket Pulse:
+
+• current product surfaces (site + Telegram + email) are signal/discovery only and do not route user orders through our own execution layer.
+• without our own attributed execution path, market promotion links can drive traffic but do not create Builder Program-attributed trading volume on our side.
+• to monetize via Builder Program, referral path must be `our surface -> our trade execution integration -> CLOB order with builder attribution`.
+
+Minimal extension points that fit current stack:
+
+• add market deep-link entity to delivery payloads (`market_id`, `slug`, destination url, campaign tag).
+• extend `app.site_events` taxonomy for outbound market clicks and downstream trade intent correlation.
+• add scheduled builder reconciliation job (builder trades + rewards sync) into existing worker model (GitHub Actions/Railway cadence).
 
 ---
 
@@ -131,6 +386,18 @@ bot.user_settings
 bot.watchlist
 bot.alert_events
 bot.sent_alerts_log
+trade.accounts
+trade.wallet_links
+trade.positions_cache
+trade.orders
+trade.executions
+trade.follow_sources
+trade.follow_rules
+trade.agent_rules
+trade.agent_decisions
+trade.risk_state
+trade.activity_events
+trade.alpha_waitlist
 
 Derived views compute analytics.
 
@@ -176,6 +443,7 @@ Commands:
 Advanced (typed or via `/help`):
 
 /upgrade
+/trade
 /limits
 /threshold
 /inbox20
@@ -200,8 +468,15 @@ Also runs:
 • `all` picker mode applies category-balanced quotas and ordering to reduce crypto dominance in candidate list
 • category/refresh picker callbacks edit existing picker message instead of appending new bot messages, reducing chat noise
 • picker UI includes category tags and live-supply hint (candidate count in current window)
-• picker candidate pool includes recent active markets (last 72h seen in snapshots) as fallback when live movers are too narrow
+• picker activation hardening update:
+  - explicit liquidity floor (`WATCHLIST_PICKER_MIN_LIQUIDITY`, default `1000`)
+  - picker now accepts only markets with live bid/ask quotes in the last 6h window above that liquidity floor
+  - `recent_seen` fallback has been removed from picker suggestions; manual `/watchlist_add <market_id|slug>` remains the escape hatch for edge cases
+  - ranking uses a hybrid score (`abs(delta) * 100 + ln(1 + liquidity)`) so onboarding suggestions are both active and tradable, instead of being ranked by raw delta only
+  - `public.market_universe` is used as the fallback live-liquidity pool to keep picker suggestions aligned with the curated coverage layer
 • `/upgrade` command writes conversion intent into `app.upgrade_intents`
+• `/trade` command writes execution-interest intent into `trade.activity_events`
+• signal views now support market-level handoff into Trader Alpha (`/trader-bot`) from movers/watchlist/inbox
 • monetization offer v1 in bot UX:
   - FREE: 3 watchlist markets, 20 push/day
   - PRO: 20 watchlist markets + email digest
@@ -230,6 +505,7 @@ Site + Email API:
 • daily digest worker in `api/digest_job.py` via Resend
 • geo/lang-aware landing renderer (`api/web/*.ru.html`, `api/web/*.en.html`)
 • SEO endpoints: `/robots.txt`, `/sitemap.xml`, `/og-card.svg`
+• execution launch page: `/trader-bot`
 • SEO intent endpoints: `/analytics`, `/dashboard`, `/signals`, `/telegram-bot`, `/top-movers`, `/watchlist-alerts`
 • favicon endpoint: `/favicon.svg` (and `/favicon.ico` fallback)
 • site telemetry endpoint: `/api/events` (`page_view`, `tg_click`, `waitlist_intent`, `checkout_intent`)
@@ -248,6 +524,11 @@ Site + Email API:
   - GA4 mirror via `gtag('event', ...)`
   - `sendBeacon` primary delivery + `fetch keepalive` fallback for outbound-click reliability
 • landing conversion placements explicitly tracked: `hero_panel`, `mobile_sticky`, `how_it_works_link`, `pro_offer`, `pro_stars`, `waitlist_form`
+• Trader Alpha conversion placements added through existing telemetry taxonomy:
+  - `landing_trade_strip`
+  - `seo_trader_alpha`
+  - `trader_alpha_form`
+  - `trader_alpha_to_pulse`
 • SEO telemetry events include `waitlist_intent` on intent pages
 • Cloudflare edge DNS + TLS + apex domain (`polymarketpulse.app`)
 • Resend mail-auth DNS hosted in Cloudflare (`resend._domainkey` + `send.polymarketpulse.app` SPF)
@@ -413,6 +694,21 @@ Growth ops:
   - current production mode: EN-only publishing (`--langs en`) for X/Threads
 • weekly KPI retro generator: `scripts/growth/weekly_kpi_report.py` (`app.site_events` + activation proxy from `app.identities`/`bot.watchlist`)
 • visual post templates in `assets/social/` (Top3, Breakout, Weekly recap)
+• template-render pipeline now supports Placid MCP renders from live DB:
+  - script: `scripts/growth/generate_social_visuals.py`
+  - output contract: `docs/social_visuals_latest.md`
+  - current template UUID mapping:
+    - `top3` -> `qpfepwdjvsuxv`
+    - `breakout` -> `1h9uyopu3rarv`
+    - `weekly` -> `m6nbvjbbyarrj`
+• brand-first render path added for social publishing:
+  - `scripts/growth/render_social_cards.py` fills local SVG templates from live DB
+  - output stored in `assets/social/out/*.svg` with landing-consistent visual tokens
+  - this path is now preferred for daily posting to avoid template-style drift
+• short-video growth path added:
+  - `scripts/growth/render_shitpost_short.py` renders a 5-second branded glitch clip from live top movers
+  - output file: `assets/social/out/shitpost-live-5s.mp4`
+  - source contract: `public.top_movers_latest` (real deltas per current bucket window)
 • positioning message pack: `docs/positioning_messages_latest.md` (site/bot/social interception copy)
 • C1 site implementation contract:
   - landing hero carries “action over dashboard” framing

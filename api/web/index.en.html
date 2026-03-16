@@ -928,6 +928,69 @@
       line-height: 1.4;
     }
 
+    .trade-strip {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(160deg, rgba(19, 23, 20, 0.98) 0%, rgba(13, 16, 14, 0.98) 100%);
+    }
+
+    .trade-strip-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .trade-strip-title {
+      margin: 8px 0 0;
+      font-size: clamp(20px, 3vw, 28px);
+      line-height: 1.04;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    .trade-strip-copy {
+      margin: 10px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .trade-strip-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: min(280px, 100%);
+    }
+
+    .trade-link {
+      min-height: 48px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: #131714;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 14px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      font-weight: 700;
+      transition: border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .trade-link:hover,
+    .trade-link:focus-visible {
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }
+
     .sticky-tg {
       position: fixed;
       left: 10px;
@@ -1010,6 +1073,7 @@
       .hero { padding: 22px; }
       .hero-metrics { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
+      .trade-strip-grid { grid-template-columns: 1fr; }
       .screens-grid { grid-template-columns: 1fr 1fr; }
       .proof-grid { grid-template-columns: 1fr 1fr; }
       .intent-grid { grid-template-columns: 1fr 1fr; }
@@ -1193,7 +1257,21 @@
       </div>
     </section>
 
-    <section class="intent-links reveal delay-7" aria-label="Related SEO pages">
+    <section class="trade-strip reveal delay-7" aria-label="Trader alpha strip">
+      <div class="trade-strip-grid">
+        <div>
+          <p class="proof-head">NEXT LAYER · EXECUTION BOT ALPHA</p>
+          <h3 class="trade-strip-title">Pulse finds. Trader acts.</h3>
+          <p class="trade-strip-copy">We are building a sibling Telegram product for execution: Polymarket-only, non-custodial first, and rule-bound AI trader agent. Pulse stays your signal feed. Trader becomes the action layer.</p>
+        </div>
+        <div class="trade-strip-actions">
+          <a id="trade-strip-link" class="trade-link" href="/trader-bot?lang=en&placement=landing_trade_strip">Join Trader Alpha</a>
+          <a class="trade-link" href="/telegram-bot?lang=en">See current Pulse bot</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="intent-links reveal delay-8" aria-label="Related SEO pages">
       <p class="intent-title">EXPLORE BY INTENT</p>
       <div class="intent-grid">
         <a href="/analytics?lang=en">Polymarket Analytics</a>
@@ -1261,6 +1339,7 @@
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
     const proStarsBtn = document.querySelector('.pro-stars');
+    const tradeStripLink = document.getElementById('trade-strip-link');
     const liveRows = document.getElementById('live-movers-rows');
     const liveTitle = document.getElementById('live-movers-title');
 
@@ -1393,6 +1472,9 @@
     });
     proStarsBtn?.addEventListener('click', () => {
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });
+    });
+    tradeStripLink?.addEventListener('click', () => {
+      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'landing_trade_strip', product: 'trader_alpha' });
     });
 
     checkoutBtn?.addEventListener('click', async () => {

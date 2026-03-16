@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket Trader Bot Alpha - execution слой от Pulse</title>
+  <meta name="description" content="Вступите в alpha execution-бота: торговля в Telegram для Polymarket, rule-based AI trader agent и non-custodial модель." />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="Polymarket Trader Bot Alpha" />
+  <meta property="og:description" content="Execution-бот на базе Pulse signals. Non-custodial first. Auto on rules." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polymarketpulse.app/trader-bot?lang=ru" />
+  <meta property="og:image" content="https://polymarketpulse.app/og-card.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Polymarket Trader Bot Alpha" />
+  <meta name="twitter:description" content="Execution-бот на базе Pulse signals. Non-custodial first. Auto on rules." />
+  <meta name="twitter:image" content="https://polymarketpulse.app/og-card.svg" />
+  <link rel="canonical" href="https://polymarketpulse.app/trader-bot" />
+  <link rel="alternate" hreflang="en" href="https://polymarketpulse.app/trader-bot?lang=en" />
+  <link rel="alternate" hreflang="ru" href="https://polymarketpulse.app/trader-bot?lang=ru" />
+  <link rel="alternate" hreflang="x-default" href="https://polymarketpulse.app/trader-bot?lang=en" />
+  <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-J901VRQH4G');
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+    :root {
+      --bg: #0d0f0e;
+      --bg-2: #0a0c0b;
+      --panel: #131714;
+      --line: #1e2520;
+      --line-soft: #2a332b;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        radial-gradient(900px 600px at -10% 10%, rgba(0, 255, 136, 0.05) 0%, transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 60%, var(--bg-2) 100%);
+      min-height: 100vh;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.16;
+    }
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+      position: relative;
+      z-index: 1;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .topbar a {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 6px 10px;
+      margin-left: 8px;
+    }
+    .topbar a:hover,
+    .topbar a:focus-visible,
+    .ghost:hover,
+    .ghost:focus-visible,
+    .link-chip:hover,
+    .link-chip:focus-visible {
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }
+    .hero, .section {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 24px;
+      background: linear-gradient(160deg, rgba(19, 23, 20, 0.98) 0%, rgba(13, 16, 14, 0.98) 100%);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+    }
+    .section { margin-top: 16px; }
+    .eyebrow, .kicker {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      line-height: 0.96;
+    }
+    h1 { font-size: clamp(40px, 8vw, 82px); max-width: 920px; }
+    h2 { font-size: clamp(28px, 5vw, 42px); }
+    .sub {
+      margin: 14px 0 0;
+      max-width: 860px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: clamp(15px, 2vw, 20px);
+      line-height: 1.5;
+    }
+    .hero-grid, .alpha-grid, .compare-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #131714;
+      padding: 16px;
+    }
+    .rows {
+      display: grid;
+      gap: 10px;
+    }
+    .row {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #131714;
+      padding: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .row strong {
+      color: var(--text);
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .tagline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .tag {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(19, 23, 20, 0.72);
+    }
+    .tag.active {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.45);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.18) inset;
+    }
+    .cta-row {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .cta, .ghost, .link-chip {
+      min-height: 48px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+    }
+    .cta {
+      color: var(--bg-2);
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border: 1px solid var(--accent);
+    }
+    .ghost, .link-chip {
+      color: var(--muted);
+      background: #131714;
+      border: 1px solid var(--line-soft);
+    }
+    .alpha-form {
+      display: grid;
+      gap: 10px;
+    }
+    .label {
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    input[type="email"] {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--bg-2);
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+    }
+    input[type="email"]:focus {
+      outline: 2px solid rgba(0, 255, 136, 0.5);
+      outline-offset: 1px;
+      border-color: var(--accent);
+    }
+    button {
+      min-height: 48px;
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      color: var(--bg-2);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .note {
+      min-height: 18px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .compare-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #131714;
+    }
+    .compare-card h3 { font-size: 20px; margin-bottom: 10px; }
+    .compare-card .row { margin-top: 10px; }
+    .market-hint {
+      margin-top: 12px;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .footer-links {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    @media (max-width: 820px) {
+      .hero-grid, .alpha-grid, .compare-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .wrap { width: calc(100% - 20px); }
+      .hero, .section { padding: 16px; border-radius: 16px; }
+      .cta, .ghost, .link-chip, button { width: 100%; }
+      .topbar { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>Polymarket Pulse // Trader Alpha</div>
+      <div>
+        <a href="/trader-bot?lang=en">EN</a>
+        <a href="/trader-bot?lang=ru">RU</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="tagline">
+        <span class="tag active">Powered by Pulse signals</span>
+        <span class="tag">Polymarket only</span>
+        <span class="tag">Non-custodial first</span>
+        <span class="tag">Auto on rules</span>
+      </div>
+      <p class="eyebrow">Execution layer · sibling product</p>
+      <h1>От сигнала к исполнению прямо в Telegram.</h1>
+      <p class="sub">Pulse находит движение. Trader Bot действует по нему. Alpha-слой сфокусирован: Telegram-execution для Polymarket, rule-bound AI trader agent и non-custodial модель без слепого copy-trading.</p>
+
+      <div class="hero-grid">
+        <div class="panel">
+          <p class="kicker">Что входит в alpha</p>
+          <div class="rows">
+            <div class="row">
+              <strong>Execution-бот, а не ещё один dashboard.</strong>
+              Покупка, продажа, limit order, позиции и follow-сценарии внутри Telegram.
+            </div>
+            <div class="row">
+              <strong>AI trader agent с жёсткими границами.</strong>
+              Либо ручное подтверждение, либо auto-execution только внутри ваших правил.
+            </div>
+            <div class="row">
+              <strong>Risk primitives с первого дня.</strong>
+              Max order size, daily trade cap, daily loss cap, slippage ceiling, cooldown и kill switch.
+            </div>
+          </div>
+          <div id="market-hint" class="market-hint"></div>
+        </div>
+
+        <div class="panel">
+          <p class="kicker">Alpha waitlist</p>
+          <form id="alpha-form" class="alpha-form" novalidate>
+            <label class="label" for="alpha-email">Email для alpha invite</label>
+            <input id="alpha-email" name="alpha-email" type="email" required autocomplete="email" placeholder="you@domain.com" />
+            <button type="submit">Вступить в Trader Alpha</button>
+          </form>
+          <div id="alpha-msg" class="note">Этот email пойдёт в execution alpha-очередь, а не в общий поток dashboard-спама.</div>
+          <div class="cta-row">
+            <a id="trader-link" class="cta" href="https://t.me/PolymarketPulse_trader_bot?start=alpha_ru" target="_blank" rel="noopener noreferrer">Открыть Trader Bot</a>
+            <a id="pulse-link" class="ghost" href="https://t.me/polymarket_pulse_bot?start=trade_ru" target="_blank" rel="noopener noreferrer">Открыть Pulse Bot</a>
+            <a class="link-chip" href="/telegram-bot?lang=ru">Посмотреть текущий Pulse flow</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="kicker">Positioning vs Polycule</p>
+      <h2>Не chat wallet first. Signal quality first.</h2>
+      <div class="compare-grid">
+        <article class="compare-card">
+          <h3>Pulse</h3>
+          <div class="row"><strong>Discovery и decision.</strong> Live movers, watchlist alerts, inbox signals, AI-explainer слой.</div>
+          <div class="row"><strong>Acquisition engine.</strong> Сайт, Telegram signal bot, email digest и X/Threads контент.</div>
+        </article>
+        <article class="compare-card">
+          <h3>Trader</h3>
+          <div class="row"><strong>Execution и repeat usage.</strong> Orders, positions, follow-flows и rule-based AI trading.</div>
+          <div class="row"><strong>Наш угол атаки.</strong> Торгуем то, что реально двинулось, а не просто смотрим на очередной терминал.</div>
+        </article>
+      </div>
+      <div class="footer-links">
+        <a class="link-chip" href="/analytics?lang=ru">Analytics</a>
+        <a class="link-chip" href="/signals?lang=ru">Signals</a>
+        <a class="link-chip" href="/how-it-works?lang=ru">Как это работает</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function getAttribution() {
+      const p = new URLSearchParams(window.location.search);
+      return {
+        lang: 'ru',
+        placement: p.get('placement') || 'trader_bot_page',
+        utm_source: p.get('utm_source') || '',
+        utm_medium: p.get('utm_medium') || '',
+        utm_campaign: p.get('utm_campaign') || ''
+      };
+    }
+
+    async function trackEvent(eventType, details = {}) {
+      const payload = JSON.stringify({ event_type: eventType, source: 'site', details });
+      try {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', eventType, details);
+        }
+      } catch (_) {}
+      try {
+        if (navigator.sendBeacon) {
+          const ok = navigator.sendBeacon('/api/events', new Blob([payload], { type: 'application/json' }));
+          if (ok) return;
+        }
+      } catch (_) {}
+      try {
+        await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        });
+      } catch (_) {}
+    }
+
+    const p = new URLSearchParams(window.location.search);
+    const marketId = p.get('market_id') || '';
+    const marketHint = document.getElementById('market-hint');
+    if (marketId && marketHint) {
+      marketHint.textContent = `Переход пришёл из Pulse-сигнала по рынку ${marketId}. Такие alpha-заявки мы будем использовать для приоритета market-specific execution feedback.`;
+    }
+
+    trackEvent('page_view', { ...getAttribution(), product: 'trader_alpha' });
+
+    document.getElementById('trader-link')?.addEventListener('click', () => {
+      trackEvent('tg_click', { ...getAttribution(), placement: 'trader_alpha_to_trader_bot', product: 'trader_alpha' });
+    });
+
+    document.getElementById('pulse-link')?.addEventListener('click', () => {
+      trackEvent('tg_click', { ...getAttribution(), placement: 'trader_alpha_to_pulse', product: 'trader_alpha' });
+    });
+
+    document.getElementById('alpha-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (document.getElementById('alpha-email')?.value || '').trim();
+      const msg = document.getElementById('alpha-msg');
+      if (!email) {
+        msg.textContent = 'Сначала введите email.';
+        return;
+      }
+      msg.textContent = 'Сохраняю alpha-заявку...';
+      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'trader_alpha_form', product: 'trader_alpha', market_id: marketId });
+      try {
+        const res = await fetch('/api/trader-alpha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            source: 'site',
+            details: { ...getAttribution(), product: 'trader_alpha', market_id: marketId }
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.detail || 'request failed');
+        msg.textContent = 'Готово. Вы в alpha-очереди execution-бота.';
+      } catch (err) {
+        msg.textContent = 'Ошибка alpha-заявки: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

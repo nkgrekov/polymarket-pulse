@@ -26,6 +26,56 @@ Required variables:
 - `RESEND_FROM_EMAIL` (optional)
 - `APP_BASE_URL`
 
+## Service 1b: trader-bot
+
+Start command:
+
+```bash
+python trader_bot/main.py
+```
+
+Monorepo deploy command:
+
+```bash
+railway up -s trader-bot --path-as-root trader_bot
+```
+
+Required variables:
+
+- `TRADER_BOT_TOKEN`
+- `PG_CONN`
+- `APP_BASE_URL`
+- `TRADER_SITE_URL`
+- `TRADER_SIGNER_URL` (`https://polymarketpulse.app/trader-connect` in prod)
+- `PULSE_BOT_URL`
+- `TRADER_SOURCE`
+- `TRADER_DEFAULT_ORDER_USD`
+- `TRADER_TOP_MARKETS_LIMIT`
+- `DB_CONNECT_TIMEOUT_SECONDS`
+
+## Service 1c: trade-worker
+
+Start command:
+
+```bash
+python trade_worker/main.py
+```
+
+Monorepo deploy command:
+
+```bash
+railway up -s trade-worker --path-as-root trade_worker
+```
+
+Required variables:
+
+- `PG_CONN`
+- `EXECUTION_MODE` (`dry_run` for current alpha)
+- `EXECUTION_POLL_SECONDS`
+- `DB_CONNECT_TIMEOUT_SECONDS`
+- `WORKER_BATCH_LIMIT`
+- `WORKER_SOURCE`
+
 ## Service 2: site
 
 Start command:

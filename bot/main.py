@@ -48,6 +48,8 @@ PRO_SUBSCRIPTION_DAYS = int(os.environ.get("PRO_SUBSCRIPTION_DAYS", "30"))
 TELEGRAM_STARS_ENABLED = os.environ.get("TELEGRAM_STARS_ENABLED", "1").strip() not in {"0", "false", "False"}
 TELEGRAM_STARS_PRICE_XTR = int(os.environ.get("TELEGRAM_STARS_PRICE_XTR", "454"))
 PRO_STARS_PAYLOAD_PREFIX = "pro_monthly_stars"
+WATCHLIST_PICKER_MIN_LIQUIDITY = Decimal(os.environ.get("WATCHLIST_PICKER_MIN_LIQUIDITY", "1000"))
+TRADER_ALPHA_URL = os.environ.get("TRADER_ALPHA_URL", "https://polymarketpulse.app/trader-bot")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,8 +78,17 @@ select
   (
     select count(*)
     from bot.watchlist w
+    join public.markets m on m.market_id = w.market_id
     where w.user_id = p.user_id
+      and coalesce(m.status, 'active') = 'active'
   ) as watchlist_count,
+  (
+    select count(*)
+    from bot.watchlist w
+    join public.markets m on m.market_id = w.market_id
+    where w.user_id = p.user_id
+      and coalesce(m.status, 'active') = 'closed'
+  ) as watchlist_closed_count,
   (
     select count(*)
     from bot.sent_alerts_log l
@@ -321,18 +332,12 @@ SQL_WATCHLIST_PICKER_CANDIDATES = """
 with params as (
   select
     %s::text as cat,
-    %s::uuid as user_id
+    %s::uuid as user_id,
+    %s::numeric as min_liquidity
 ), wl as (
   select w.market_id
   from bot.watchlist w
   where w.user_id = (select user_id from params)
-), recent_seen as (
-  select
-    s.market_id,
-    max(s.ts_bucket) as last_seen
-  from public.market_snapshots s
-  where s.ts_bucket >= now() - interval '72 hours'
-  group by s.market_id
 ), quote_src as (
   select
     s.market_id,
@@ -342,6 +347,7 @@ with params as (
   where s.ts_bucket >= now() - interval '6 hours'
     and s.yes_bid is not null
     and s.yes_ask is not null
+    and coalesce(s.liquidity, 0)::numeric >= (select min_liquidity from params)
 ), quotes as (
   select distinct on (qs.market_id)
     qs.market_id,
@@ -357,6 +363,7 @@ with params as (
     q.liquidity,
     q.quote_bucket,
     1 as prio,
+    (coalesce(abs(t.delta_yes), 0) * 100.0 + ln(1 + greatest(coalesce(q.liquidity, 0), 0)))::numeric as hybrid_score,
     coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
     lower(t.question) like '%%up or down - %%' as is_micro
   from public.top_movers_latest t
@@ -371,6 +378,7 @@ with params as (
     q.liquidity,
     q.quote_bucket,
     2 as prio,
+    (coalesce(abs(t.delta_yes_1h), 0) * 100.0 + ln(1 + greatest(coalesce(q.liquidity, 0), 0)))::numeric as hybrid_score,
     coalesce(nullif(regexp_replace(t.question, ' - .*$', ''), ''), t.market_id) as root_key,
     lower(t.question) like '%%up or down - %%' as is_micro
   from public.top_movers_1h t
@@ -385,38 +393,21 @@ with params as (
     q.liquidity,
     q.quote_bucket,
     3 as prio,
+    ln(1 + greatest(coalesce(q.liquidity, 0), 0))::numeric as hybrid_score,
     coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
     lower(m.question) like '%%up or down - %%' as is_micro
-  from public.markets m
+  from public.market_universe u
+  join public.markets m on m.market_id = u.market_id
   join quotes q on q.market_id = m.market_id
   where coalesce(m.status, 'active') = 'active'
   order by q.liquidity desc, m.market_id
-  limit 80
-), fresh_active as (
-  select
-    m.market_id,
-    m.question,
-    null::numeric as delta_yes,
-    null::numeric as liquidity,
-    rs.last_seen as quote_bucket,
-    4 as prio,
-    coalesce(nullif(regexp_replace(m.question, ' - .*$', ''), ''), m.market_id) as root_key,
-    lower(m.question) like '%%up or down - %%' as is_micro
-  from public.markets m
-  join recent_seen rs on rs.market_id = m.market_id
-  where coalesce(m.status, 'active') = 'active'
-    and m.question is not null
-    and length(m.question) > 12
-  order by rs.last_seen desc, m.market_id desc
-  limit 220
+  limit 120
 ), pool as (
   select * from movers_now
   union all
   select * from movers_1h
   union all
   select * from liquid_live
-  union all
-  select * from fresh_active
 ), ranked as (
   select distinct on (root_key)
     market_id,
@@ -425,9 +416,10 @@ with params as (
     liquidity,
     quote_bucket,
     prio,
+    hybrid_score,
     is_micro
   from pool
-  order by root_key, is_micro, prio, quote_bucket desc nulls last, abs(delta_yes) desc nulls last, liquidity desc nulls last
+  order by root_key, is_micro, hybrid_score desc nulls last, prio, quote_bucket desc nulls last, abs(delta_yes) desc nulls last, liquidity desc nulls last
 ), tagged as (
   select
     r.*,
@@ -459,7 +451,7 @@ with params as (
     f.*,
     row_number() over (
       partition by cat_tag
-      order by is_micro, prio, quote_bucket desc nulls last, coalesce(liquidity, 0) desc, abs(delta_yes) desc nulls last, market_id
+      order by is_micro, hybrid_score desc nulls last, prio, quote_bucket desc nulls last, coalesce(liquidity, 0) desc, abs(delta_yes) desc nulls last, market_id
     ) as cat_rank
   from filtered f
 ), final as (
@@ -489,6 +481,7 @@ order by
     else 1
   end,
   is_micro,
+  hybrid_score desc nulls last,
   prio,
   quote_bucket desc nulls last,
   coalesce(liquidity, 0) desc,
@@ -558,6 +551,46 @@ select market_id, question
 from public.markets
 where market_id = %s
 limit 1;
+"""
+
+SQL_MARKET_LIVE_STATUS = """
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket
+), market_base as (
+  select
+    m.market_id,
+    m.question,
+    coalesce(m.status, 'unknown') as market_status
+  from public.markets m
+  where m.market_id = %s
+)
+select
+  mb.market_id,
+  mb.question,
+  mb.market_status,
+  exists (
+    select 1
+    from public.market_snapshots ms, lb
+    where ms.market_id = mb.market_id
+      and ms.ts_bucket = lb.last_bucket
+      and ms.yes_bid is not null
+      and ms.yes_ask is not null
+  ) as has_last_quotes,
+  exists (
+    select 1
+    from public.market_snapshots ms, prev
+    where ms.market_id = mb.market_id
+      and ms.ts_bucket = prev.prev_bucket
+      and ms.yes_bid is not null
+      and ms.yes_ask is not null
+  ) as has_prev_quotes,
+  (select last_bucket from lb) as last_bucket,
+  (select prev_bucket from prev) as prev_bucket
+from market_base mb;
 """
 
 SQL_FIND_MARKET = """
@@ -671,6 +704,17 @@ insert into app.upgrade_intents (
   telegram_id,
   chat_id,
   source,
+  details
+)
+values (%s::uuid, %s, %s, %s, %s);
+"""
+
+SQL_TRADE_ACTIVITY_INSERT = """
+insert into trade.activity_events (
+  user_id,
+  event_type,
+  source,
+  market_id,
   details
 )
 values (%s::uuid, %s, %s, %s, %s);
@@ -883,8 +927,16 @@ def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:
 def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
     plan = str(user_ctx.get("plan") or "free")
     watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
     alerts_today = int(user_ctx.get("alerts_sent_today") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    closed_line = ""
+    if closed_count > 0:
+        closed_line = (
+            f"\nArchived closed markets: {closed_count}"
+            if locale == "en"
+            else f"\nЗакрытых в архиве: {closed_count}"
+        )
     if plan == "pro":
         if locale == "en":
             return (
@@ -892,12 +944,14 @@ def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
                 f"Threshold: {threshold}\n"
                 f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
                 f"Alerts today: {alerts_today} (unlimited)"
+                f"{closed_line}"
             )
         return (
             "План: PRO\n"
             f"Threshold: {threshold}\n"
             f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
             f"Alerts today: {alerts_today} (без лимита)"
+            f"{closed_line}"
         )
     if locale == "en":
         return (
@@ -905,12 +959,14 @@ def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
             f"Threshold: {threshold}\n"
             f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
             f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
+            f"{closed_line}"
         )
     return (
         "План: FREE\n"
         f"Threshold: {threshold}\n"
         f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
         f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
+        f"{closed_line}"
     )
 
 
@@ -948,6 +1004,81 @@ def upgrade_pitch_text(update: Update) -> str:
     )
 
 
+def build_trader_alpha_url(
+    *,
+    locale: str = "ru",
+    placement: str,
+    market_id: str | None = None,
+) -> str:
+    lang = "en" if locale == "en" else "ru"
+    url = f"{TRADER_ALPHA_URL}?lang={lang}&placement={placement}"
+    if market_id:
+        url += f"&market_id={market_id}"
+    return url
+
+
+def trade_pitch_text(update: Update, *, market_id: str | None = None) -> str:
+    locale = locale_from_update(update)
+    market_hint = (
+        f"\n\nMarket handoff: <code>{market_id}</code>"
+        if market_id
+        else ""
+    )
+    if locale == "en":
+        return (
+            "<b>Trader Alpha</b>\n"
+            "Pulse stays the signal layer.\n"
+            "Trader becomes the execution layer for Polymarket only.\n\n"
+            "What is in alpha:\n"
+            "• non-custodial first\n"
+            "• buy / sell / limit order in Telegram\n"
+            "• follow flow + AI trader agent\n"
+            "• auto only inside your own rules"
+            f"{market_hint}"
+        )
+    return (
+        "<b>Trader Alpha</b>\n"
+        "Pulse остаётся signal-слоем.\n"
+        "Trader становится execution-слоем только для Polymarket.\n\n"
+        "Что входит в alpha:\n"
+        "• non-custodial first\n"
+        "• buy / sell / limit order в Telegram\n"
+        "• follow-flow + AI trader agent\n"
+        "• auto только внутри ваших правил"
+        f"{market_hint}"
+    )
+
+
+def trader_alpha_keyboard(*, locale: str = "ru", placement: str, market_id: str | None = None) -> InlineKeyboardMarkup:
+    launch_url = build_trader_alpha_url(locale=locale, placement=placement, market_id=market_id)
+    if locale == "en":
+        return InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Join Trader Alpha", url=launch_url)]]
+        )
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Вступить в Trader Alpha", url=launch_url)]]
+    )
+
+
+def trader_surface_keyboard(
+    *,
+    locale: str = "ru",
+    placement: str,
+    market_id: str | None = None,
+    extra_buttons: list[InlineKeyboardButton] | None = None,
+) -> InlineKeyboardMarkup:
+    launch_url = build_trader_alpha_url(locale=locale, placement=placement, market_id=market_id)
+    primary = (
+        InlineKeyboardButton("Trade this market", url=launch_url)
+        if locale == "en"
+        else InlineKeyboardButton("Торговать этот рынок", url=launch_url)
+    )
+    rows = [[primary]]
+    if extra_buttons:
+        rows.append(extra_buttons)
+    return InlineKeyboardMarkup(rows)
+
+
 def plan_upgrade_hint(update: Update) -> str:
     if is_english_locale(update):
         return "→ /upgrade — move to PRO"
@@ -961,6 +1092,74 @@ def main_menu_inline() -> InlineKeyboardMarkup:
             [InlineKeyboardButton("Inbox", callback_data="menu:inbox"), InlineKeyboardButton("Plan", callback_data="menu:plan")],
             [InlineKeyboardButton("Add market", callback_data="menu:pick"), InlineKeyboardButton("Threshold", callback_data="menu:threshold")],
             [InlineKeyboardButton("Upgrade", callback_data="menu:upgrade"), InlineKeyboardButton("Help", callback_data="menu:help")],
+        ]
+    )
+
+
+def onboarding_start_inline(locale: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Add first market" if locale == "en" else "Добавить первый рынок",
+                    callback_data="menu:pick",
+                ),
+                InlineKeyboardButton(
+                    "Top movers" if locale == "en" else "Топ муверы",
+                    callback_data="menu:movers",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "Plan" if locale == "en" else "План",
+                    callback_data="menu:plan",
+                ),
+                InlineKeyboardButton(
+                    "Help" if locale == "en" else "Помощь",
+                    callback_data="menu:help",
+                ),
+            ],
+        ]
+    )
+
+
+def onboarding_picker_inline(chat_id: int, rows: list[dict], bot_data: dict, *, locale: str = "ru") -> InlineKeyboardMarkup:
+    picker_map = bot_data.setdefault("picker_map", {})
+    buttons: list[list[InlineKeyboardButton]] = []
+    for row in rows[:3]:
+        market_id = str(row["market_id"])
+        token = _picker_token(chat_id, market_id)
+        picker_map[f"{chat_id}:{token}"] = market_id
+        delta = row.get("delta_yes")
+        cat = (row.get("cat_tag") or "other").upper()[:3]
+        prefix = _fmt_num(delta, 3, signed=True) if delta is not None else "LIVE"
+        label = f"{cat} {prefix} | {(row.get('question') or 'n/a')[:32]}".strip()
+        buttons.append([InlineKeyboardButton(label, callback_data=f"wlpick:{token}")])
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "Open full picker" if locale == "en" else "Открыть полный picker",
+                callback_data="menu:pick",
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(buttons)
+
+
+def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+            ],
+            [
+                InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+                InlineKeyboardButton(
+                    "Add one more" if locale == "en" else "Добавить ещё",
+                    callback_data="menu:pick",
+                ),
+            ],
         ]
     )
 
@@ -1041,7 +1240,17 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
         return
 
     if rows:
-        await message.reply_text("Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
+        await message.reply_text(
+            "Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows),
+            reply_markup=trader_surface_keyboard(
+                locale=locale,
+                placement="bot_movers",
+                market_id=str(rows[0].get("market_id")) if rows else None,
+                extra_buttons=[
+                    InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                ],
+            ),
+        )
         return
 
     try:
@@ -1056,7 +1265,12 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
                 if locale == "en"
                 else "В текущем окне движение плоское. Показываю fallback 30m movers:\n\n"
             )
-            + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
+            + "\n\n".join(fmt_mover_row(r) for r in rows_30m),
+            reply_markup=trader_surface_keyboard(
+                locale=locale,
+                placement="bot_movers_30m",
+                market_id=str(rows_30m[0].get("market_id")) if rows_30m else None,
+            ),
         )
         return
 
@@ -1072,7 +1286,12 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
                 if locale == "en"
                 else "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
             )
-            + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
+            + "\n\n".join(fmt_mover_row(r) for r in rows_1h),
+            reply_markup=trader_surface_keyboard(
+                locale=locale,
+                placement="bot_movers_1h",
+                market_id=str(rows_1h[0].get("market_id")) if rows_1h else None,
+            ),
         )
         return
 
@@ -1151,7 +1370,14 @@ async def send_inbox_view(
         return
 
     header = "Inbox alerts:" if limit == 10 else ("Inbox alerts (20):" if locale == "en" else "Inbox alerts (20):")
-    await message.reply_text(header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows))
+    await message.reply_text(
+        header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows),
+        reply_markup=trader_surface_keyboard(
+            locale=locale,
+            placement="bot_inbox",
+            market_id=str(rows[0].get("market_id")) if rows else None,
+        ),
+    )
 
 
 async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", show_loader: bool = True) -> None:
@@ -1186,7 +1412,12 @@ async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", sh
                     if locale == "en"
                     else "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
                 )
-                + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
+                + "\n\n".join(fmt_mover_row(r) for r in rows_30m),
+                reply_markup=trader_surface_keyboard(
+                    locale=locale,
+                    placement="bot_watchlist_30m",
+                    market_id=str(rows_30m[0].get("market_id")) if rows_30m else None,
+                ),
             )
             return
         try:
@@ -1201,7 +1432,12 @@ async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", sh
                     if locale == "en"
                     else "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
                 )
-                + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
+                + "\n\n".join(fmt_mover_row(r) for r in rows_1h),
+                reply_markup=trader_surface_keyboard(
+                    locale=locale,
+                    placement="bot_watchlist_1h",
+                    market_id=str(rows_1h[0].get("market_id")) if rows_1h else None,
+                ),
             )
             return
         try:
@@ -1231,7 +1467,14 @@ async def send_watchlist_view(message, user_ctx: dict, *, locale: str = "ru", sh
         )
         return
 
-    await message.reply_text("Watchlist live changes:\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows))
+    await message.reply_text(
+        ("Watchlist live changes:\n\n" if locale == "en" else "Live-изменения watchlist:\n\n") + "\n\n".join(fmt_mover_row(r) for r in rows),
+        reply_markup=trader_surface_keyboard(
+            locale=locale,
+            placement="bot_watchlist",
+            market_id=str(rows[0].get("market_id")) if rows else None,
+        ),
+    )
 
 
 def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> str:
@@ -1250,17 +1493,55 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
         if locale == "en":
             return (
                 f"{plan_label} limit: {limit} markets. "
-                "Remove one via /watchlist_remove or upgrade via /upgrade"
+                "Remove one via /watchlist_remove, upgrade via /upgrade, or join execution alpha via /trade"
             )
         return (
             f"Лимит {plan_label}: {limit} рынка. "
-            "Удалите один через /watchlist_remove или измените план через /upgrade"
+            "Удалите один через /watchlist_remove, измените план через /upgrade или идите в execution alpha через /trade"
         )
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    live_rows = run_db_query(SQL_MARKET_LIVE_STATUS, (market_id,), row_factory=dict_row)
+    live = live_rows[0] if live_rows else None
+    market_status = str((live or {}).get("market_status") or "unknown")
+    has_last = bool((live or {}).get("has_last_quotes"))
+    has_prev = bool((live or {}).get("has_prev_quotes"))
+    live_line = ""
+    if market_status == "closed":
+        live_line = (
+            "Status now: market is already closed, so watchlist/inbox will likely stay silent."
+            if locale == "en"
+            else "Статус сейчас: рынок уже закрыт, поэтому watchlist/inbox, скорее всего, будут молчать."
+        )
+    elif has_last and has_prev:
+        live_line = (
+            "Status now: live quotes exist in last+prev, so this market is ready for watchlist/inbox tracking."
+            if locale == "en"
+            else "Статус сейчас: есть live-котировки в last+prev, значит рынок уже готов для watchlist/inbox."
+        )
+    elif has_last or has_prev:
+        live_line = (
+            "Status now: partial quotes only. The market is added, but inbox/watchlist may be quiet until both windows are live."
+            if locale == "en"
+            else "Статус сейчас: котировки только частично. Рынок добавлен, но inbox/watchlist могут молчать, пока оба окна не станут live."
+        )
+    else:
+        live_line = (
+            "Status now: no bid/ask quotes in last+prev yet. The market is added, but first live value may appear later."
+            if locale == "en"
+            else "Статус сейчас: пока нет bid/ask-котировок в last+prev. Рынок добавлен, но первая live-ценность может появиться позже."
+        )
     if locale == "en":
-        return f"Added to watchlist: {market_id} — {market_rows[0]['question']}"
-    return f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}"
+        return (
+            f"Added to watchlist: {market_id} — {market_rows[0]['question']}\n"
+            f"{live_line}\n"
+            "Next: open Watchlist for live changes or Inbox for alerts."
+        )
+    return (
+        f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}\n"
+        f"{live_line}\n"
+        "Дальше: откройте Watchlist для live-изменений или Inbox для алертов."
+    )
 
 
 def cleanup_closed_watchlist_sync(user_id: str) -> int:
@@ -1294,16 +1575,14 @@ async def send_watchlist_picker(
     rows = await fetch_watchlist_picker_candidates_async(
         user_id=user_ctx["user_id"], category=category, limit=16, timeout_sec=10.0
     )
-    if not rows and category == "all":
-        rows = await fetch_top_movers_async(limit=8, timeout_sec=10.0)
-    if not rows and category == "all":
-        rows = await fetch_top_movers_1h_async(limit=8, timeout_sec=10.0)
     if not rows:
         text = (
             f"No live candidates for {_picker_category_label(category)} filter right now.\n"
+            f"Current picker floor: liquidity >= {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}.\n"
             "Try another filter or /watchlist_add <market_id|slug>."
             if locale == "en"
             else f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
+            f"Текущий порог picker: liquidity >= {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}.\n"
             "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
         )
         if edit_message:
@@ -1348,15 +1627,15 @@ async def send_watchlist_picker(
         ]
     )
     availability = (
-        f"Live candidates now: {len(rows)}."
+        f"Live high-liquidity candidates now: {len(rows)}. Floor: {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}."
         if locale == "en"
-        else f"Live-кандидатов сейчас: {len(rows)}."
+        else f"Live high-liquidity кандидатов сейчас: {len(rows)}. Порог: {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}."
     )
     if category == "all" and len(rows) < 6:
         availability += (
-            " Narrow window: add market_id/slug manually instead of waiting for broader flow."
+            " Narrow live window: add market_id/slug manually if you need a specific market."
             if locale == "en"
-            else " Окно узкое: добавьте market_id/slug вручную, чтобы не ждать расширения окна."
+            else " Live-окно узкое: добавьте market_id/slug вручную, если нужен конкретный рынок."
         )
     picker_text = (
         f"Choose a market for watchlist. Filter: {_picker_category_label(category)}.\n"
@@ -1469,7 +1748,11 @@ async def fetch_watchlist_picker_candidates_async(
 ) -> list[dict]:
     return await asyncio.wait_for(
         asyncio.to_thread(
-            lambda: run_db_query(SQL_WATCHLIST_PICKER_CANDIDATES, (category, user_id, limit), row_factory=dict_row)
+            lambda: run_db_query(
+                SQL_WATCHLIST_PICKER_CANDIDATES,
+                (category, user_id, WATCHLIST_PICKER_MIN_LIQUIDITY, limit),
+                row_factory=dict_row,
+            )
         ),
         timeout=timeout_sec,
     )
@@ -1564,6 +1847,33 @@ def log_upgrade_intent_sync(update: Update, user_ctx: dict) -> None:
     )
 
 
+def log_trade_interest_sync(update: Update, user_ctx: dict, *, market_id: str | None = None, source: str = "pulse_bot") -> None:
+    tg_user = update.effective_user
+    tg_chat = update.effective_chat
+    payload = Jsonb(
+        {
+            "plan": user_ctx.get("plan"),
+            "watchlist_count": user_ctx.get("watchlist_count"),
+            "alerts_sent_today": user_ctx.get("alerts_sent_today"),
+            "threshold": str(user_ctx.get("threshold")),
+            "telegram_id": tg_user.id if tg_user else None,
+            "chat_id": tg_chat.id if tg_chat else None,
+            "username": tg_user.username if tg_user else None,
+            "lang": tg_user.language_code if tg_user else None,
+        }
+    )
+    execute_db_write(
+        SQL_TRADE_ACTIVITY_INSERT,
+        (
+            user_ctx["user_id"],
+            "trader_alpha_interest",
+            source,
+            market_id,
+            payload,
+        ),
+    )
+
+
 async def dispatch_push_alerts(application: Application) -> None:
     rows = await asyncio.wait_for(
         asyncio.to_thread(lambda: run_db_query(SQL_PUSH_CANDIDATES, (PUSH_FETCH_LIMIT,), row_factory=dict_row)),
@@ -1647,7 +1957,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Next:\n"
             "/help — command reference\n"
-            "/upgrade — move to PRO"
+            "/upgrade — move to PRO\n"
+            "/trade — join execution alpha"
             if locale == "en"
             else "Профиль активирован.\n\n"
             "Что бот делает:\n"
@@ -1662,10 +1973,44 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Полезно дальше:\n"
             "/help — все команды и расширенные опции\n"
-            "/upgrade — как перейти на PRO"
+            "/upgrade — как перейти на PRO\n"
+            "/trade — execution alpha"
         ),
         reply_markup=quick_reply_keyboard(),
     )
+    await update.message.reply_text(
+        (
+            "First useful step: add one live market to your watchlist."
+            if locale == "en"
+            else "Первый полезный шаг: добавьте один live-рынок в watchlist."
+        ),
+        reply_markup=onboarding_start_inline(locale),
+    )
+    if int(user_ctx.get("watchlist_count") or 0) == 0:
+        try:
+            starter_rows = await fetch_watchlist_picker_candidates_async(
+                user_id=user_ctx["user_id"],
+                category="all",
+                limit=3,
+                timeout_sec=10.0,
+            )
+        except Exception:
+            log.exception("/start onboarding picker fetch failed")
+            starter_rows = []
+        if starter_rows:
+            await update.message.reply_text(
+                (
+                    "Tap one market below to add it instantly:"
+                    if locale == "en"
+                    else "Нажмите на один рынок ниже, чтобы добавить его сразу:"
+                ),
+                reply_markup=onboarding_picker_inline(
+                    update.effective_chat.id,
+                    starter_rows,
+                    context.application.bot_data,
+                    locale=locale,
+                ),
+            )
     await update.message.reply_text(
         "Quick menu:" if locale == "en" else "Быстрое меню:",
         reply_markup=main_menu_inline(),
@@ -1693,7 +2038,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/watchlist_remove <market_id|slug>\n"
             "/threshold 0.03 — personal threshold\n"
             "/limits — FREE/PRO limits\n"
-            "/inbox20 — extended inbox"
+            "/inbox20 — extended inbox\n"
+            "/trade — execution alpha handoff"
             if locale == "en"
             else "Основные команды:\n"
             "/start — активация профиля\n"
@@ -1709,7 +2055,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/watchlist_remove <market_id|slug>\n"
             "/threshold 0.03 — персональный порог\n"
             "/limits — лимиты FREE/PRO\n"
-            "/inbox20 — расширенный inbox"
+            "/inbox20 — расширенный inbox\n"
+            "/trade — переход в execution alpha"
         )
     )
 
@@ -1733,7 +2080,8 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Next step:\n"
             "1) Add a market via /watchlist_add\n"
             "2) Set threshold via /threshold 0.03\n"
-            "3) Upgrade: /upgrade\n\n"
+            "3) Upgrade: /upgrade\n"
+            "4) Execution alpha: /trade\n\n"
             f"{plan_upgrade_hint(update)}"
             if locale == "en"
             else "Текущий статус:\n"
@@ -1742,7 +2090,8 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Следующий шаг:\n"
             "1) Добавьте рынок через /watchlist_add\n"
             "2) Настройте порог через /threshold 0.03\n"
-            "3) Для PRO: /upgrade\n\n"
+            "3) Для PRO: /upgrade\n"
+            "4) Для execution alpha: /trade\n\n"
             f"{plan_upgrade_hint(update)}"
         ),
         reply_markup=main_menu_inline(),
@@ -1771,7 +2120,8 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• email digest included\n\n"
             f"PRO price: about ${PRO_MONTHLY_USD}/month in Telegram Stars\n\n"
             f"Your current usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
-            "Upgrade: /upgrade"
+            "Upgrade: /upgrade\n"
+            "Need execution alpha? /trade"
             if locale == "en"
             else "Лимиты и доступ:\n\n"
             "FREE:\n"
@@ -1783,7 +2133,8 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• email-дайджест включен\n\n"
             f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
             f"Ваш текущий usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
-            "Чтобы перейти на PRO: /upgrade"
+            "Чтобы перейти на PRO: /upgrade\n"
+            "Нужен execution alpha? /trade"
         )
     )
 
@@ -1819,6 +2170,23 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
             disable_web_page_preview=True,
         )
+
+
+async def cmd_trade(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    locale = locale_from_update(update)
+    user_ctx = await resolve_user_context(update)
+    try:
+        await asyncio.to_thread(log_trade_interest_sync, update, user_ctx, market_id=None, source="pulse_bot_command")
+    except Exception:
+        log.exception("/trade interest insert failed")
+    await update.message.reply_text(
+        trade_pitch_text(update),
+        parse_mode="HTML",
+        reply_markup=trader_alpha_keyboard(locale=locale, placement="bot_trade_command"),
+        disable_web_page_preview=True,
+    )
 
 
 async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1964,6 +2332,8 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Added to watchlist: {market_id} — {market['question']}"
         if locale == "en"
         else f"Добавлено в watchlist: {market_id} — {market['question']}"
+        ,
+        reply_markup=watchlist_added_inline(locale),
     )
 
 
@@ -2152,7 +2522,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
-        await query.message.reply_text(result)
+        await query.message.reply_text(result, reply_markup=watchlist_added_inline(locale))
         return
 
 
@@ -2338,6 +2708,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("plan", cmd_plan))
     app.add_handler(CommandHandler("limits", cmd_limits))
     app.add_handler(CommandHandler("upgrade", cmd_upgrade))
+    app.add_handler(CommandHandler("trade", cmd_trade))
     app.add_handler(CommandHandler("threshold", cmd_threshold))
     app.add_handler(CommandHandler("movers", cmd_movers))
     app.add_handler(CommandHandler("inbox", cmd_inbox10))

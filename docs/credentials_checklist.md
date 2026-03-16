@@ -3,6 +3,10 @@
 ## Telegram Stars (Bot)
 
 - Bot token (`BOT_TOKEN`) in Railway bot service.
+- Trader alpha token (`TRADER_BOT_TOKEN`) in Railway `trader-bot` service.
+- Trader signer URL/runtime:
+  - `TRADER_SIGNER_URL=https://polymarketpulse.app/trader-connect`
+  - site runtime must expose `/trader-connect` and `/api/trader-signer/submit`
 - Product offer (fixed for iteration 1):
   - PRO monthly only
   - Watchlist limit: 20 markets
