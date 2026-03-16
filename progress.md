@@ -14,6 +14,37 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
+
+Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.
+
+Artifacts added:
+
+• `scripts/growth/render_manual_tabs_short.py`
+• `assets/social/out/manual-tabs-pain-5s.mp4`
+• `assets/social/out/manual-tabs-preview-01.png`
+• `assets/social/out/manual-tabs-preview-02.png`
+• `assets/social/out/manual-tabs-preview-03.png`
+
+What the new render does:
+
+• uses real `public.top_movers_latest` data from Postgres
+• renders a 5-second vertical short around the `Manual Tabs Pain` thesis:
+  - `12 tabs open`
+  - `move already happened`
+  - real mover question + delta
+  - `workflow too manual`
+  - Telegram CTA
+• stays inside the current dark terminal + neon green brand system
+
+X posting state was also clarified:
+
+• OAuth1 write access now works with the latest app tokens
+• automated posting is blocked by `402 CreditsDepleted`, not by missing write permissions
+• manual posting remains the correct operating mode until X credits are added
+
+---
+
 # GSC Indexing Hygiene Pass (2026-03-16)
 
 Addressed the first structural SEO inconsistency that was hurting indexing clarity in Google Search Console.
@@ -93,16 +124,11 @@ What is in the sprint:
 
 Important external blocker confirmed:
 
-• X posting is not enabled yet for the current app credentials
-• direct OAuth1 write check against `POST /2/tweets` returned:
-  - `403 Forbidden`
-  - `Your client app is not configured with the appropriate oauth1 app permissions for this endpoint.`
-
-Required fix on X side:
-
-• switch app permissions to `Read and write`
-• regenerate `Access Token` + `Access Token Secret`
-• retest before real posting
+• X write auth was fixed after this pass
+• current blocker is now API credits/quota, not app permissions
+• direct OAuth1 write check now returns:
+  - `402 CreditsDepleted`
+  - account has no available credits for `POST /2/tweets`
 
 ---
 

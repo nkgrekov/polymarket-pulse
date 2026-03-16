@@ -14,6 +14,40 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Manual Tabs Pain Video Layer (2026-03-17)
+
+The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.
+
+New artifact path:
+
+• `scripts/growth/render_manual_tabs_short.py`
+
+Output contract:
+
+• `assets/social/out/manual-tabs-pain-5s.mp4`
+• `assets/social/out/manual-tabs-preview-01.png`
+• `assets/social/out/manual-tabs-preview-02.png`
+• `assets/social/out/manual-tabs-preview-03.png`
+
+Render contract:
+
+• source of truth is still live DB data (`public.top_movers_latest`)
+• thesis is fixed to the paired pain-first post:
+  - `12 tabs open`
+  - `move already happened`
+  - real market delta
+  - `workflow too manual`
+  - Telegram CTA
+• visual grammar must stay inside the current brand system rather than using stock promo backgrounds
+
+Operational implication:
+
+• short-form growth is now split into:
+  - generic branded glitch testing (`render_shitpost_short.py`)
+  - post-specific pain-first clips (`render_manual_tabs_short.py`)
+
+---
+
 # Search Indexing Contract Pass (2026-03-16)
 
 The public site now uses a more explicit indexing contract for localized pages.
@@ -70,6 +104,7 @@ X delivery state:
 
 • auth/write scope is valid
 • automated posting remains blocked by account credits rather than by permissions
+• current API failure mode is `402 CreditsDepleted`, so manual posting stays the live distribution mode until credits are added
 
 ---
 
@@ -96,7 +131,8 @@ Contract:
 
 External delivery blocker currently confirmed:
 
-• X OAuth1 posting is not available until the app is switched to `Read and write` and new access tokens are issued
+• X OAuth1 posting permissions are now fixed
+• the active blocker is API credits/quota on the enrolled X account
 
 ---
 
