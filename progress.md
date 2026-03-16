@@ -50,6 +50,38 @@ Important note:
 
 ---
 
+# Pain-First Social Sprint + X Access Check (2026-03-16)
+
+Prepared the next growth layer as an operational social sprint instead of abstract marketing notes.
+
+Artifacts added:
+
+• `docs/social_sprint_pain_first_2026-03-16.md`
+• `docs/social_video_briefs_2026-03-16.md`
+
+What is in the sprint:
+
+• 5 audience pain pillars
+• 7-day posting cadence for X + Threads
+• concrete post drafts in English
+• strict brand-safe rules for visuals and CTA structure
+• 3-5 second short-form video briefs mapped to the strongest posts
+
+Important external blocker confirmed:
+
+• X posting is not enabled yet for the current app credentials
+• direct OAuth1 write check against `POST /2/tweets` returned:
+  - `403 Forbidden`
+  - `Your client app is not configured with the appropriate oauth1 app permissions for this endpoint.`
+
+Required fix on X side:
+
+• switch app permissions to `Read and write`
+• regenerate `Access Token` + `Access Token Secret`
+• retest before real posting
+
+---
+
 # Remaining EN Intent Pages Copy Pass (2026-03-16)
 
 Closed the same CTR/copy gap on the remaining English acquisition pages.

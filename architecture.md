@@ -52,6 +52,33 @@ Operational implication:
 
 ---
 
+# Pain-First Social Content Layer (2026-03-16)
+
+The growth layer now has a defined content operating model instead of ad-hoc posting ideas.
+
+Artifacts:
+
+• `docs/social_sprint_pain_first_2026-03-16.md`
+• `docs/social_video_briefs_2026-03-16.md`
+
+Contract:
+
+• social messaging is pain-first, not slogan-first
+• X/Threads posts must map back to concrete product friction:
+  - manual scanning
+  - alert fatigue
+  - dashboard overload
+  - watchlist decay
+  - signal/execution gap
+• short-form videos are support assets for specific posts, not standalone hype clips
+• all social visuals must stay inside the current terminal/dark-green brand system
+
+External delivery blocker currently confirmed:
+
+• X OAuth1 posting is not available until the app is switched to `Read and write` and new access tokens are issued
+
+---
+
 # Full EN Acquisition Copy Consistency (2026-03-16)
 
 The shared SEO renderer now carries a more consistent action-first copy layer across the full English acquisition set.

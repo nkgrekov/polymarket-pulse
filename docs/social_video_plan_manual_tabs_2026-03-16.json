@@ -1,0 +1,511 @@
+{
+  "query": "Polymarket Pulse vertical short about manual tab scanning pain, dark terminal, branded, 5 seconds, no hype, signal-first",
+  "material_summary": "Audience pain: by the time you notice a move, it is already old. Real market data overlay with prev->now, one market card, one line: workflow too manual, final button to @polymarket_pulse_bot. Palette #0d0f0e #131714 #1e2520 #e8ede9 #00ff88.",
+  "material_type": "code",
+  "tags": [
+    "code",
+    "interface"
+  ],
+  "keyword_candidates": [
+    "polymarket",
+    "pulse",
+    "vertical",
+    "about",
+    "manual",
+    "tab",
+    "scanning",
+    "pain"
+  ],
+  "theme": "the code and its logic",
+  "seed_used": null,
+  "selected_style": {
+    "id": "seed-remix-default",
+    "name": "Seed Remix Default",
+    "one_sentence_direction": "Make the remix feel like an AI briefing system running out of context while trying to stay polite.",
+    "palette": "Midnight navy, terminal green, pale violet, cold blue, warning red, soft gray.",
+    "typography": "Monospaced primary type with compact sans-serif labels.",
+    "motion": "Prompt-response stacking, subtle scanline crawl, deadpan holds, cursor blinks, soft zoom ruptures.",
+    "transitions": "Signal loss cards, channel switches, bug overlays, scanline punches, blackout frames.",
+    "audio": "Server hum, breathy synthetic lines, tiny confirmation clicks, dropout silences, low pulse.",
+    "scene_bias": [
+      "warning-card",
+      "prompt-loop",
+      "headline-board",
+      "dashboard-counter",
+      "soft-failure-message",
+      "terminal-confession",
+      "subtitle-confession"
+    ],
+    "signature_gags": [
+      "borrowed visual seriousness colliding with the wrong emotional register",
+      "different systems of presentation interrupting each other on purpose",
+      "one recurring motif mutating as if multiple editors touched the same short",
+      "a cheerful assistant tone undercut by crisis subtitles",
+      "system notes revealing what the main text is hiding",
+      "metrics standing in for feelings"
+    ],
+    "works_well_for": [
+      "text",
+      "webpage",
+      "document",
+      "code",
+      "image",
+      "audio",
+      "video",
+      "mixed",
+      "none",
+      "news",
+      "interface",
+      "data",
+      "ai-self-reflection",
+      "trailer"
+    ],
+    "anti_patterns": [
+      "Do not let the seed remix become a checklist of borrowed tricks.",
+      "Do not sample so many ingredients that the piece loses a dominant mood.",
+      "Do not let every line become a joke.",
+      "Do not bury the readable conversation under noise."
+    ],
+    "guardrails": [
+      "Treat sampled ingredients as prompts, not obligations.",
+      "Let one seed dominate and let the others act as interruptions.",
+      "Let one prompt exchange play cleanly.",
+      "Keep the final button short and legible.",
+      "Every data-like scene should still deliver a clear emotional beat."
+    ],
+    "seed_strategy": "sample-other-style-parts",
+    "default_style": true,
+    "analogy": "a model interface panicking about what it can no longer hold",
+    "dominant_seed_style": {
+      "id": "context-window-panic",
+      "name": "Context Window Panic"
+    },
+    "seed_sources": {
+      "one_sentence_direction": {
+        "id": "context-window-panic",
+        "name": "Context Window Panic"
+      },
+      "palette": {
+        "id": "context-window-panic",
+        "name": "Context Window Panic"
+      },
+      "typography": {
+        "id": "terminal-nocturne",
+        "name": "Terminal Nocturne"
+      },
+      "motion": {
+        "id": "context-window-panic",
+        "name": "Context Window Panic"
+      },
+      "transitions": {
+        "id": "broadcast-fever-dream",
+        "name": "Broadcast Fever Dream"
+      },
+      "audio": {
+        "id": "context-window-panic",
+        "name": "Context Window Panic"
+      }
+    },
+    "seed_mix_ids": [
+      "context-window-panic",
+      "terminal-nocturne",
+      "broadcast-fever-dream",
+      "data-center-lament"
+    ],
+    "seed_note": "Lead seed: Context Window Panic. Palette from Context Window Panic, typography from Terminal Nocturne, motion from Context Window Panic, transitions from Broadcast Fever Dream, audio from Context Window Panic."
+  },
+  "project_defaults": {
+    "duration_sec": 34,
+    "aspect_ratio": "9:16",
+    "resolution": "1080x1920",
+    "fps": 30,
+    "container": "mp4",
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "pixel_format": "yuv420p",
+    "movflags": "+faststart"
+  },
+  "thesis_starter": "This video makes the code and its logic feel like a model interface panicking about what it can no longer hold.",
+  "scene_density": {
+    "target_scene_count": 13,
+    "anchor_scenes": 6,
+    "bridge_scenes": 3,
+    "break_scenes": 1,
+    "climax_scenes": 1,
+    "button_scenes": 1,
+    "invented_support_scenes_min": 4
+  },
+  "scene_swarm": [
+    {
+      "atom_id": "cold-browser-open",
+      "role": "opener",
+      "start_sec": 0.0,
+      "end_sec": 1.53,
+      "duration_sec": 1.53,
+      "description": "A browser frame already parked on the funniest or most loaded region of a page.",
+      "visual_devices": [
+        "browser chrome",
+        "cursor frozen",
+        "tight crop"
+      ],
+      "audio_devices": [
+        "UI click",
+        "short mute cut"
+      ]
+    },
+    {
+      "atom_id": "dashboard-counter",
+      "role": "anchor",
+      "start_sec": 1.53,
+      "end_sec": 5.33,
+      "duration_sec": 3.8,
+      "description": "A metrics or dashboard scene where numbers replace feelings.",
+      "visual_devices": [
+        "cards",
+        "counters",
+        "gauges",
+        "redline"
+      ],
+      "audio_devices": [
+        "relay clicks",
+        "meter pulse",
+        "short TTS"
+      ]
+    },
+    {
+      "atom_id": "cursor-hold",
+      "role": "bridge",
+      "start_sec": 5.33,
+      "end_sec": 6.09,
+      "duration_sec": 0.76,
+      "description": "A still or almost-still frame with a blinking cursor or pointer.",
+      "visual_devices": [
+        "idle cursor",
+        "clean frame",
+        "minimal motion"
+      ],
+      "audio_devices": [
+        "hum",
+        "tiny click",
+        "silence"
+      ]
+    },
+    {
+      "atom_id": "prompt-loop",
+      "role": "anchor",
+      "start_sec": 6.09,
+      "end_sec": 10.35,
+      "duration_sec": 4.26,
+      "description": "An exchange between prompt, system, and response that escalates into contradiction.",
+      "visual_devices": [
+        "chat panel",
+        "terminal or browser wrapper",
+        "role labels"
+      ],
+      "audio_devices": [
+        "voice alternation",
+        "notification pips",
+        "mute cut"
+      ]
+    },
+    {
+      "atom_id": "freeze-zoom",
+      "role": "bridge",
+      "start_sec": 10.35,
+      "end_sec": 11.05,
+      "duration_sec": 0.7,
+      "description": "A freeze-frame punch-in that isolates a detail for absurd emphasis.",
+      "visual_devices": [
+        "freeze",
+        "crop punch",
+        "arrow or circle"
+      ],
+      "audio_devices": [
+        "impact",
+        "mute",
+        "click"
+      ]
+    },
+    {
+      "atom_id": "terminal-confession",
+      "role": "anchor",
+      "start_sec": 11.05,
+      "end_sec": 15.3,
+      "duration_sec": 4.25,
+      "description": "A terminal scene where logs or prompts read like a confession.",
+      "visual_devices": [
+        "terminal pane",
+        "highlighted line",
+        "cursor",
+        "status labels"
+      ],
+      "audio_devices": [
+        "hum",
+        "typed clicks",
+        "short TTS"
+      ]
+    },
+    {
+      "atom_id": "glitch-burst",
+      "role": "bridge",
+      "start_sec": 15.3,
+      "end_sec": 15.83,
+      "duration_sec": 0.53,
+      "description": "A very short distortion burst that resets momentum.",
+      "visual_devices": [
+        "channel split",
+        "slice shift",
+        "noise block"
+      ],
+      "audio_devices": [
+        "zip",
+        "static click",
+        "dropout"
+      ]
+    },
+    {
+      "atom_id": "weight-field",
+      "role": "anchor",
+      "start_sec": 15.83,
+      "end_sec": 19.42,
+      "duration_sec": 3.59,
+      "description": "A field of parameters, weights, or tiny values treated like a landscape.",
+      "visual_devices": [
+        "tiny numbers",
+        "density fields",
+        "glow accents"
+      ],
+      "audio_devices": [
+        "hum",
+        "sparkle noise",
+        "low tone"
+      ]
+    },
+    {
+      "atom_id": "error-wall",
+      "role": "anchor",
+      "start_sec": 19.42,
+      "end_sec": 22.95,
+      "duration_sec": 3.53,
+      "description": "Stacking warnings or errors that become emotional rather than technical.",
+      "visual_devices": [
+        "error stack",
+        "duplicate offsets",
+        "red highlights"
+      ],
+      "audio_devices": [
+        "buzz",
+        "stutter",
+        "alarm pip"
+      ]
+    },
+    {
+      "atom_id": "frozen-browser",
+      "role": "break",
+      "start_sec": 22.95,
+      "end_sec": 24.9,
+      "duration_sec": 1.95,
+      "description": "A clean held browser or document frame that lets the audience actually look.",
+      "visual_devices": [
+        "still page crop",
+        "cursor idle",
+        "one callout"
+      ],
+      "audio_devices": [
+        "room tone",
+        "single click",
+        "light pad"
+      ]
+    },
+    {
+      "atom_id": "token-stream",
+      "role": "anchor",
+      "start_sec": 24.9,
+      "end_sec": 28.65,
+      "duration_sec": 3.75,
+      "description": "Words or tokens appear one at a time with confidence, probability, or status overlays.",
+      "visual_devices": [
+        "highlighted tokens",
+        "progress bar",
+        "probability notes"
+      ],
+      "audio_devices": [
+        "ticks",
+        "small synth pulse",
+        "breathy line"
+      ]
+    },
+    {
+      "atom_id": "final-dashboard-redline",
+      "role": "climax",
+      "start_sec": 28.65,
+      "end_sec": 32.35,
+      "duration_sec": 3.7,
+      "description": "A final metrics scene spikes or overloads as if the system can no longer stay composed.",
+      "visual_devices": [
+        "redline graph",
+        "counter spike",
+        "status alert"
+      ],
+      "audio_devices": [
+        "alarm",
+        "pulse",
+        "dropout"
+      ]
+    },
+    {
+      "atom_id": "collapse-to-cursor",
+      "role": "button",
+      "start_sec": 32.35,
+      "end_sec": 34.0,
+      "duration_sec": 1.65,
+      "description": "All complexity disappears until only a cursor, prompt, or tiny status remains.",
+      "visual_devices": [
+        "cursor",
+        "terminal",
+        "empty field"
+      ],
+      "audio_devices": [
+        "silence",
+        "click",
+        "hum decay"
+      ]
+    }
+  ],
+  "beat_sheet": [
+    {
+      "label": "hook",
+      "start_sec": 0.0,
+      "end_sec": 4.08,
+      "direction": "Open with the strongest absurd promise in under 1.5 seconds.",
+      "material_note": "Lead with the most readable funny token, log line, or error fragment.",
+      "style_note": "State Seed Remix Default immediately through palette, typography, and the first motion gesture."
+    },
+    {
+      "label": "premise",
+      "start_sec": 4.08,
+      "end_sec": 8.84,
+      "direction": "Establish the source material or world clearly.",
+      "material_note": "Show enough code context that the later edits remain legible.",
+      "style_note": "Preserve the Seed Remix Default mood while still allowing source-specific invention."
+    },
+    {
+      "label": "escalation-a",
+      "start_sec": 8.84,
+      "end_sec": 13.94,
+      "direction": "Create the first repeating motif.",
+      "material_note": "Use code crops, logs, terminals, and cursor behavior as primary visual grammar.",
+      "style_note": "Preserve the Seed Remix Default mood while still allowing source-specific invention."
+    },
+    {
+      "label": "escalation-b",
+      "start_sec": 13.94,
+      "end_sec": 18.7,
+      "direction": "Mutate the motif through a different visual system.",
+      "material_note": "Use code crops, logs, terminals, and cursor behavior as primary visual grammar.",
+      "style_note": "Preserve the Seed Remix Default mood while still allowing source-specific invention."
+    },
+    {
+      "label": "break",
+      "start_sec": 18.7,
+      "end_sec": 22.1,
+      "direction": "Insert a calm or deadpan reset.",
+      "material_note": "Use a blank terminal, idle cursor, or one-line log as the reset.",
+      "style_note": "Keep the reset beat clean enough that the Seed Remix Default identity stays visible."
+    },
+    {
+      "label": "escalation-c",
+      "start_sec": 22.1,
+      "end_sec": 27.2,
+      "direction": "Bring in a second-wave interruption or invented support scene.",
+      "material_note": "Use code crops, logs, terminals, and cursor behavior as primary visual grammar.",
+      "style_note": "Preserve the Seed Remix Default mood while still allowing source-specific invention."
+    },
+    {
+      "label": "collapse",
+      "start_sec": 27.2,
+      "end_sec": 31.28,
+      "direction": "Peak with the densest intentional composition.",
+      "material_note": "Use code crops, logs, terminals, and cursor behavior as primary visual grammar.",
+      "style_note": "Peak with signal loss cards and a stronger pass of server hum without losing readability."
+    },
+    {
+      "label": "button",
+      "start_sec": 31.28,
+      "end_sec": 34,
+      "direction": "Land a clean final payoff.",
+      "material_note": "Finish on an error, prompt, or absurd callback variable.",
+      "style_note": "Let the ending feel like a distilled final gesture of Seed Remix Default."
+    }
+  ],
+  "audio_plan": {
+    "voice_mode": "one main voice plus optional second system whisper",
+    "tts_line_target": [
+      2,
+      4
+    ],
+    "processing_defaults": [
+      "light band-limit or EQ shaping",
+      "subtle pitch drop or stutter on selected words",
+      "dropout or mute after one key line"
+    ],
+    "bed_elements": [
+      "low drone",
+      "UI clicks or relay ticks",
+      "brief impacts",
+      "one moment of near-silence"
+    ],
+    "mix_guardrails": [
+      "Speech must remain understandable.",
+      "Do not turn the whole piece into harsh distortion.",
+      "Normalize the final mix."
+    ]
+  },
+  "personal_spin_prompts": [
+    "What is the video actually claiming about the material?",
+    "Which repeated line or symbol can carry that claim across multiple scenes?",
+    "What final button would feel authored rather than generic?",
+    "Which log line, comment, or token feels most emotionally reusable?"
+  ],
+  "editing_rules": [
+    "Front-load the strongest absurd promise in the first 1.5 seconds.",
+    "Bias toward more scenes than a straightforward edit would have.",
+    "Use bridge scenes to increase richness when source material is thin.",
+    "Keep most anchor scenes readable for at least 1.2 seconds.",
+    "Include one break scene with relative stillness.",
+    "Let one recurring motif mutate across the runtime.",
+    "Use no more than two font families in the final render.",
+    "Normalize the final mix and avoid clipped peaks.",
+    "Prefer restrained palettes, editorial contrast, and crisp typography.",
+    "Avoid bubble fonts, candy palettes, sticker-board clutter, and constant rainbow glitch.",
+    "Use full-frame noise, heavy blur, or shake only as accents.",
+    "Let at least one scene be almost pristine so later damage feels intentional.",
+    "Treat sampled ingredients as prompts, not obligations.",
+    "Let one seed dominate and let the others act as interruptions.",
+    "Let one prompt exchange play cleanly.",
+    "Keep the final button short and legible.",
+    "Every data-like scene should still deliver a clear emotional beat.",
+    "Do not let the seed remix become a checklist of borrowed tricks.",
+    "Do not sample so many ingredients that the piece loses a dominant mood.",
+    "Do not let every line become a joke.",
+    "Do not bury the readable conversation under noise."
+  ],
+  "ffmpeg_hints": [
+    "Pre-render brittle scenes as short clips or frame sequences, then assemble with ffmpeg.",
+    "Prefer concat, overlay, and short crossfades over one giant brittle filtergraph.",
+    "Apply loudness normalization in the final pass: loudnorm=I=-16:TP=-1.5:LRA=11.",
+    "Export H.264/AAC with yuv420p and +faststart.",
+    "If generating frames in Python, encode the final video with ffmpeg rather than writing video directly from Python."
+  ],
+  "quality_checks": [
+    "The opening frame is immediately legible and compelling.",
+    "The video communicates one clear thesis or emotional claim.",
+    "The selected blueprint is visible in color, type, motion, and sound.",
+    "Scene count is high enough that the piece feels rich instead of flat.",
+    "At least one scene provides stillness or deadpan contrast.",
+    "Captions remain readable on a laptop screen at 100% size.",
+    "The palette feels restrained rather than randomly saturated.",
+    "Audio peaks are controlled and speech is understandable.",
+    "The final 2 seconds land a decisive button."
+  ]
+}
