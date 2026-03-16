@@ -50,6 +50,47 @@ Important note:
 
 ---
 
+# EN-Only Site SEO Mode (2026-03-16)
+
+Shifted the public website into an English-first indexing mode to reduce duplicate-localization noise on a young domain.
+
+What changed:
+
+• public site routes now default to English instead of geo/accept-language auto-switching
+• Russian site pages still exist as fallback when `?lang=ru` is explicitly used
+• Russian site pages are now `noindex,follow`
+• English pages are the only sitemap targets and the only indexable site layer
+• canonical URLs for English pages are now clean paths without `?lang=en`
+• internal site links were simplified to clean English URLs:
+  - `/`
+  - `/analytics`
+  - `/dashboard`
+  - `/signals`
+  - `/telegram-bot`
+  - `/top-movers`
+  - `/watchlist-alerts`
+  - `/how-it-works`
+  - `/commands`
+  - `/trader-bot`
+• EN/RU switchers were removed from the public site templates
+
+Why this was done:
+
+• concentrate crawl/indexing signals on one language layer
+• reduce query-param duplicate pressure in GSC
+• align the site with current growth reality:
+  - X/Threads content is English-only
+  - global acquisition is English-first
+  - Telegram bots can remain bilingual independently of site SEO
+
+Boundary:
+
+• this changes site SEO strategy, not product localization strategy
+• bots remain multilingual
+• RU site content is not deleted yet; it is retained as a non-indexed fallback while the domain is still young
+
+---
+
 # Signer Session Layer V0 (2026-03-15)
 
 Added the first signer/delegation bridge for the sibling `Trader` product.

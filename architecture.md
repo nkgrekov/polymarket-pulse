@@ -52,6 +52,47 @@ Operational implication:
 
 ---
 
+# EN-Only Public Site Mode (2026-03-16)
+
+The public website now operates in an English-first SEO mode.
+
+Routing contract:
+
+• public site routes default to English
+• Russian pages are still renderable only when `?lang=ru` is explicit
+• this is implemented via a separate `detect_site_lang(...)` path instead of changing the generic request-language helper used elsewhere
+
+Indexing contract:
+
+• English pages are the only indexable public layer
+• Russian public pages are fallback-only and explicitly `noindex,follow`
+• sitemap now contains only English canonical URLs
+• clean English paths are the canonical layer:
+  - `/`
+  - `/analytics`
+  - `/dashboard`
+  - `/signals`
+  - `/telegram-bot`
+  - `/top-movers`
+  - `/watchlist-alerts`
+  - `/how-it-works`
+  - `/commands`
+  - `/trader-bot`
+
+Template contract:
+
+• EN/RU switchers were removed from public site templates
+• internal site links now point to clean English paths
+• Russian templates remain in repository, but are treated as non-indexed fallback surfaces rather than primary search targets
+
+Why this architecture is preferable now:
+
+• the domain is young and should not split crawl/indexing signals across two query-param language layers
+• current growth and content distribution are English-first
+• Telegram bots can stay multilingual without forcing the site layer to carry the same indexing complexity
+
+---
+
 # Signer Session Layer (2026-03-15)
 
 Execution alpha now includes a dedicated signer-session bridge between `trader_bot` and the main site runtime.

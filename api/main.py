@@ -429,6 +429,13 @@ def detect_lang(request: Request, explicit: str | None = None) -> Literal["ru", 
     return "en"
 
 
+def detect_site_lang(request: Request) -> Literal["ru", "en"]:
+    q_lang = (request.query_params.get("lang") or "").strip().lower()
+    if q_lang == "ru":
+        return "ru"
+    return "en"
+
+
 def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
     localized = WEB_DIR / f"{base_name}.{lang}.html"
     if localized.exists():
@@ -444,9 +451,6 @@ def base_url() -> str:
 def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     page = SEO_PAGES[slug][lang]
     page_label = slug.replace("-", " ").upper()
-    home_q = "?lang=ru" if lang == "ru" else "?lang=en"
-    alt_lang = "ru" if lang == "en" else "en"
-    alt_q = "?lang=ru" if alt_lang == "ru" else "?lang=en"
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
     cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
@@ -483,11 +487,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     screen_label = "Screen" if lang == "en" else "Экран"
     page_view_js_lang = "en" if lang == "en" else "ru"
     base = base_url()
-    lang_param = "ru" if lang == "ru" else "en"
-    canonical_url = f"{base}/{slug}?lang={lang_param}"
-    lang_url = canonical_url
-    alt_lang_url = f"{base}/{slug}{alt_q}"
-    x_default_url = f"{base}/{slug}?lang=en"
+    canonical_url = f"{base}/{slug}"
+    robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     og_image_url = f"{base}/og-card.svg"
     page_schema = json.dumps(
         {
@@ -504,12 +505,10 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         ensure_ascii=False,
     )
 
-    links = "".join(
-        f'<a href="/{name}{home_q}">{SEO_PAGES[name][lang]["h1"]}</a>' for name in SEO_PAGES if name != slug
-    )
-    trade_href = f"/trader-bot?lang={lang}&placement=seo_{slug}"
+    links = "".join(f'<a href="/{name}">{SEO_PAGES[name]["en"]["h1"]}</a>' for name in SEO_PAGES if name != slug)
+    trade_href = f"/trader-bot?placement=seo_{slug}"
     links += f'<a href="{trade_href}">{cta_trade_text}</a>'
-    guide_href = f"/how-it-works?lang={lang}&placement=telegram_bot_page"
+    guide_href = f"/how-it-works?placement=telegram_bot_page"
     guide_cta = (
         f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
         if slug == "telegram-bot"
@@ -575,7 +574,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{page["title"]}</title>
   <meta name="description" content="{page["description"]}" />
-  <meta name="robots" content="index,follow" />
+  <meta name="robots" content="{robots_meta}" />
   <meta property="og:title" content="{page["title"]}" />
   <meta property="og:description" content="{page["description"]}" />
   <meta property="og:type" content="website" />
@@ -587,9 +586,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
   <meta name="twitter:image" content="{og_image_url}" />
   <meta name="twitter:url" content="{canonical_url}" />
   <link rel="canonical" href="{canonical_url}" />
-  <link rel="alternate" hreflang="{lang}" href="{lang_url}" />
-  <link rel="alternate" hreflang="{alt_lang}" href="{alt_lang_url}" />
-  <link rel="alternate" hreflang="x-default" href="{x_default_url}" />
   <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
@@ -918,8 +914,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     <div class="top reveal delay-1">
       <span>POLYMARKET PULSE // {page_label}</span>
       <div>
-        <a href="/{slug}{home_q}">{lang.upper()}</a>
-        <a href="/{slug}{alt_q}">{alt_lang.upper()}</a>
+        <a href="/{slug}">EN</a>
       </div>
     </div>
     <article class="card reveal delay-2">
@@ -953,7 +948,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
       <div class="cta-row">
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
-        <a id="waitlist-link" class="cta-secondary" href="/{home_q}#waitlist-form">{cta_waitlist_text}</a>
+        <a id="waitlist-link" class="cta-secondary" href="/#waitlist-form">{cta_waitlist_text}</a>
         {guide_cta}
         {trade_cta}
       </div>
@@ -988,7 +983,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         {links}
       </div>
     </section>
-      <a class="back" href="/{home_q}">{back_text}</a>
+      <a class="back" href="/">{back_text}</a>
   </div>
   <script>
     document.body.classList.add('ready');
@@ -1408,7 +1403,7 @@ def render_trader_connect_page(session: dict, lang: Literal["ru", "en"]) -> str:
           <section class="panel">
             <a class="cta" href="https://t.me/PolymarketPulse_trader_bot">{open_bot}</a>
             <div style="height:10px"></div>
-            <a class="ghost" href="{base}/trader-bot?lang={lang}">{open_trader_page}</a>
+            <a class="ghost" href="{base}/trader-bot">{open_trader_page}</a>
             <p class="note">{html.escape(success_wait)}</p>
           </section>
         </div>
@@ -1879,27 +1874,16 @@ def robots() -> PlainTextResponse:
 def sitemap() -> Response:
     u = base_url()
 
-    def sitemap_entry(path: str, lang: str) -> str:
-        alt_lang = "ru" if lang == "en" else "en"
+    def sitemap_entry(path: str) -> str:
         resolved_path = path or "/"
-        href = f"{u}{resolved_path}?lang={lang}"
-        alt_href = f"{u}{resolved_path}?lang={alt_lang}"
-        x_default_href = f"{u}{resolved_path}?lang=en"
-        return (
-            "  <url>\n"
-            f"    <loc>{href}</loc>\n"
-            f'    <xhtml:link rel="alternate" hreflang="{lang}" href="{href}" />\n'
-            f'    <xhtml:link rel="alternate" hreflang="{alt_lang}" href="{alt_href}" />\n'
-            f'    <xhtml:link rel="alternate" hreflang="x-default" href="{x_default_href}" />\n'
-            "  </url>\n"
-        )
+        href = f"{u}{resolved_path}"
+        return f"  <url><loc>{href}</loc></url>\n"
 
     content_urls = ["", *[f"/{slug}" for slug in SEO_PAGES], "/how-it-works", "/commands", "/trader-bot"]
-    entries = "".join(sitemap_entry(path, lang) for path in content_urls for lang in ("en", "ru"))
+    entries = "".join(sitemap_entry(path) for path in content_urls)
     content = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
-        'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         f"{entries}"
         "</urlset>\n"
     )
@@ -1957,37 +1941,37 @@ def apple_touch_icon() -> Response:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("index", lang))
 
 
 @app.get("/privacy", response_class=HTMLResponse)
 def privacy(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("privacy", lang))
 
 
 @app.get("/terms", response_class=HTMLResponse)
 def terms(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("terms", lang))
 
 
 @app.get("/how-it-works", response_class=HTMLResponse)
 def how_it_works(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("how-it-works", lang))
 
 
 @app.get("/commands", response_class=HTMLResponse)
 def commands_page(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("commands", lang))
 
 
 @app.get("/trader-bot", response_class=HTMLResponse)
 def trader_bot_page(request: Request) -> HTMLResponse:
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(load_page("trader-bot", lang))
 
 
@@ -2019,7 +2003,7 @@ def trader_connect_page(request: Request, token: str) -> HTMLResponse:
 def seo_page(slug: str, request: Request) -> HTMLResponse:
     if slug not in SEO_PAGES:
         raise HTTPException(status_code=404, detail="Not found")
-    lang = detect_lang(request)
+    lang = detect_site_lang(request)
     return HTMLResponse(render_seo_page(slug, lang))
 
 
