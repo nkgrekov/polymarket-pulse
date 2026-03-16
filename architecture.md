@@ -52,6 +52,24 @@ Operational implication:
 
 ---
 
+# EN Intent CTR Layer (2026-03-16)
+
+The FastAPI-rendered SEO pages now carry a slightly stronger conversion contract on the highest-intent English surfaces.
+
+Renderer-level additions:
+
+• high-intent pages can now override secondary CTA wording through page-aware copy logic
+• CTA rows now include a small support note (`cta-note`) that explains the next step in plain language
+• English copy for `analytics`, `signals`, and `telegram-bot` now emphasizes action, thresholding, and low-noise delivery over generic dashboard language
+
+Architectural reason:
+
+• these pages are acquisition surfaces, not documentation pages
+• the copy must move users into the Telegram activation funnel, not just describe features
+• keeping this logic in the shared renderer preserves consistency while avoiding page-template sprawl
+
+---
+
 # Intent Page Enrichment Layer (2026-03-16)
 
 The English SEO pages now have a stronger content and telemetry contract.

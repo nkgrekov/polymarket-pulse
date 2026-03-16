@@ -50,6 +50,31 @@ Important note:
 
 ---
 
+# EN Intent CTR Copy Polish (2026-03-16)
+
+Applied a tighter conversion-oriented copy pass to the highest-intent English SEO pages.
+
+Pages touched conceptually:
+
+• `/analytics`
+• `/signals`
+• `/telegram-bot`
+
+What changed:
+
+• stronger H1/intro copy focused on action instead of passive dashboard browsing
+• clearer value props around low-noise signals, thresholding, and Telegram-first execution
+• more explicit secondary CTA wording on high-intent pages (`Keep Email as Backup`)
+• added a short CTA support note under the button row to reduce hesitation before the Telegram click
+
+Why this matters:
+
+• better CTR from search pages into the bot
+• clearer distinction between `Pulse` and generic dashboard products
+• better alignment between SEO copy and the current product funnel (`search -> Telegram -> watchlist -> signal`)
+
+---
+
 # Intent Page Enrichment + GA4 Alignment (2026-03-16)
 
 Strengthened the English intent-page layer after the EN-only SEO switch.

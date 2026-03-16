@@ -40,13 +40,13 @@ app = FastAPI(title="Polymarket Pulse Site API")
 SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     "analytics": {
         "en": {
-            "title": "Polymarket Analytics - Live Probability Signals | Polymarket Pulse",
-            "description": "Polymarket analytics for real probability shifts: top movers, watchlist deltas, and signal-first alerts in Telegram.",
-            "h1": "Polymarket analytics without dashboard overload.",
-            "intro": "Track meaningful market moves and skip terminal noise. Get live deltas, not endless charts.",
-            "k1": "Top movers in the latest live window",
-            "k2": "Personal watchlist with threshold filtering",
-            "k3": "Telegram-first alerts for faster reaction",
+            "title": "Polymarket Analytics - Live Probability Shifts That Matter | Polymarket Pulse",
+            "description": "Polymarket analytics for real probability shifts: top movers, watchlist deltas, and signal-first Telegram alerts without dashboard overload.",
+            "h1": "Polymarket analytics for people who act, not browse.",
+            "intro": "See live repricing fast, filter out terminal noise, and move from discovery to action inside Telegram instead of babysitting a dashboard tab.",
+            "k1": "Top movers from the current live repricing window",
+            "k2": "Watchlist deltas filtered by your own threshold",
+            "k3": "Telegram-first handoff from signal to action",
         },
         "ru": {
             "title": "Polymarket аналитика - live сигналы вероятностей | Polymarket Pulse",
@@ -80,13 +80,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "signals": {
         "en": {
-            "title": "Polymarket Signals - Live Alerts in Telegram | Polymarket Pulse",
-            "description": "Get Polymarket signals based on real probability shifts. Configure threshold and receive clean Telegram alerts.",
-            "h1": "Signals, not noise.",
-            "intro": "Set your threshold, follow markets, and receive only meaningful moves in your inbox.",
-            "k1": "Per-user threshold in bot settings",
-            "k2": "Deduplicated alerts and daily free limits",
-            "k3": "Fast onboarding in under 60 seconds",
+            "title": "Polymarket Signals - Low-Noise Live Alerts in Telegram | Polymarket Pulse",
+            "description": "Get Polymarket signals based on real probability shifts. Set your threshold, cut the noise, and receive clean live alerts in Telegram.",
+            "h1": "Live signals with an actual noise filter.",
+            "intro": "Most signal feeds spam every twitch. Pulse filters by threshold, deduplicates repeated moves, and stays quiet when the market is flat.",
+            "k1": "Per-user threshold in Telegram settings",
+            "k2": "Deduplicated alerts instead of repeat spam",
+            "k3": "Fast activation path from /start to first signal",
         },
         "ru": {
             "title": "Polymarket Signals - live алерты в Telegram | Polymarket Pulse",
@@ -100,13 +100,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "telegram-bot": {
         "en": {
-            "title": "Polymarket Telegram Bot - Live Movers and Watchlist Alerts",
-            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and live probability alerts.",
-            "h1": "Action-first Telegram bot for Polymarket signals.",
-            "intro": "Most tools optimize for dashboards. Pulse optimizes for action: /start -> add one market -> receive live signal in under 60 seconds.",
-            "k1": "Action over dashboard overload",
-            "k2": "60-second activation path",
-            "k3": "Signal quality over noise (threshold + dedup)",
+            "title": "Polymarket Telegram Bot - Live Movers, Watchlists, and Signals",
+            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and low-noise probability alerts built for fast action.",
+            "h1": "The Telegram bot that gets you to first value fast.",
+            "intro": "Most tools optimize for dashboards. Pulse optimizes for action: open Telegram, add one live market, and get a useful signal before the tab collectors even orient themselves.",
+            "k1": "One-tap path from /start to live market tracking",
+            "k2": "Clear movers, inbox, and watchlist flow in one bot",
+            "k3": "Signal quality over noise with threshold and dedup",
         },
         "ru": {
             "title": "Polymarket Telegram bot - live movers и watchlist алерты",
@@ -302,6 +302,29 @@ SEO_PAGE_LINKS: dict[str, list[str]] = {
     "telegram-bot": ["signals", "top-movers", "watchlist-alerts", "analytics"],
     "top-movers": ["watchlist-alerts", "telegram-bot", "signals", "analytics"],
     "watchlist-alerts": ["signals", "telegram-bot", "top-movers", "analytics"],
+}
+
+SEO_PAGE_CTA_NOTE: dict[str, dict[str, str]] = {
+    "analytics": {
+        "en": "Open the bot, pin one market, and see whether the latest repricing actually deserves attention.",
+        "ru": "Откройте бота, закрепите один рынок и сразу увидите, заслуживает ли последнее движение внимания.",
+    },
+    "signals": {
+        "en": "Set a threshold, keep noise low, and let Telegram surface only the repricing that matters.",
+        "ru": "Выставьте threshold, уберите шум и получайте в Telegram только действительно значимый repricing.",
+    },
+    "telegram-bot": {
+        "en": "No wallet and no dashboard required. Start with movers, add one live market, and get to first value fast.",
+        "ru": "Не нужен ни кошелёк, ни dashboard. Начните с movers, добавьте один live-рынок и быстро получите первую ценность.",
+    },
+    "top-movers": {
+        "en": "When the short window wakes up, the fastest route to action is one tap into the bot.",
+        "ru": "Когда короткое окно оживает, самый быстрый путь к действию — один тап в бота.",
+    },
+    "watchlist-alerts": {
+        "en": "Use Telegram for action now, keep email as backup for digest and launch updates.",
+        "ru": "Используйте Telegram для действий сейчас, а email оставьте как backup для дайджеста и обновлений.",
+    },
 }
 
 
@@ -598,13 +621,23 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     related_page_slugs = SEO_PAGE_LINKS.get(slug, [name for name in SEO_PAGES if name != slug])
     page_label = slug.replace("-", " ").upper()
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
-    cta_waitlist_text = "Join Email Waitlist" if lang == "en" else "Вступить в Email Waitlist"
+    cta_waitlist_text = (
+        "Keep Email as Backup"
+        if slug in {"analytics", "signals", "telegram-bot", "top-movers", "watchlist-alerts"} and lang == "en"
+        else "Join Email Waitlist" if lang == "en" else "Email как backup" if slug in {"analytics", "signals", "telegram-bot", "top-movers", "watchlist-alerts"} else "Вступить в Email Waitlist"
+    )
     cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
     cta_trade_text = "Join Trader Alpha" if lang == "en" else "Вступить в Trader Alpha"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
     faq_head = "Common questions" if lang == "en" else "Частые вопросы"
     preview_head = "Preview surfaces" if lang == "en" else "Ключевые экраны"
+    cta_note = SEO_PAGE_CTA_NOTE.get(slug, {}).get(
+        lang,
+        "Open the bot first. Add markets second. Let the signal layer tell you when to care."
+        if lang == "en"
+        else "Сначала откройте бота. Потом добавьте рынки. Пусть signal-слой сам подскажет, когда пора реагировать.",
+    )
     preview_copy_1 = (
         "Catch the fastest repricing in the current live window."
         if lang == "en"
@@ -967,6 +1000,13 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       border: 1px solid var(--line-soft);
     }}
     .cta-secondary:hover, .cta-secondary:focus-visible {{ border-color: var(--accent); outline: none; }}
+    .cta-note {{
+      margin: 10px 0 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }}
     .preview {{
       margin-top: 16px;
       border: 1px solid var(--line);
@@ -1164,6 +1204,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         {guide_cta}
         {trade_cta}
       </div>
+      <p class="cta-note">{cta_note}</p>
     </article>
     <section class="preview reveal delay-3">
       <p class="links-title">{preview_head}</p>
