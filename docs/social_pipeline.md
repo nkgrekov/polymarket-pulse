@@ -10,7 +10,13 @@
 Run:
 
 ```bash
-PG_CONN="postgresql://..." api/.venv/bin/python scripts/growth/generate_social_drafts.py --langs en --channels x,threads
+PG_CONN="postgresql://..." api/.venv/bin/python scripts/growth/generate_social_drafts.py \
+  --langs en \
+  --channels x,threads \
+  --movers 5 \
+  --alerts 3 \
+  --max-age-minutes 30 \
+  --min-liquidity 5000
 ```
 
 Output:
@@ -23,6 +29,11 @@ Notes:
   - deep link to bot (`t.me/...start=...`)
   - UTM-tagged site link for attribution
 - Includes fallback behavior when live window is flat
+- Current posting rule: **generate right before publishing**
+- Social drafts now gate on:
+  - freshness of the latest bucket (`--max-age-minutes`)
+  - minimum latest-bucket liquidity (`--min-liquidity`)
+- If the market set is stale or too thin, skip posting instead of pushing dead content
 
 ## Competitor scan refresh
 Run:

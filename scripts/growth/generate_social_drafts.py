@@ -9,20 +9,59 @@ import psycopg
 from psycopg.rows import dict_row
 
 SQL_MOVERS = """
-select market_id, question, delta_yes, yes_mid_prev, yes_mid_now, prev_bucket, last_bucket
-from public.top_movers_latest
-where abs(delta_yes) >= %s
-order by abs(delta_yes) desc nulls last
+with latest_liquidity as (
+    select
+        ms.market_id,
+        max(ms.liquidity) as liquidity
+    from public.market_snapshots ms
+    join public.global_bucket_latest g on g.last_bucket = ms.ts_bucket
+    group by ms.market_id
+)
+select
+    t.market_id,
+    t.question,
+    t.delta_yes,
+    t.yes_mid_prev,
+    t.yes_mid_now,
+    t.prev_bucket,
+    t.last_bucket,
+    coalesce(ll.liquidity, 0) as liquidity
+from public.top_movers_latest t
+left join latest_liquidity ll using (market_id)
+where abs(t.delta_yes) >= %s
+  and t.last_bucket >= (now() - make_interval(mins => %s))
+  and coalesce(ll.liquidity, 0) >= %s
+order by abs(t.delta_yes) desc nulls last, coalesce(ll.liquidity, 0) desc nulls last
 limit %s;
 """
 
 SQL_ALERTS = """
-select question, market_id, delta_mid, mid_prev, mid_now, prev_bucket, last_bucket, abs_delta
-from bot.alerts_inbox_latest
-where abs_delta >= %s
-  and mid_prev is not null
-  and mid_now is not null
-order by abs_delta desc nulls last
+with latest_liquidity as (
+    select
+        ms.market_id,
+        max(ms.liquidity) as liquidity
+    from public.market_snapshots ms
+    join public.global_bucket_latest g on g.last_bucket = ms.ts_bucket
+    group by ms.market_id
+)
+select
+    a.question,
+    a.market_id,
+    a.delta_mid,
+    a.mid_prev,
+    a.mid_now,
+    a.prev_bucket,
+    a.last_bucket,
+    a.abs_delta,
+    coalesce(ll.liquidity, 0) as liquidity
+from bot.alerts_inbox_latest a
+left join latest_liquidity ll using (market_id)
+where a.abs_delta >= %s
+  and a.mid_prev is not null
+  and a.mid_now is not null
+  and a.last_bucket >= (now() - make_interval(mins => %s))
+  and coalesce(ll.liquidity, 0) >= %s
+order by a.abs_delta desc nulls last, coalesce(ll.liquidity, 0) desc nulls last
 limit %s;
 """
 
@@ -78,6 +117,20 @@ def hashtags(lang: str, channel: str) -> str:
     return core + " #X"
 
 
+def fmt_liquidity(v: object) -> str:
+    if v is None:
+        return "n/a"
+    try:
+        value = float(v)
+    except (TypeError, ValueError):
+        return "n/a"
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}K"
+    return f"{value:.0f}"
+
+
 def parse_csv_choices(raw: str, *, allowed: set[str], name: str) -> list[str]:
     values = [v.strip().lower() for v in (raw or "").split(",") if v.strip()]
     if not values:
@@ -95,12 +148,13 @@ def post_from_mover(row: dict, *, lang: str, channel: str, base_url: str, campai
     now = fmt_pct(row.get("yes_mid_now"))
     delta = fmt_delta(row.get("delta_yes"))
     window = estimate_window(row.get("prev_bucket"), row.get("last_bucket"))
+    liq = fmt_liquidity(row.get("liquidity"))
     site_link, bot_link = build_links(base_url, channel=channel, lang=lang, campaign=campaign)
     tags = hashtags(lang, channel)
     if lang == "ru":
         return (
             f"Рынок резко сдвинулся: {question}\n"
-            f"Вероятность: {prev} -> {now} ({delta}, {window})\n"
+            f"Вероятность: {prev} -> {now} ({delta}, {window}, L {liq})\n"
             "Почему это важно: движение вышло за шумовой диапазон.\n"
             f"Bot: {bot_link}\n"
             f"Site: {site_link}\n"
@@ -108,7 +162,7 @@ def post_from_mover(row: dict, *, lang: str, channel: str, base_url: str, campai
         )
     return (
         f"Market moved fast: {question}\n"
-        f"Probability: {prev} -> {now} ({delta}, {window})\n"
+        f"Probability: {prev} -> {now} ({delta}, {window}, L {liq})\n"
         "Why it matters: action-first signal, not dashboard noise.\n"
         f"Bot: {bot_link}\n"
         f"Site: {site_link}\n"
@@ -122,12 +176,13 @@ def post_from_alert(row: dict, *, lang: str, channel: str, base_url: str) -> str
     now = fmt_pct(row.get("mid_now"))
     delta = fmt_delta(row.get("delta_mid"))
     window = estimate_window(row.get("prev_bucket"), row.get("last_bucket"))
+    liq = fmt_liquidity(row.get("liquidity"))
     site_link, bot_link = build_links(base_url, channel=channel, lang=lang, campaign="breakout")
     tags = hashtags(lang, channel)
     if lang == "ru":
         return (
             f"Breakout market: {question}\n"
-            f"Движение: {prev} -> {now} ({delta}, {window})\n"
+            f"Движение: {prev} -> {now} ({delta}, {window}, L {liq})\n"
             "Контекст: сигнал из live inbox.\n"
             f"Bot: {bot_link}\n"
             f"Site: {site_link}\n"
@@ -135,7 +190,7 @@ def post_from_alert(row: dict, *, lang: str, channel: str, base_url: str) -> str
         )
     return (
         f"Breakout market: {question}\n"
-        f"Move: {prev} -> {now} ({delta}, {window})\n"
+        f"Move: {prev} -> {now} ({delta}, {window}, L {liq})\n"
         "Context: live-only move with thresholded signal quality.\n"
         f"Bot: {bot_link}\n"
         f"Site: {site_link}\n"
@@ -218,6 +273,18 @@ def main() -> None:
         help="Minimum absolute delta to include (0.01 = 1 percentage point)",
     )
     parser.add_argument(
+        "--max-age-minutes",
+        type=int,
+        default=30,
+        help="Maximum age of the latest bucket in minutes before draft candidates are considered stale",
+    )
+    parser.add_argument(
+        "--min-liquidity",
+        type=float,
+        default=5000.0,
+        help="Minimum latest-bucket liquidity required for social candidates",
+    )
+    parser.add_argument(
         "--langs",
         default="en",
         help="Comma-separated languages (en,ru). Default: en",
@@ -238,9 +305,9 @@ def main() -> None:
 
     with psycopg.connect(pg, connect_timeout=10) as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(SQL_MOVERS, (args.min_abs_delta, args.movers))
+            cur.execute(SQL_MOVERS, (args.min_abs_delta, args.max_age_minutes, args.min_liquidity, args.movers))
             movers = cur.fetchall()
-            cur.execute(SQL_ALERTS, (args.min_abs_delta, args.alerts))
+            cur.execute(SQL_ALERTS, (args.min_abs_delta, args.max_age_minutes, args.min_liquidity, args.alerts))
             alerts = cur.fetchall()
 
     now = datetime.now(timezone.utc).isoformat()
@@ -248,6 +315,7 @@ def main() -> None:
         f"# Social Drafts ({now})",
         "",
         "Generated from: `public.top_movers_latest` + `bot.alerts_inbox_latest`",
+        f"Freshness gate: <= {args.max_age_minutes}m | Liquidity gate: >= {fmt_liquidity(args.min_liquidity)}",
         f"Mode: langs={','.join(langs)} | channels={','.join(channels)}",
         "",
     ]

@@ -78,6 +78,31 @@ Render behavior:
 
 ---
 
+# Just-In-Time Social Draft Gate (2026-03-17)
+
+Tightened the social draft generator so we stop producing stale-but-pretty content.
+
+Files updated:
+
+• `scripts/growth/generate_social_drafts.py`
+• `docs/social_pipeline.md`
+• refreshed `docs/social_drafts_latest.md`
+
+What changed:
+
+• social drafts now filter on latest-bucket freshness (`--max-age-minutes`, default `30`)
+• social drafts now filter on live liquidity (`--min-liquidity`, default `5000`)
+• mover and breakout posts now include liquidity context (`L 34.7K`, etc.)
+• current operating rule is now explicit: generate right before posting, not hours earlier
+
+Practical effect:
+
+• the latest draft pack is now built from the current 15m live window
+• weak or stale markets are dropped before they reach the posting queue
+• social ops stays aligned with the “signal > noise” product principle
+
+---
+
 # GSC Indexing Hygiene Pass (2026-03-16)
 
 Addressed the first structural SEO inconsistency that was hurting indexing clarity in Google Search Console.

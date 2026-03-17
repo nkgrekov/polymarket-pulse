@@ -82,6 +82,38 @@ Operational implication:
 
 ---
 
+# Just-In-Time Social Candidate Contract (2026-03-17)
+
+The social draft layer now has explicit freshness and quality gates.
+
+Updated artifact:
+
+• `scripts/growth/generate_social_drafts.py`
+
+Current candidate contract:
+
+• data source remains:
+  - `public.top_movers_latest`
+  - `bot.alerts_inbox_latest`
+• candidates must also pass:
+  - latest-bucket freshness gate (`--max-age-minutes`, default `30`)
+  - latest-bucket liquidity gate (`--min-liquidity`, default `5000`)
+• latest-bucket liquidity is resolved from `public.market_snapshots`
+
+Operational implication:
+
+• social generation is now explicitly just-in-time
+• we should generate the draft pack immediately before manual posting
+• if the live window is stale or too thin, skipping the post is the correct behavior
+
+Why this matters:
+
+• protects the social layer from posting dead market moves
+• keeps content closer to real user FOMO/friction
+• aligns the growth layer with the core product rule: signal quality over feed volume
+
+---
+
 # Search Indexing Contract Pass (2026-03-16)
 
 The public site now uses a more explicit indexing contract for localized pages.
