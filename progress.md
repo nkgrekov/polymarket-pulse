@@ -40,6 +40,7 @@ Practical effect:
 
 • first-value onboarding no longer depends on whether the user added a market via button flow or typed the market manually
 • users who add via slash command get the same momentum-preserving recovery path when the watchlist is already full
+• if a newly added market is still quiet (`partial`, `no quotes`, or `closed`), the same reply can now include live replacement candidates instead of forcing the user to discover the next step manually
 
 ---
 

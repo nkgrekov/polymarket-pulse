@@ -35,8 +35,14 @@ Contract additions:
   - `exists`
   - `limit`
   - `missing`
+• `added` outcomes now also carry `live_state` metadata:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
 • `/watchlist_add <market_id|slug>` now routes through the same contract as picker callbacks
 • when the watchlist is full, handlers can now attach the same recovery/replacement inline surface instead of diverging into a dead-end limit response
+• post-add handlers can now merge the standard watchlist actions with live replacement candidates when the selected market is still quiet
 
 Why this matters:
 

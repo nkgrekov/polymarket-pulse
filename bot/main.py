@@ -1185,8 +1185,55 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
-def watchlist_result(text: str, *, outcome: str) -> dict[str, str]:
-    return {"text": text, "outcome": outcome}
+def watchlist_result(text: str, *, outcome: str, **meta: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {"text": text, "outcome": outcome}
+    payload.update(meta)
+    return payload
+
+
+def merge_inline_markups(*markups: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup | None:
+    rows: list[list[InlineKeyboardButton]] = []
+    seen: set[tuple[str, str | None, str | None]] = set()
+    for markup in markups:
+        if not markup:
+            continue
+        for row in markup.inline_keyboard:
+            new_row: list[InlineKeyboardButton] = []
+            for button in row:
+                key = (button.text, button.callback_data, button.url)
+                if key in seen:
+                    continue
+                seen.add(key)
+                new_row.append(button)
+            if new_row:
+                rows.append(new_row)
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+async def watchlist_post_add_markup(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    user_ctx: dict,
+    result: dict[str, Any],
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup | None:
+    outcome = str(result.get("outcome") or "")
+    if outcome == "limit":
+        return await build_recovery_inline(message, context, user_ctx, locale=locale)
+    if outcome not in {"added", "replaced", "exists"}:
+        return None
+
+    base = watchlist_added_inline(locale)
+    live_state = str(result.get("live_state") or "")
+    if outcome == "exists" or live_state in {"ready", ""}:
+        return base
+
+    user_ctx_eff = dict(user_ctx)
+    if outcome == "added":
+        user_ctx_eff["watchlist_count"] = int(user_ctx.get("watchlist_count") or 0) + 1
+    recovery = await build_recovery_inline(message, context, user_ctx_eff, locale=locale)
+    return merge_inline_markups(base, recovery)
 
 
 def plan_action_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarkup:
@@ -1647,24 +1694,28 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
     has_prev = bool((live or {}).get("has_prev_quotes"))
     live_line = ""
     if market_status == "closed":
+        live_state = "closed"
         live_line = (
             "Status now: market is already closed, so watchlist/inbox will likely stay silent."
             if locale == "en"
             else "Статус сейчас: рынок уже закрыт, поэтому watchlist/inbox, скорее всего, будут молчать."
         )
     elif has_last and has_prev:
+        live_state = "ready"
         live_line = (
             "Status now: live quotes exist in last+prev, so this market is ready for watchlist/inbox tracking."
             if locale == "en"
             else "Статус сейчас: есть live-котировки в last+prev, значит рынок уже готов для watchlist/inbox."
         )
     elif has_last or has_prev:
+        live_state = "partial"
         live_line = (
             "Status now: partial quotes only. The market is added, but inbox/watchlist may be quiet until both windows are live."
             if locale == "en"
             else "Статус сейчас: котировки только частично. Рынок добавлен, но inbox/watchlist могут молчать, пока оба окна не станут live."
         )
     else:
+        live_state = "no_quotes"
         live_line = (
             "Status now: no bid/ask quotes in last+prev yet. The market is added, but first live value may appear later."
             if locale == "en"
@@ -1676,12 +1727,14 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
             f"{live_line}\n"
             "Next: open Watchlist for live changes or Inbox for alerts.",
             outcome="added",
+            live_state=live_state,
         )
     return watchlist_result(
         f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}\n"
         f"{live_line}\n"
         "Дальше: откройте Watchlist для live-изменений или Inbox для алертов.",
         outcome="added",
+        live_state=live_state,
     )
 
 
@@ -2490,12 +2543,7 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     market_id = str(market["market_id"])
     result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
     outcome = result["outcome"]
-    if outcome == "limit":
-        reply_markup = await build_recovery_inline(update.message, context, user_ctx, locale=locale)
-    elif outcome in {"added", "replaced", "exists"}:
-        reply_markup = watchlist_added_inline(locale)
-    else:
-        reply_markup = None
+    reply_markup = await watchlist_post_add_markup(update.message, context, user_ctx, result, locale=locale)
     await update.message.reply_text(result["text"], reply_markup=reply_markup)
 
 
@@ -2724,12 +2772,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
-        if result["outcome"] == "limit":
-            reply_markup = await build_recovery_inline(query.message, context, user_ctx, locale=locale)
-        elif result["outcome"] in {"added", "replaced", "exists"}:
-            reply_markup = watchlist_added_inline(locale)
-        else:
-            reply_markup = None
+        reply_markup = await watchlist_post_add_markup(query.message, context, user_ctx, result, locale=locale)
         await query.message.reply_text(result["text"], reply_markup=reply_markup)
         return
     if data.startswith("wlreplace:"):
@@ -2746,7 +2789,8 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(replace_watchlist_market_sync, user_ctx, market_id, locale=locale)
-        await query.message.reply_text(result["text"], reply_markup=watchlist_added_inline(locale))
+        reply_markup = await watchlist_post_add_markup(query.message, context, user_ctx, result, locale=locale)
+        await query.message.reply_text(result["text"], reply_markup=reply_markup)
         return
 
 
