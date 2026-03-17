@@ -18,6 +18,33 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Pulse Watchlist Add Outcome Contract (2026-03-17)
+
+The Pulse bot now uses a single watchlist-add outcome contract across both manual and picker-driven onboarding.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract additions:
+
+• `add_watchlist_market_sync(...)` now returns a structured outcome payload instead of only a raw string
+• current outcome types:
+  - `added`
+  - `replaced`
+  - `exists`
+  - `limit`
+  - `missing`
+• `/watchlist_add <market_id|slug>` now routes through the same contract as picker callbacks
+• when the watchlist is full, handlers can now attach the same recovery/replacement inline surface instead of diverging into a dead-end limit response
+
+Why this matters:
+
+• Telegram activation should not depend on whether the user taps a picker button or types a market id/slug manually
+• keeping one post-add/recovery contract reduces handler drift and preserves momentum during the first-value flow
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

@@ -1185,6 +1185,10 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
+def watchlist_result(text: str, *, outcome: str) -> dict[str, str]:
+    return {"text": text, "outcome": outcome}
+
+
 def plan_action_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarkup:
     if pro:
         return InlineKeyboardMarkup(
@@ -1607,27 +1611,32 @@ async def send_watchlist_view(
     )
 
 
-def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> str:
+def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> dict[str, str]:
     market_rows = run_db_query(SQL_MARKET_BRIEF, (market_id,), row_factory=dict_row)
     if not market_rows:
-        return "Market not found." if locale == "en" else "Рынок не найден."
+        return watchlist_result("Market not found." if locale == "en" else "Рынок не найден.", outcome="missing")
 
     exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
     if exists:
-        return "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist."
+        return watchlist_result(
+            "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist.",
+            outcome="exists",
+        )
 
     plan = str(user_ctx.get("plan") or "free")
     limit = watchlist_limit_for_plan(plan)
     if int(user_ctx["watchlist_count"]) >= limit:
         plan_label = "PRO" if plan == "pro" else "FREE"
         if locale == "en":
-            return (
+            return watchlist_result(
                 f"{plan_label} limit: {limit} markets. "
-                "Remove one via /watchlist_remove, upgrade via /upgrade, or join execution alpha via /trade"
+                "Remove one via /watchlist_remove, replace a quiet market below, upgrade via /upgrade, or join execution alpha via /trade",
+                outcome="limit",
             )
-        return (
+        return watchlist_result(
             f"Лимит {plan_label}: {limit} рынка. "
-            "Удалите один через /watchlist_remove, измените план через /upgrade или идите в execution alpha через /trade"
+            "Удалите один через /watchlist_remove, замените тихий рынок ниже, измените план через /upgrade или идите в execution alpha через /trade",
+            outcome="limit",
         )
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
@@ -1662,15 +1671,17 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
             else "Статус сейчас: пока нет bid/ask-котировок в last+prev. Рынок добавлен, но первая live-ценность может появиться позже."
         )
     if locale == "en":
-        return (
+        return watchlist_result(
             f"Added to watchlist: {market_id} — {market_rows[0]['question']}\n"
             f"{live_line}\n"
-            "Next: open Watchlist for live changes or Inbox for alerts."
+            "Next: open Watchlist for live changes or Inbox for alerts.",
+            outcome="added",
         )
-    return (
+    return watchlist_result(
         f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}\n"
         f"{live_line}\n"
-        "Дальше: откройте Watchlist для live-изменений или Inbox для алертов."
+        "Дальше: откройте Watchlist для live-изменений или Inbox для алертов.",
+        outcome="added",
     )
 
 
@@ -1684,14 +1695,17 @@ def cleanup_closed_watchlist_sync(user_id: str) -> int:
     return int(deleted)
 
 
-def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> str:
+def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> dict[str, str]:
     market_rows = run_db_query(SQL_MARKET_BRIEF, (market_id,), row_factory=dict_row)
     if not market_rows:
-        return "Market not found." if locale == "en" else "Рынок не найден."
+        return watchlist_result("Market not found." if locale == "en" else "Рынок не найден.", outcome="missing")
 
     exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
     if exists:
-        return "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist."
+        return watchlist_result(
+            "This market is already in your watchlist." if locale == "en" else "Этот рынок уже в вашем watchlist.",
+            outcome="exists",
+        )
 
     target_rows = run_db_query(SQL_WATCHLIST_REPLACE_TARGET, (user_ctx["user_id"],), row_factory=dict_row)
     if not target_rows:
@@ -1701,17 +1715,19 @@ def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str
     execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], target["market_id"]))
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
     if locale == "en":
-        return (
+        return watchlist_result(
             f"Replaced watchlist market: {target['market_id']} -> {market_id}\n"
             f"Removed: {target['question']}\n"
             f"Added: {market_rows[0]['question']}\n"
-            "Next: open Watchlist or Inbox to check if the new market is more active."
+            "Next: open Watchlist or Inbox to check if the new market is more active.",
+            outcome="replaced",
         )
-    return (
+    return watchlist_result(
         f"Заменил рынок в watchlist: {target['market_id']} -> {market_id}\n"
         f"Убрали: {target['question']}\n"
         f"Добавили: {market_rows[0]['question']}\n"
-        "Дальше: откройте Watchlist или Inbox и проверьте, стал ли новый рынок активнее."
+        "Дальше: откройте Watchlist или Inbox и проверьте, стал ли новый рынок активнее.",
+        outcome="replaced",
     )
 
 
@@ -2472,37 +2488,15 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     market = market_rows[0]
     market_id = str(market["market_id"])
-
-    exists = bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id)))
-    if exists:
-        await update.message.reply_text(
-            "This market is already in your watchlist."
-            if locale == "en"
-            else "Этот рынок уже в вашем watchlist."
-        )
-        return
-
-    plan = str(user_ctx.get("plan") or "free")
-    limit = watchlist_limit_for_plan(plan)
-    if int(user_ctx["watchlist_count"]) >= limit:
-        plan_label = "PRO" if plan == "pro" else "FREE"
-        await update.message.reply_text(
-            (
-                f"{plan_label} limit: {limit} markets. Remove one via /watchlist_remove or upgrade: /upgrade"
-                if locale == "en"
-                else f"Лимит {plan_label}: {limit} рынка. Удалите один через /watchlist_remove или измените план: /upgrade"
-            )
-        )
-        return
-
-    execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
-    await update.message.reply_text(
-        f"Added to watchlist: {market_id} — {market['question']}"
-        if locale == "en"
-        else f"Добавлено в watchlist: {market_id} — {market['question']}"
-        ,
-        reply_markup=watchlist_added_inline(locale),
-    )
+    result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
+    outcome = result["outcome"]
+    if outcome == "limit":
+        reply_markup = await build_recovery_inline(update.message, context, user_ctx, locale=locale)
+    elif outcome in {"added", "replaced", "exists"}:
+        reply_markup = watchlist_added_inline(locale)
+    else:
+        reply_markup = None
+    await update.message.reply_text(result["text"], reply_markup=reply_markup)
 
 
 async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2730,7 +2724,13 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
-        await query.message.reply_text(result, reply_markup=watchlist_added_inline(locale))
+        if result["outcome"] == "limit":
+            reply_markup = await build_recovery_inline(query.message, context, user_ctx, locale=locale)
+        elif result["outcome"] in {"added", "replaced", "exists"}:
+            reply_markup = watchlist_added_inline(locale)
+        else:
+            reply_markup = None
+        await query.message.reply_text(result["text"], reply_markup=reply_markup)
         return
     if data.startswith("wlreplace:"):
         token = data.split(":", 1)[1]
@@ -2746,7 +2746,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(replace_watchlist_market_sync, user_ctx, market_id, locale=locale)
-        await query.message.reply_text(result, reply_markup=watchlist_added_inline(locale))
+        await query.message.reply_text(result["text"], reply_markup=watchlist_added_inline(locale))
         return
 
 

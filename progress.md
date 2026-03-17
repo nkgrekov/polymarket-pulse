@@ -18,6 +18,31 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Pulse Watchlist Add Activation Unification (2026-03-17)
+
+Closed an activation gap between the slash-command path and the picker path for watchlist onboarding.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• `/watchlist_add <market_id|slug>` now reuses the same smart add contract as the picker flow
+• post-add replies now stay consistent between:
+  - manual slash add
+  - picker add
+  - replacement add
+• when the user hits the Free/Pro watchlist limit through `/watchlist_add`, the bot now shows the same recovery/replacement surface instead of returning a dead-end limit message
+• add/replacement helpers now return structured outcomes (`added`, `replaced`, `exists`, `limit`, `missing`) so reply UX can stay coherent across handlers
+
+Practical effect:
+
+• first-value onboarding no longer depends on whether the user added a market via button flow or typed the market manually
+• users who add via slash command get the same momentum-preserving recovery path when the watchlist is already full
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.
