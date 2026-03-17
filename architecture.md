@@ -10,6 +10,10 @@ Operational 14-day delivery plan is versioned in:
 
 `docs/plan_14day_seo_bot_growth_2026-03-09.md`
 
+Current weekly operating priorities are tracked in:
+
+`docs/weekly_operating_board_2026-03-17.md`
+
 Architecture and rollout priorities must stay aligned with that plan and with `manifest.md`.
 
 ---

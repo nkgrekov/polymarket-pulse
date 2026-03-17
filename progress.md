@@ -10,6 +10,10 @@ Current execution plan is tracked in:
 
 `docs/plan_14day_seo_bot_growth_2026-03-09.md`
 
+Current operating board for weekly prioritization is tracked in:
+
+`docs/weekly_operating_board_2026-03-17.md`
+
 Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the primary KPI.
 
 ---
