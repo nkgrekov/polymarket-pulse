@@ -45,6 +45,39 @@ X posting state was also clarified:
 
 ---
 
+# Alert Fatigue + Dashboard Overload Video Pack (2026-03-17)
+
+Extended the first short-form social pack beyond the manual-tabs clip.
+
+Artifacts added:
+
+• `scripts/growth/render_pain_short.py`
+• `assets/social/out/alert-fatigue-5s.mp4`
+• `assets/social/out/dashboard-overload-5s.mp4`
+• `assets/social/out/alert-fatigue-preview-01.png`
+• `assets/social/out/alert-fatigue-preview-02.png`
+• `assets/social/out/alert-fatigue-preview-03.png`
+• `assets/social/out/dashboard-overload-preview-01.png`
+• `assets/social/out/dashboard-overload-preview-02.png`
+• `assets/social/out/dashboard-overload-preview-03.png`
+
+What these cover:
+
+• Brief 2 — `Alert Fatigue`
+• Brief 3 — `Dashboard Overload`
+
+Render behavior:
+
+• uses the same live DB source (`public.top_movers_latest`)
+• keeps the brand-safe dark/green terminal system
+• stays pain-first instead of hype-first
+• gives us the first complete 3-clip manual posting batch:
+  - manual tabs pain
+  - alert fatigue
+  - dashboard overload
+
+---
+
 # GSC Indexing Hygiene Pass (2026-03-16)
 
 Addressed the first structural SEO inconsistency that was hurting indexing clarity in Google Search Console.

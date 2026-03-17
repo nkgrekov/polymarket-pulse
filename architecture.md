@@ -48,6 +48,40 @@ Operational implication:
 
 ---
 
+# Pain Short Renderer Pack (2026-03-17)
+
+The social video layer now has a reusable renderer for additional post-specific pain clips.
+
+New artifact path:
+
+• `scripts/growth/render_pain_short.py`
+
+Current supported themes:
+
+• `alert-fatigue`
+• `dashboard-overload`
+
+Output contract:
+
+• `assets/social/out/alert-fatigue-5s.mp4`
+• `assets/social/out/dashboard-overload-5s.mp4`
+• matching preview PNG triplets for each clip
+
+Render contract:
+
+• still uses live DB input from `public.top_movers_latest`
+• each theme has its own micro-sequence and messaging contract
+• this keeps short-form growth tied to the written pain-first social batch rather than drifting into generic promo visuals
+
+Operational implication:
+
+• the first manual posting batch now has a complete top-3 video set:
+  - manual tabs pain
+  - alert fatigue
+  - dashboard overload
+
+---
+
 # Search Indexing Contract Pass (2026-03-16)
 
 The public site now uses a more explicit indexing contract for localized pages.
