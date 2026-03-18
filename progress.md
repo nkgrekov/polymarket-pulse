@@ -263,6 +263,27 @@ Practical effect:
 
 ---
 
+# Trader `/ready` Tap UX Fix (2026-03-18)
+
+Fixed the last small but important Telegram UX issue around the new readiness command.
+
+Files updated:
+
+• `trader_bot/main.py`
+
+What changed:
+
+• removed `<code>` wrapping around `/ready` in user-facing guidance
+• `/ready` now appears as a normal Telegram command in:
+  - empty positions state
+  - order draft saved confirmation
+
+Practical effect:
+
+• tapping `/ready` now behaves like a command hint instead of a copy-only code fragment
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

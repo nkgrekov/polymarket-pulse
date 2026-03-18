@@ -303,6 +303,25 @@ Operational implication:
 
 ---
 
+# Trader Command-Tap Contract Fix (2026-03-18)
+
+The readiness hand-off now respects Telegram command interaction semantics.
+
+Updated artifact:
+
+• `trader_bot/main.py`
+
+Contract:
+
+• `/ready` references that are intended for direct invocation should not be wrapped in `<code>`
+• code formatting remains for examples and structured values, not for tappable next-step commands
+
+Operational implication:
+
+• the readiness command now behaves like a real next action inside Telegram instead of a copy-only snippet
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

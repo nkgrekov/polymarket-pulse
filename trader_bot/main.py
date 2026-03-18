@@ -135,8 +135,8 @@ TEXTS: dict[str, dict[str, str]] = {
         "ru": "Сейчас нет live рынков, готовых для trade-flow. Скорее всего, universe плоский в текущем окне.",
     },
     "positions_empty": {
-        "en": "No cached positions yet. Connect a wallet first, then execution sync can populate positions. Use <code>/ready</code> for the full readiness path.",
-        "ru": "Кэшированных позиций пока нет. Сначала подключите кошелёк, после этого execution sync сможет подтянуть позиции. Используйте <code>/ready</code> для полного readiness-пути.",
+        "en": "No cached positions yet. Connect a wallet first, then execution sync can populate positions. Use /ready for the full readiness path.",
+        "ru": "Кэшированных позиций пока нет. Сначала подключите кошелёк, после этого execution sync сможет подтянуть позиции. Используйте /ready для полного readiness-пути.",
     },
     "orders_empty": {
         "en": "No order drafts yet. Try <code>/buy market_id yes 10</code> or <code>/sell market_id no 10</code>.",
@@ -242,7 +242,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Risk gate: mode=<code>{mode}</code>, paused=<code>{paused}</code>, max_order=<code>{max_order}</code>\n"
             "{next_line}\n\n"
             "Execution routing is not live yet. This draft is stored for alpha workflow and operator testing.\n"
-            "Need the full picture? Open <code>/ready</code>."
+            "Need the full picture? Open /ready."
         ),
         "ru": (
             "<b>Черновик ордера сохранён</b>\n\n"
@@ -253,7 +253,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Risk gate: mode=<code>{mode}</code>, paused=<code>{paused}</code>, max_order=<code>{max_order}</code>\n"
             "{next_line}\n\n"
             "Роутинг исполнения ещё не включён. Этот draft сохранён для alpha workflow и операторского теста.\n"
-            "Нужна полная картина? Откройте <code>/ready</code>."
+            "Нужна полная картина? Откройте /ready."
         ),
     },
     "order_blocked": {
