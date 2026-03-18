@@ -172,6 +172,37 @@ Practical effect:
 
 ---
 
+# Telegram Deep-Link Start Attribution (2026-03-18)
+
+Added bot-side `/start` attribution so social and deep-link traffic can now be measured after the user actually enters Telegram.
+
+Files updated:
+
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+
+What changed:
+
+• `/start` now captures Telegram deep-link payloads via `context.args`
+• the bot writes a `tg_start` event into `app.site_events`
+• stored details now include:
+  - `start_payload`
+  - `entrypoint` (`telegram_direct` vs `telegram_deep_link`)
+  - app user id
+  - telegram id / chat id
+  - plan / watchlist context at start time
+• weekly KPI reporting now includes:
+  - `tg_start`
+  - `tg_start / tg_click`
+  - `tg_start by Start Payload`
+
+Practical effect:
+
+• we can now see whether a social pain theme actually drives people from deep-link click into a real Telegram `/start`
+• today’s X post can now be measured beyond raw `tg_click`
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

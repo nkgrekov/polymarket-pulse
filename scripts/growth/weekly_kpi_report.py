@@ -41,6 +41,17 @@ group by utm_source
 order by clicks desc, utm_source;
 """
 
+SQL_TG_START_SPLIT = """
+select
+  coalesce(nullif(details->>'start_payload', ''), nullif(details->>'entrypoint', ''), 'direct') as start_source,
+  count(*)::bigint as starts
+from app.site_events
+where created_at >= %s
+  and event_type = 'tg_start'
+group by start_source
+order by starts desc, start_source;
+"""
+
 SQL_TOP_PLACEMENTS = """
 select
   coalesce(nullif(details->>'placement', ''), 'unknown') as placement,
@@ -105,6 +116,8 @@ def main() -> None:
             funnel_rows = cur.fetchall()
             cur.execute(SQL_SOURCE_SPLIT, (since,))
             source_rows = cur.fetchall()
+            cur.execute(SQL_TG_START_SPLIT, (since,))
+            tg_start_rows = cur.fetchall()
             cur.execute(SQL_TOP_PLACEMENTS, (since, args.top_placements))
             placement_rows = cur.fetchall()
             cur.execute(SQL_BOT_ACTIVATION, (since, since))
@@ -112,9 +125,11 @@ def main() -> None:
 
     funnel = to_map(funnel_rows, "event_type", "events")
     sources = to_map(source_rows, "utm_source", "clicks")
+    tg_start_sources = to_map(tg_start_rows, "start_source", "starts")
 
     page_view = funnel.get("page_view", 0)
     tg_click = funnel.get("tg_click", 0)
+    tg_start = funnel.get("tg_start", 0)
     waitlist_submit = funnel.get("waitlist_submit", 0)
     confirm_success = funnel.get("confirm_success", 0)
     started_users = int(activation_row.get("started_users") or 0)
@@ -129,6 +144,7 @@ def main() -> None:
         "",
         f"- page_view: **{page_view}**",
         f"- tg_click: **{tg_click}** (`{pct(tg_click, page_view)}` from page_view)",
+        f"- tg_start: **{tg_start}** (`{pct(tg_start, tg_click)}` from tg_click)",
         f"- waitlist_submit: **{waitlist_submit}** (`{pct(waitlist_submit, page_view)}` from page_view)",
         f"- confirm_success: **{confirm_success}** (`{pct(confirm_success, waitlist_submit)}` from waitlist_submit)",
         "",
@@ -152,6 +168,19 @@ def main() -> None:
 
     lines += [
         "",
+        "## tg_start by Start Payload",
+        "",
+        "| Start payload | tg_start | Share |",
+        "|---|---:|---:|",
+    ]
+    total_starts = max(sum(tg_start_sources.values()), 1)
+    for start_source, starts in sorted(tg_start_sources.items(), key=lambda x: (-x[1], x[0])):
+        lines.append(f"| {start_source} | {starts} | {pct(starts, total_starts)} |")
+    if not tg_start_sources:
+        lines.append("| n/a | 0 | n/a |")
+
+    lines += [
+        "",
         "## Top tg_click Placements",
         "",
         "| Placement | tg_click |",
@@ -168,6 +197,8 @@ def main() -> None:
         "## Action Notes",
         "",
         "- Scale sources with highest tg_click share (`x`, `threads`, or direct).",
+        "- If `tg_start/tg_click` is low: inspect Telegram deep-link friction and social CTA clarity.",
+        "- If one `start_payload` consistently wins: keep posting into that pain theme.",
         "- If `tg_click/page_view` is low: iterate hero and CTA copy on landing.",
         "- If `start_to_watchlist_add` is low: simplify `/start -> /watchlist_add` flow in bot.",
         "- If `confirm_success/waitlist_submit` is low: review email deliverability and confirm page UX.",

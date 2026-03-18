@@ -177,6 +177,36 @@ Operational implication:
 
 ---
 
+# Telegram Start Attribution Contract (2026-03-18)
+
+The Pulse bot now emits a measured Telegram-entry event when a user lands in `/start`.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+
+Contract:
+
+• `/start` reads the optional deep-link payload from `context.args`
+• the bot writes `event_type='tg_start'` into `app.site_events`
+• event details include:
+  - `start_payload`
+  - `entrypoint`
+  - Telegram identity metadata
+  - current plan / threshold / watchlist context
+• weekly KPI reporting now exposes:
+  - total `tg_start`
+  - `tg_start / tg_click`
+  - `tg_start` split by payload
+
+Operational implication:
+
+• social and deep-link attribution now survives the handoff from site/X into Telegram
+• we can compare which pain themes produce not just clicks, but actual product entry
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

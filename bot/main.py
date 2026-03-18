@@ -805,6 +805,29 @@ set plan = 'pro',
 where user_id = %s::uuid;
 """
 
+SQL_SITE_EVENT_INSERT = """
+insert into app.site_events (
+  event_type,
+  email,
+  source,
+  lang,
+  path,
+  user_agent,
+  ip,
+  details
+)
+values (
+  %s,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s
+);
+"""
+
 
 def run_db_query(query: str, params: tuple[Any, ...], *, row_factory=None):
     last_error = None
@@ -841,6 +864,48 @@ def execute_db_write(query: str, params: tuple[Any, ...]) -> None:
             log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
             time.sleep(DB_RETRY_SLEEP_SECONDS)
     raise last_error
+
+
+def normalize_start_payload(context: ContextTypes.DEFAULT_TYPE) -> str | None:
+    args = getattr(context, "args", None) or []
+    if not args:
+        return None
+    payload = " ".join(str(part).strip() for part in args if str(part).strip()).strip()
+    return payload or None
+
+
+def log_telegram_start_sync(update: Update, user_ctx: dict, *, locale: str, start_payload: str | None) -> None:
+    tg_user = update.effective_user
+    tg_chat = update.effective_chat
+    payload = Jsonb(
+        {
+            "app_user_id": user_ctx.get("user_id"),
+            "telegram_id": tg_user.id if tg_user else None,
+            "chat_id": tg_chat.id if tg_chat else None,
+            "username": tg_user.username if tg_user else None,
+            "first_name": tg_user.first_name if tg_user else None,
+            "last_name": tg_user.last_name if tg_user else None,
+            "language_code": tg_user.language_code if tg_user else None,
+            "plan": user_ctx.get("plan"),
+            "watchlist_count": user_ctx.get("watchlist_count"),
+            "threshold": str(user_ctx.get("threshold")),
+            "start_payload": start_payload,
+            "entrypoint": "telegram_deep_link" if start_payload else "telegram_direct",
+        }
+    )
+    execute_db_write(
+        SQL_SITE_EVENT_INSERT,
+        (
+            "tg_start",
+            None,
+            "telegram_bot",
+            locale,
+            "/start",
+            "telegram-bot",
+            None,
+            payload,
+        ),
+    )
 
 
 def ensure_payment_schema_sync() -> None:
@@ -2260,6 +2325,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     locale = locale_from_update(update)
+    start_payload = normalize_start_payload(context)
     try:
         user_ctx = await resolve_user_context(update)
     except Exception:
@@ -2270,6 +2336,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else "Не удалось инициализировать профиль. Попробуйте позже."
         )
         return
+    try:
+        await asyncio.to_thread(
+            log_telegram_start_sync,
+            update,
+            user_ctx,
+            locale=locale,
+            start_payload=start_payload,
+        )
+    except Exception:
+        log.exception("/start analytics insert failed")
 
     await update.message.reply_text(
         (
@@ -2344,7 +2420,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Quick menu:" if locale == "en" else "Быстрое меню:",
         reply_markup=main_menu_inline(),
     )
-    log.info("cmd=/start chat_id=%s tg_user=%s app_user=%s", update.effective_chat.id, update.effective_user.id, user_ctx["user_id"])
+    log.info(
+        "cmd=/start chat_id=%s tg_user=%s app_user=%s payload=%s",
+        update.effective_chat.id,
+        update.effective_user.id,
+        user_ctx["user_id"],
+        start_payload or "",
+    )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
