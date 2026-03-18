@@ -51,6 +51,40 @@ Why this matters:
 
 ---
 
+# Pulse Plan / Upgrade Messaging Layer (2026-03-18)
+
+The Pulse bot now treats `/plan` and `/upgrade` as product-state surfaces rather than generic command replies.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract additions:
+
+• `plan_message_text(user_ctx, locale=...)` now centralizes the plan-state copy for both slash commands and callback menu entrypoints
+• plan responses now branch by commercial state:
+  - `FREE`
+  - `PRO`
+• FREE responses expose:
+  - remaining watchlist capacity
+  - current threshold
+  - alerts used today
+  - concise PRO delta
+• PRO responses expose:
+  - current threshold
+  - remaining watchlist capacity
+  - closed-market residue in watchlist, when present
+  - best next step
+• `/upgrade` now short-circuits for `PRO` users and redirects them back into product usage rather than payment
+• Stripe fallback links now target the current EN-only acquisition surface (`/telegram-bot#pro`)
+
+Why this matters:
+
+• the monetization layer should reinforce the core Pulse loop, not interrupt it with stale or redundant payment messaging
+• keeping `/plan` and `/upgrade` state-aware reduces confusion for both free and upgraded users
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

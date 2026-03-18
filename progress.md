@@ -44,6 +44,43 @@ Practical effect:
 
 ---
 
+# Pulse Plan + Upgrade Conversion Pass (2026-03-18)
+
+Tightened the subscription-facing UX inside the Pulse bot so `/plan` and `/upgrade` help the user act, not just read limits.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• `/plan` now uses a dedicated message layer instead of a generic status dump
+• FREE users now see:
+  - current threshold
+  - watchlist slots left
+  - alerts used today
+  - what PRO unlocks
+• PRO users now see:
+  - current threshold
+  - free watchlist capacity
+  - whether closed markets are parked in watchlist
+  - the most useful next step
+• `/upgrade` no longer sends a payment flow to users who already have PRO
+• free upgrade copy now points to the clean EN-only Stripe landing path (`/telegram-bot#pro`)
+• plan/upgrade inline actions were simplified around the core Pulse loop:
+  - add market
+  - watchlist
+  - inbox / threshold
+  - upgrade only where it is actually relevant
+
+Practical effect:
+
+• plan state now reads like a product status view instead of a debug summary
+• upgrade flow stops feeling broken for existing PRO users
+• the subscription surface stays aligned with the current EN-only public site
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

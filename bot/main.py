@@ -1010,14 +1010,14 @@ def upgrade_pitch_text(update: Update) -> str:
             f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
             f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
             "Upgrade instantly via Stars below.\n"
-            'Prefer card? → <a href="https://polymarketpulse.app/?lang=en#pro">Pay with Stripe</a>'
+            'Prefer card? → <a href="https://polymarketpulse.app/telegram-bot#pro">Pay with Stripe</a>'
         )
     return (
         f"⭐ <b>PRO — {TELEGRAM_STARS_PRICE_XTR} Stars / month</b>\n\n"
         f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
         f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
         "Upgrade instantly via Stars below.\n"
-        'Prefer card? → <a href="https://polymarketpulse.app/?lang=en#pro">Pay with Stripe</a>'
+        'Prefer card? → <a href="https://polymarketpulse.app/telegram-bot#pro">Pay with Stripe</a>'
     )
 
 
@@ -1104,6 +1104,77 @@ def plan_upgrade_hint(update: Update) -> str:
     if is_english_locale(update):
         return "→ /upgrade — move to PRO"
     return "→ /upgrade — перейти на PRO"
+
+
+def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
+    plan = str(user_ctx.get("plan") or "free")
+    is_pro = plan == "pro"
+    watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    alerts_sent_today = int(user_ctx.get("alerts_sent_today") or 0)
+    watchlist_limit = watchlist_limit_for_plan(plan)
+    watchlist_left = max(0, watchlist_limit - watchlist_count)
+    closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
+    threshold = _fmt_num(user_ctx.get("threshold"), 3)
+
+    if is_pro:
+        if locale == "en":
+            next_line = (
+                "Best next step: add another market if your feed is too quiet, or tighten your threshold if alerts feel noisy."
+            )
+            closed_line = (
+                f"\nClosed markets parked in watchlist: {closed_count}. You can swap them out for live ones from Add market."
+                if closed_count > 0
+                else ""
+            )
+            return (
+                "Current plan: PRO\n\n"
+                f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+                f"Threshold now: {threshold}\n"
+                f"Open watchlist capacity: {watchlist_left}\n"
+                f"{next_line}{closed_line}"
+            )
+        next_line = "Лучший следующий шаг: добавить ещё рынок, если фид тихий, или подтянуть threshold, если алертов слишком много."
+        closed_line = (
+            f"\nЗакрытых рынков в watchlist: {closed_count}. Их можно заменить на live-рынки через «Добавить рынок»."
+            if closed_count > 0
+            else ""
+        )
+        return (
+            "Текущий план: PRO\n\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            f"Текущий threshold: {threshold}\n"
+            f"Свободных слотов в watchlist: {watchlist_left}\n"
+            f"{next_line}{closed_line}"
+        )
+
+    if locale == "en":
+        urgency = (
+            f"Only {watchlist_left} watchlist slot(s) left before FREE runs out."
+            if watchlist_left <= 1
+            else f"{watchlist_left} watchlist slot(s) left on FREE."
+        )
+        return (
+            "Current plan: FREE\n\n"
+            f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+            f"Threshold now: {threshold}\n"
+            f"{urgency}\n"
+            f"PRO unlocks {PRO_WATCHLIST_LIMIT} markets, unlimited alerts, and email digest.\n"
+            f"Today you already used {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot alerts."
+        )
+
+    urgency = (
+        f"До лимита FREE остался всего {watchlist_left} слот(а) в watchlist."
+        if watchlist_left <= 1
+        else f"На FREE сейчас осталось {watchlist_left} слота(ов) в watchlist."
+    )
+    return (
+        "Текущий план: FREE\n\n"
+        f"{user_limits_block(user_ctx, locale=locale)}\n\n"
+        f"Текущий threshold: {threshold}\n"
+        f"{urgency}\n"
+        f"PRO открывает {PRO_WATCHLIST_LIMIT} рынков, безлимитные алерты и email-дайджест.\n"
+        f"Сегодня уже использовано {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot-алертов."
+    )
 
 
 def main_menu_inline() -> InlineKeyboardMarkup:
@@ -1246,7 +1317,7 @@ def plan_action_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarku
                 ],
                 [
                     InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
-                    InlineKeyboardButton("Trade" if locale == "en" else "Трейд", callback_data="menu:trade"),
+                    InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
                 ],
             ]
         )
@@ -1255,6 +1326,34 @@ def plan_action_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarku
             [
                 InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
                 InlineKeyboardButton("Upgrade" if locale == "en" else "Апгрейд", callback_data="menu:upgrade"),
+            ],
+            [
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+                InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+            ],
+        ]
+    )
+
+
+def upgrade_followup_inline(locale: str, *, pro: bool = False) -> InlineKeyboardMarkup:
+    if pro:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                    InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+                ],
+                [
+                    InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+                    InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+                ],
+            ]
+        )
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Plan" if locale == "en" else "План", callback_data="menu:plan"),
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
             ],
             [
                 InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
@@ -2302,23 +2401,10 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     is_pro = str(user_ctx.get("plan") or "free") == "pro"
-    watchlist_left = max(0, watchlist_limit_for_plan(str(user_ctx.get("plan") or "free")) - int(user_ctx.get("watchlist_count") or 0))
-    text = (
-        "Current plan\n\n"
-        f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-        + (
-            f"FREE gives you {watchlist_left} watchlist slot(s) left today.\n"
-            f"PRO unlocks {PRO_WATCHLIST_LIMIT} markets, unlimited alerts, and email digest."
-            if not is_pro and locale == "en"
-            else f"До лимита FREE сейчас осталось {watchlist_left} слота(ов) в watchlist.\n"
-            f"PRO открывает {PRO_WATCHLIST_LIMIT} рынков, безлимитные алерты и email-дайджест."
-            if not is_pro
-            else "You already have PRO. Best next step: add another market or tighten threshold."
-            if locale == "en"
-            else "У вас уже PRO. Лучший следующий шаг: добавить ещё рынок или подтянуть threshold."
-        )
+    await update.message.reply_text(
+        plan_message_text(user_ctx, locale=locale),
+        reply_markup=plan_action_inline(locale, pro=is_pro),
     )
-    await update.message.reply_text(text, reply_markup=plan_action_inline(locale, pro=is_pro))
 
 
 async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2367,15 +2453,28 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     locale = locale_from_update(update)
     user_ctx = await resolve_user_context(update)
+    is_pro = str(user_ctx.get("plan") or "free") == "pro"
     try:
         await asyncio.to_thread(log_upgrade_intent_sync, update, user_ctx)
     except Exception:
         log.exception("/upgrade intent insert failed")
+    if is_pro:
+        await update.message.reply_text(
+            (
+                "You already have PRO.\n\n"
+                "Use it: add another market, open Watchlist/Inbox, or tighten threshold if the feed feels noisy."
+                if locale == "en"
+                else "У вас уже есть PRO.\n\n"
+                "Используйте его: добавьте ещё рынок, откройте Watchlist/Inbox или подтяните threshold, если фид шумит."
+            ),
+            reply_markup=upgrade_followup_inline(locale, pro=True),
+        )
+        return
     await update.message.reply_text(
         upgrade_pitch_text(update),
         parse_mode="HTML",
         disable_web_page_preview=True,
-        reply_markup=plan_action_inline(locale, pro=False),
+        reply_markup=upgrade_followup_inline(locale, pro=False),
     )
     try:
         invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx, locale=locale)
@@ -2387,10 +2486,10 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             (
                 "Stars checkout is temporarily unavailable.\n"
-                "Use the site: https://polymarketpulse.app/telegram-bot?lang=en"
+                "Use the site: https://polymarketpulse.app/telegram-bot#pro"
                 if locale == "en"
                 else "Stars-счет временно недоступен.\n"
-                "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru"
+                "Используйте сайт: https://polymarketpulse.app/telegram-bot#pro"
             ),
             disable_web_page_preview=True,
         )
@@ -2663,20 +2762,30 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu:plan":
         user_ctx = await resolve_user_context(update)
         await query.message.reply_text(
-            (
-                f"Current status:\n{user_limits_block(user_ctx, locale=locale)}"
-                if locale == "en"
-                else f"Текущий статус:\n{user_limits_block(user_ctx, locale=locale)}"
-            ),
-            reply_markup=main_menu_inline(),
+            plan_message_text(user_ctx, locale=locale),
+            reply_markup=plan_action_inline(locale, pro=str(user_ctx.get("plan") or "free") == "pro"),
         )
         return
     if data == "menu:upgrade":
         user_ctx = await resolve_user_context(update)
+        is_pro = str(user_ctx.get("plan") or "free") == "pro"
+        if is_pro:
+            await query.message.reply_text(
+                (
+                    "You already have PRO.\n\n"
+                    "Best next step: add another market, check Inbox, or tighten threshold."
+                    if locale == "en"
+                    else "У вас уже есть PRO.\n\n"
+                    "Лучший следующий шаг: добавить ещё рынок, открыть Inbox или подтянуть threshold."
+                ),
+                reply_markup=upgrade_followup_inline(locale, pro=True),
+            )
+            return
         await query.message.reply_text(
             upgrade_pitch_text(update),
             parse_mode="HTML",
             disable_web_page_preview=True,
+            reply_markup=upgrade_followup_inline(locale, pro=False),
         )
         try:
             invoice_sent = await send_stars_invoice_for_pro(context.bot, query.message.chat_id, user_ctx, locale=locale)
@@ -2687,10 +2796,10 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text(
                 (
                     "Stars checkout is temporarily unavailable.\n"
-                    "Use the site: https://polymarketpulse.app/telegram-bot?lang=en"
+                    "Use the site: https://polymarketpulse.app/telegram-bot#pro"
                     if locale == "en"
                     else "Stars-счет временно недоступен.\n"
-                    "Используйте сайт: https://polymarketpulse.app/telegram-bot?lang=ru"
+                    "Используйте сайт: https://polymarketpulse.app/telegram-bot#pro"
                 ),
                 disable_web_page_preview=True,
             )
