@@ -81,6 +81,40 @@ Practical effect:
 
 ---
 
+# Homepage Search Hub + GSC Weekly Runbook (2026-03-18)
+
+Strengthened the public English homepage as a crawl/conversion hub and added a repeatable Search Console operating checklist.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `docs/gsc_weekly_checklist_2026-03-18.md`
+
+What changed:
+
+• homepage intent links were expanded into a richer search-path block
+• the block now links directly to:
+  - analytics
+  - signals
+  - telegram-bot
+  - top-movers
+  - watchlist-alerts
+  - dashboard
+  - how-it-works
+  - commands
+  - trader-bot
+• each link now explains the intent it serves instead of appearing as a bare label
+• homepage now emits an `ItemList` JSON-LD block for the main search-entry pages
+• added a weekly GSC checklist so index-state review is now operationalized rather than handled ad hoc
+
+Practical effect:
+
+• the homepage is now a stronger internal-linking surface for the EN acquisition layer
+• crawl paths into the key Telegram-activation pages are clearer
+• GSC follow-up now has a single documented routine
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

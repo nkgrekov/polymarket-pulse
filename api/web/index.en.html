@@ -48,6 +48,24 @@
       "inLanguage": "en-US"
     }
   </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Polymarket Pulse Search Paths",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "url": "https://polymarketpulse.app/analytics", "name": "Polymarket Analytics"},
+        {"@type": "ListItem", "position": 2, "url": "https://polymarketpulse.app/signals", "name": "Polymarket Signals"},
+        {"@type": "ListItem", "position": 3, "url": "https://polymarketpulse.app/telegram-bot", "name": "Polymarket Telegram Bot"},
+        {"@type": "ListItem", "position": 4, "url": "https://polymarketpulse.app/top-movers", "name": "Polymarket Top Movers"},
+        {"@type": "ListItem", "position": 5, "url": "https://polymarketpulse.app/watchlist-alerts", "name": "Polymarket Watchlist Alerts"},
+        {"@type": "ListItem", "position": 6, "url": "https://polymarketpulse.app/dashboard", "name": "Polymarket Dashboard Alternative"},
+        {"@type": "ListItem", "position": 7, "url": "https://polymarketpulse.app/how-it-works", "name": "How Polymarket Pulse Works"},
+        {"@type": "ListItem", "position": 8, "url": "https://polymarketpulse.app/commands", "name": "Pulse Bot Commands"},
+        {"@type": "ListItem", "position": 9, "url": "https://polymarketpulse.app/trader-bot", "name": "Trader Alpha"}
+      ]
+    }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
@@ -1031,23 +1049,48 @@
       gap: 10px;
     }
 
-    .intent-grid a {
+    .intent-link {
       border: 1px solid var(--line-soft);
-      border-radius: 999px;
-      padding: 9px 10px;
+      border-radius: 14px;
+      padding: 12px;
       text-decoration: none;
-      color: var(--muted);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
+      color: var(--text);
       background: #131714;
-      transition: border-color 0.2s ease, color 0.2s ease;
+      transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      min-height: 92px;
+      display: block;
     }
 
-    .intent-grid a:hover,
-    .intent-grid a:focus-visible {
+    .intent-link:hover,
+    .intent-link:focus-visible {
       border-color: var(--accent);
-      color: var(--text);
+      transform: translateY(-1px);
       outline: none;
+    }
+
+    .intent-name {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .intent-copy {
+      display: block;
+      margin-top: 8px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .intent-note {
+      margin-top: 10px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted-soft);
     }
 
     .faq {
@@ -1267,15 +1310,19 @@
     </section>
 
     <section class="intent-links reveal delay-8" aria-label="Related SEO pages">
-      <p class="intent-title">EXPLORE BY INTENT</p>
+      <p class="intent-title">SEARCH PATHS · CRAWLABLE ENTRY POINTS</p>
       <div class="intent-grid">
-        <a href="/analytics">Polymarket Analytics</a>
-        <a href="/dashboard">Dashboard Alternative</a>
-        <a href="/signals">Signals</a>
-        <a href="/telegram-bot">Telegram Bot</a>
-        <a href="/top-movers">Top Movers</a>
-        <a href="/watchlist-alerts">Watchlist Alerts</a>
+        <a class="intent-link" href="/analytics"><span class="intent-name">Polymarket Analytics</span><span class="intent-copy">Live repricing, probability shifts, and signal-first context.</span></a>
+        <a class="intent-link" href="/signals"><span class="intent-name">Polymarket Signals</span><span class="intent-copy">Low-noise alerting with thresholding and honest quiet states.</span></a>
+        <a class="intent-link" href="/telegram-bot"><span class="intent-name">Telegram Bot</span><span class="intent-copy">Fastest path from first click to first useful market signal.</span></a>
+        <a class="intent-link" href="/top-movers"><span class="intent-name">Top Movers</span><span class="intent-copy">What moved fastest in the current live window, without dashboard sprawl.</span></a>
+        <a class="intent-link" href="/watchlist-alerts"><span class="intent-name">Watchlist Alerts</span><span class="intent-copy">Track only the markets you care about and cut the alert noise.</span></a>
+        <a class="intent-link" href="/dashboard"><span class="intent-name">Dashboard Alternative</span><span class="intent-copy">Why a Telegram-first workflow can beat another tab full of widgets.</span></a>
+        <a class="intent-link" href="/how-it-works"><span class="intent-name">How It Works</span><span class="intent-copy">Human-friendly onboarding guide for the bot flow and command surfaces.</span></a>
+        <a class="intent-link" href="/commands"><span class="intent-name">Command Guide</span><span class="intent-copy">Slash commands, watchlist controls, and the clean path to first value.</span></a>
+        <a class="intent-link" href="/trader-bot"><span class="intent-name">Trader Alpha</span><span class="intent-copy">Execution layer for power users: Pulse finds, Trader acts.</span></a>
       </div>
+      <p class="intent-note">These pages exist to answer different search intents cleanly, then move the user into the Telegram activation path without dashboard friction.</p>
       <div class="faq">
         <span class="faq-prefix">// </span><b>FAQ: Why can /movers be zero?</b><br />
         If short-window `last/prev` change is flat, bot falls back to 1h movers.  

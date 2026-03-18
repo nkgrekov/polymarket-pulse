@@ -85,6 +85,38 @@ Why this matters:
 
 ---
 
+# Homepage Search-Hub Contract (2026-03-18)
+
+The public English homepage now acts as a clearer crawl and intent-distribution hub for the acquisition layer.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `docs/gsc_weekly_checklist_2026-03-18.md`
+
+Contract additions:
+
+• the homepage now links directly to the full EN acquisition cluster:
+  - `/analytics`
+  - `/signals`
+  - `/telegram-bot`
+  - `/top-movers`
+  - `/watchlist-alerts`
+  - `/dashboard`
+  - `/how-it-works`
+  - `/commands`
+  - `/trader-bot`
+• these links now carry small descriptive summaries, not just bare route labels
+• the homepage now emits an `ItemList` JSON-LD block for the main search-entry pages
+
+Operational implication:
+
+• the crawl graph is less dependent on sitemap-only discovery
+• the homepage becomes a stronger internal-link source for pages that feed Telegram activation and Trader handoff
+• GSC review is now supported by an explicit weekly checklist instead of ad hoc manual memory
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.
