@@ -766,6 +766,14 @@ def render_readiness(lang: str, account_id: int, wallet: dict[str, Any] | None, 
     return "\n".join(lines)
 
 
+def readiness_reply_markup(lang: str, account_id: int, wallet: dict[str, Any] | None) -> InlineKeyboardMarkup:
+    if wallet and not wallet_is_execution_ready(wallet):
+        session = ensure_signer_session(account_id, wallet)
+        verify_url = signer_verify_url(session["session_token"], lang)
+        return signer_keyboard(lang, verify_url)
+    return links_keyboard(lang)
+
+
 def worker_reason_message(lang: str, reason: str | None) -> tuple[str, str]:
     if not reason:
         return (
@@ -983,6 +991,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             + "\n"
             + signer_status_summary(lang, account_id, wallet),
             parse_mode="HTML",
+            reply_markup=readiness_reply_markup(lang, account_id, wallet),
         )
     await update.effective_message.reply_text(
         txt(lang, "help"),
@@ -1094,7 +1103,7 @@ async def cmd_ready(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.effective_message.reply_text(
         render_readiness(lang, account_id, wallet, risk, recent_orders),
         parse_mode="HTML",
-        reply_markup=links_keyboard(lang),
+        reply_markup=readiness_reply_markup(lang, account_id, wallet),
     )
 
 
@@ -1262,9 +1271,14 @@ async def cmd_sell(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cmd_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id, account_id, lang = resolve_identity(update)
     rows = db_fetch_all(SQL_RECENT_ORDERS, (account_id,))
+    wallet = db_fetch_one(SQL_PRIMARY_WALLET, (account_id,))
     log_event(user_id, account_id, "orders_open", {"rows": len(rows)})
     if not rows:
-        await update.effective_message.reply_text(txt(lang, "orders_empty"), parse_mode="HTML")
+        await update.effective_message.reply_text(
+            txt(lang, "orders_empty"),
+            parse_mode="HTML",
+            reply_markup=readiness_reply_markup(lang, account_id, wallet),
+        )
         return
     lines = [
         "<b>Latest order drafts + worker status</b>" if lang == "en" else "<b>Последние черновики ордеров + статус worker</b>"
@@ -1279,7 +1293,11 @@ async def cmd_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"{row['side'].upper()} {row['outcome_side'].upper()} | ${format_money(row['requested_size_usd'])} | {row['order_type']}{limit_line}"
             f"{worker_hint}"
         )
-    await update.effective_message.reply_text("\n".join(lines), parse_mode="HTML")
+    await update.effective_message.reply_text(
+        "\n".join(lines),
+        parse_mode="HTML",
+        reply_markup=readiness_reply_markup(lang, account_id, wallet),
+    )
 
 
 async def cmd_follow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -1610,6 +1610,25 @@ def watchlist_list_inline(locale: str, *, has_closed: bool = False) -> InlineKey
     return InlineKeyboardMarkup(rows)
 
 
+def returning_start_inline(locale: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+            ],
+            [
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+            ],
+            [
+                InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+                InlineKeyboardButton("Plan" if locale == "en" else "План", callback_data="menu:plan"),
+            ],
+        ]
+    )
+
+
 def _build_pro_payload(user_id: str) -> str:
     return f"{PRO_STARS_PAYLOAD_PREFIX}:{user_id}:{int(time.time())}"
 
@@ -2505,15 +2524,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=quick_reply_keyboard(locale),
     )
-    await update.message.reply_text(
-        (
-            "First useful step: add one live market to your watchlist."
-            if locale == "en"
-            else "Первый полезный шаг: добавьте один live-рынок в watchlist."
-        ),
-        reply_markup=onboarding_start_inline(locale),
-    )
-    if int(user_ctx.get("watchlist_count") or 0) == 0:
+    watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    if watchlist_count == 0:
+        await update.message.reply_text(
+            (
+                "First useful step: add one live market to your watchlist."
+                if locale == "en"
+                else "Первый полезный шаг: добавьте один live-рынок в watchlist."
+            ),
+            reply_markup=onboarding_start_inline(locale),
+        )
         try:
             starter_rows = await fetch_watchlist_picker_candidates_async(
                 user_id=user_ctx["user_id"],
@@ -2538,6 +2558,23 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     locale=locale,
                 ),
             )
+    else:
+        watchlist_limit = watchlist_limit_for_plan(str(user_ctx.get("plan") or "free"))
+        remaining = max(watchlist_limit - watchlist_count, 0)
+        await update.message.reply_text(
+            (
+                f"Welcome back. You already track {watchlist_count} market(s).\n"
+                f"Slots left: {remaining}.\n\n"
+                "Best next step: open Watchlist for live deltas or Inbox for thresholded alerts. "
+                "If the feed feels quiet, add one more live market or review your threshold."
+                if locale == "en"
+                else f"С возвращением. У вас уже {watchlist_count} рынков в watchlist.\n"
+                f"Свободных слотов: {remaining}.\n\n"
+                "Лучший следующий шаг: откройте Вотчлист для live-дельт или Инбокс для пороговых алертов. "
+                "Если лента тихая, добавьте ещё один live-рынок или проверьте threshold."
+            ),
+            reply_markup=returning_start_inline(locale),
+        )
     await update.message.reply_text(
         "Quick menu:" if locale == "en" else "Быстрое меню:",
         reply_markup=main_menu_inline(),

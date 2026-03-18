@@ -1369,3 +1369,10 @@ Trader bot:
   - signed payload
   - manual alpha approval
   - `/ready`
+• `/ready` and `/order` now expose the signer URL directly for non-ready wallets, so lifecycle review screens double as action surfaces
+
+Pulse bot:
+
+• `/start` now has two activation branches:
+  - zero-watchlist users → onboarding picker / one-tap add
+  - returning users with existing watchlist → resume flow with direct actions into `Watchlist`, `Inbox`, `Threshold`, `Top movers`, `Plan`

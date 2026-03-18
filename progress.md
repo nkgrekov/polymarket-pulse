@@ -1632,3 +1632,7 @@ iOS client integration
   - after `/connect <wallet>`, the bot now creates or reuses a signer session automatically
   - users get the signer page CTA immediately instead of having to discover `/signer` as a separate step
   - `/connect` without args also surfaces the signer step again for non-ready wallets
+• `Pulse` `/start` now distinguishes between new and returning users:
+  - new users get the one-tap onboarding market flow
+  - returning users get a lighter “resume” screen with direct actions into watchlist, inbox, threshold and movers
+• `Trader` `/ready` and `/order` now reuse the signer CTA surface for non-ready wallets, so the next execution step is actionable right from the lifecycle screens
