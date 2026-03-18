@@ -53,6 +53,31 @@ What it does:
 - attaches the correct current video asset path for each slot
 - tells the operator what to post now, what to mirror in Threads, and what to skip if the window is stale
 
+## One-command daily operator flow
+Recommended operator command:
+
+```bash
+./scripts/growth/run_social_cycle.sh
+```
+
+Optional gates:
+
+```bash
+MAX_AGE_MINUTES=30 MIN_LIQUIDITY=5000 MIN_DELTA=0.02 ./scripts/growth/run_social_cycle.sh
+```
+
+What it does:
+- loads `PG_CONN` from `bot/.env` if needed
+- rebuilds the fresh queue
+- rebuilds the EN draft pack
+- prints a single decision:
+  - `POST`
+  - `SKIP`
+
+Operator rule:
+- if the script says `POST`, open `docs/social_queue_latest.md` and publish slot 1 first
+- if the script says `SKIP`, do not force a post; wait for a fresher window
+
 ## Competitor scan refresh
 Run:
 

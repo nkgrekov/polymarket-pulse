@@ -148,6 +148,35 @@ Operational implication:
 
 ---
 
+# Daily Social Operator Contract (2026-03-18)
+
+The social layer now has a single operator entrypoint.
+
+Updated artifacts:
+
+• `scripts/growth/run_social_cycle.sh`
+• `docs/social_pipeline.md`
+• `docs/social_daily_operator_routine_2026-03-18.md`
+
+Contract:
+
+• `run_social_cycle.sh` is the daily human-facing entrypoint for social execution
+• it is responsible for:
+  - loading `PG_CONN`
+  - rebuilding `docs/social_queue_latest.md`
+  - rebuilding `docs/social_drafts_latest.md`
+  - returning one operator decision:
+    - `POST`
+    - `SKIP`
+• the routine assumes fresh regeneration before every posting block, not once per day
+
+Operational implication:
+
+• social publishing is now a bounded operating procedure instead of a loose collection of scripts
+• the operator does not need to remember flags or file names to decide whether the window deserves a post
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

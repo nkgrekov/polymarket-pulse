@@ -144,6 +144,34 @@ Practical effect:
 
 ---
 
+# Daily Social Operator Routine (2026-03-18)
+
+Wrapped the just-in-time social system in a single operator command so daily publishing stops depending on memory or ad hoc shell snippets.
+
+Files updated:
+
+• `scripts/growth/run_social_cycle.sh`
+• `docs/social_pipeline.md`
+• `docs/social_daily_operator_routine_2026-03-18.md`
+
+What changed:
+
+• added a one-command daily operator flow:
+  - loads `PG_CONN` from `bot/.env` if needed
+  - rebuilds the live posting queue
+  - rebuilds the EN draft pack
+  - prints a single `POST` / `SKIP` decision
+• documented the routine as a strict manual publishing loop
+• clarified that every posting block should re-run the cycle instead of relying on older drafts
+
+Practical effect:
+
+• daily social ops is now executable by habit instead of by remembering flags
+• the team gets one answer before posting anything: publish now or wait
+• this makes the social layer behave more like the product itself: no stale signals, no forced output
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

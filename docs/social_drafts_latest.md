@@ -1,4 +1,4 @@
-# Social Drafts (2026-03-17T07:32:55.434590+00:00)
+# Social Drafts (2026-03-18T13:28:08.358739+00:00)
 
 Generated from: `public.top_movers_latest` + `bot.alerts_inbox_latest`
 Freshness gate: <= 30m | Liquidity gate: >= 5.0K
@@ -8,8 +8,8 @@ Mode: langs=en | channels=x,threads
 
 ### Top Movers Post 1
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 17?
-Probability: 55.0% -> 61.5% (+6.5pp, 15m window, L 34.7K)
+Market moved fast: Will Elon Musk post 90-114 tweets from March 16 to March 18, 2026?
+Probability: 10.5% -> 28.5% (+18.0pp, 15m window, L 11.6K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=live_movers&lang=en&placement=x_live_movers
@@ -17,8 +17,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=l
 
 ### Top Movers Post 2
 
-Market moved fast: Will the Rachida Dati List win the most citywide list votes in the runoff of the 2026 P…
-Probability: 19.0% -> 23.5% (+4.5pp, 15m window, L 5.8K)
+Market moved fast: Will monthly inflation increase by 0.8% or more in March?
+Probability: 85.0% -> 89.5% (+4.5pp, 15m window, L 5.0K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=live_movers&lang=en&placement=x_live_movers
@@ -26,8 +26,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=l
 
 ### Top Movers Post 3
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 18?
-Probability: 53.0% -> 57.0% (+4.0pp, 15m window, L 25.1K)
+Market moved fast: Will annual inflation increase by ≥3.4% in March?
+Probability: 49.9% -> 45.5% (-4.3pp, 15m window, L 5.9K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=live_movers&lang=en&placement=x_live_movers
@@ -35,8 +35,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=l
 
 ### Top Movers Post 4
 
-Market moved fast: Will the price of Bitcoin be above $72,000 on March 18?
-Probability: 80.5% -> 83.0% (+2.5pp, 15m window, L 27.9K)
+Market moved fast: Hezbollah military action against Israel by March 20?
+Probability: 84.5% -> 82.5% (-2.0pp, 15m window, L 8.1K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=live_movers&lang=en&placement=x_live_movers
@@ -44,8 +44,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=l
 
 ### Top Movers Post 5
 
-Market moved fast: Will Bitcoin reach $78,000 March 16-22?
-Probability: 42.5% -> 45.0% (+2.5pp, 15m window, L 20.8K)
+Market moved fast: Will the price of Bitcoin be above $70,000 on March 18?
+Probability: 95.4% -> 97.2% (+1.8pp, 15m window, L 38.4K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=live_movers&lang=en&placement=x_live_movers
@@ -53,8 +53,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=l
 
 ### Single-Market Breakout 1
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 17?
-Probability: 55.0% -> 61.5% (+6.5pp, 15m window, L 34.7K)
+Market moved fast: Will Elon Musk post 90-114 tweets from March 16 to March 18, 2026?
+Probability: 10.5% -> 28.5% (+18.0pp, 15m window, L 11.6K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=x_breakout_en
 Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=breakout&lang=en&placement=x_breakout
@@ -72,8 +72,8 @@ Site: https://polymarketpulse.app/?utm_source=x&utm_medium=social&utm_campaign=w
 
 ### Top Movers Post 1
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 17?
-Probability: 55.0% -> 61.5% (+6.5pp, 15m window, L 34.7K)
+Market moved fast: Will Elon Musk post 90-114 tweets from March 16 to March 18, 2026?
+Probability: 10.5% -> 28.5% (+18.0pp, 15m window, L 11.6K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=live_movers&lang=en&placement=threads_live_movers
@@ -81,8 +81,8 @@ Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_camp
 
 ### Top Movers Post 2
 
-Market moved fast: Will the Rachida Dati List win the most citywide list votes in the runoff of the 2026 P…
-Probability: 19.0% -> 23.5% (+4.5pp, 15m window, L 5.8K)
+Market moved fast: Will monthly inflation increase by 0.8% or more in March?
+Probability: 85.0% -> 89.5% (+4.5pp, 15m window, L 5.0K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=live_movers&lang=en&placement=threads_live_movers
@@ -90,8 +90,8 @@ Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_camp
 
 ### Top Movers Post 3
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 18?
-Probability: 53.0% -> 57.0% (+4.0pp, 15m window, L 25.1K)
+Market moved fast: Will annual inflation increase by ≥3.4% in March?
+Probability: 49.9% -> 45.5% (-4.3pp, 15m window, L 5.9K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=live_movers&lang=en&placement=threads_live_movers
@@ -99,8 +99,8 @@ Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_camp
 
 ### Top Movers Post 4
 
-Market moved fast: Will the price of Bitcoin be above $72,000 on March 18?
-Probability: 80.5% -> 83.0% (+2.5pp, 15m window, L 27.9K)
+Market moved fast: Hezbollah military action against Israel by March 20?
+Probability: 84.5% -> 82.5% (-2.0pp, 15m window, L 8.1K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=live_movers&lang=en&placement=threads_live_movers
@@ -108,8 +108,8 @@ Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_camp
 
 ### Top Movers Post 5
 
-Market moved fast: Will Bitcoin reach $78,000 March 16-22?
-Probability: 42.5% -> 45.0% (+2.5pp, 15m window, L 20.8K)
+Market moved fast: Will the price of Bitcoin be above $70,000 on March 18?
+Probability: 95.4% -> 97.2% (+1.8pp, 15m window, L 38.4K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_live_movers_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=live_movers&lang=en&placement=threads_live_movers
@@ -117,8 +117,8 @@ Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_camp
 
 ### Single-Market Breakout 1
 
-Market moved fast: Will the price of Bitcoin be above $74,000 on March 17?
-Probability: 55.0% -> 61.5% (+6.5pp, 15m window, L 34.7K)
+Market moved fast: Will Elon Musk post 90-114 tweets from March 16 to March 18, 2026?
+Probability: 10.5% -> 28.5% (+18.0pp, 15m window, L 11.6K)
 Why it matters: action-first signal, not dashboard noise.
 Bot: https://t.me/polymarket_pulse_bot?start=threads_breakout_en
 Site: https://polymarketpulse.app/?utm_source=threads&utm_medium=social&utm_campaign=breakout&lang=en&placement=threads_breakout
