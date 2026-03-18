@@ -1344,3 +1344,28 @@ User settings
 Subscription management
 
 Enterprise forecasting module
+
+---
+
+# Recent Flow Adjustments (2026-03-18)
+
+Pulse bot:
+
+• `/watchlist_list` is now a review-and-act surface, not just a text dump
+• action row after the list:
+  - `Watchlist`
+  - `Add market`
+  - `Inbox`
+  - `Top movers`
+  - conditional `Remove closed`
+
+Trader bot:
+
+• `/connect` now auto-hands users into the signer flow when the wallet is still non-ready
+• signer session creation/reuse no longer depends on the user discovering `/signer` separately
+• this shortens the execution alpha path to:
+  - `/connect <wallet>`
+  - signer page
+  - signed payload
+  - manual alpha approval
+  - `/ready`

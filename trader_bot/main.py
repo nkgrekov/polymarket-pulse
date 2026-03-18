@@ -899,6 +899,51 @@ def ensure_signer_session(account_id: int, wallet: dict[str, Any]) -> dict[str, 
     return db_execute_fetchone(SQL_SIGNER_SESSION_CREATE, (account_id, wallet["id"], token, challenge))
 
 
+async def maybe_send_signer_handoff(
+    message,
+    *,
+    lang: str,
+    user_id: str,
+    account_id: int,
+    wallet: dict[str, Any] | None,
+    force: bool = False,
+) -> None:
+    if not wallet or wallet_is_execution_ready(wallet):
+        return
+    session = ensure_signer_session(account_id, wallet)
+    if not force and str(session.get("status") or "") == "verified":
+        return
+    verify_url = signer_verify_url(session["session_token"], lang)
+    log_event(
+        user_id,
+        account_id,
+        "signer_handoff",
+        {
+            "wallet": wallet["wallet_address"],
+            "session_token": session["session_token"],
+            "status": session["status"],
+            "source": "connect",
+        },
+    )
+    handoff_text = (
+        "<b>Next step: signer</b>\n\n"
+        f"wallet: <code>{wallet['wallet_address']}</code>\n"
+        f"signer_status: <code>{session['status']}</code>\n"
+        "Open the signer page below and submit the payload there. Once the payload is captured, the wallet can move toward alpha approval."
+        if lang == "en"
+        else "<b>Следующий шаг: signer</b>\n\n"
+        f"wallet: <code>{wallet['wallet_address']}</code>\n"
+        f"signer_status: <code>{session['status']}</code>\n"
+        "Откройте signer-страницу ниже и отправьте там payload. После этого кошелёк сможет перейти к alpha approval."
+    )
+    await message.reply_text(
+        handoff_text,
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=signer_keyboard(lang, verify_url),
+    )
+
+
 def order_guard_reason(lang: str, guard: dict[str, Any], usd: Decimal) -> str | None:
     if guard["kill_switch"]:
         return "kill switch is active" if lang == "en" else "активен kill switch"
@@ -1000,6 +1045,13 @@ async def cmd_connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 parse_mode="HTML",
                 reply_markup=links_keyboard(lang),
             )
+            await maybe_send_signer_handoff(
+                update.effective_message,
+                lang=lang,
+                user_id=user_id,
+                account_id=account_id,
+                wallet=wallet,
+            )
             return
         await update.effective_message.reply_text(txt(lang, "connect_usage"), parse_mode="HTML", reply_markup=links_keyboard(lang))
         return
@@ -1022,6 +1074,14 @@ async def cmd_connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         + "\n"
         + signer_status_summary(lang, account_id, saved),
         parse_mode="HTML",
+    )
+    await maybe_send_signer_handoff(
+        update.effective_message,
+        lang=lang,
+        user_id=user_id,
+        account_id=account_id,
+        wallet=saved,
+        force=True,
     )
 
 

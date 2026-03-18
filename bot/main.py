@@ -1592,6 +1592,24 @@ def quick_reply_keyboard(locale: str = "ru") -> ReplyKeyboardMarkup:
     )
 
 
+def watchlist_list_inline(locale: str, *, has_closed: bool = False) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton("Watchlist" if locale == "en" else "Вотчлист", callback_data="menu:watchlist"),
+            InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+        ],
+        [
+            InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+            InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+        ],
+    ]
+    if has_closed:
+        rows.append(
+            [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")]
+        )
+    return InlineKeyboardMarkup(rows)
+
+
 def _build_pro_payload(user_id: str) -> str:
     return f"{PRO_STARS_PAYLOAD_PREFIX}:{user_id}:{int(time.time())}"
 
@@ -2798,12 +2816,14 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     lines = []
+    has_closed = False
     for idx, row in enumerate(rows, start=1):
         market_status = str(row.get("market_status") or "unknown")
         has_last = bool(row.get("has_last_quotes"))
         has_prev = bool(row.get("has_prev_quotes"))
         if market_status == "closed":
             state = "closed" if locale == "en" else "closed"
+            has_closed = True
         elif has_last and has_prev:
             state = "ready" if locale == "en" else "ready"
         elif has_last or has_prev:
@@ -2816,7 +2836,10 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if locale == "en"
         else "\n\nИспользуйте /watchlist для live-изменений или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
     )
-    await update.message.reply_text(("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines) + footer)
+    await update.message.reply_text(
+        ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines) + footer,
+        reply_markup=watchlist_list_inline(locale, has_closed=has_closed),
+    )
 
 
 async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):

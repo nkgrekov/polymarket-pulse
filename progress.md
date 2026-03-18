@@ -1620,3 +1620,15 @@ Payment integration for `pro`
 Web auth linking to Telegram identity
 
 iOS client integration
+
+---
+
+# Recent Operating Updates (2026-03-18)
+
+• `Pulse` activation loop was tightened further:
+  - `/watchlist_list` now doubles as a return screen with action buttons (`Watchlist`, `Add market`, `Inbox`, `Top movers`)
+  - when the list contains closed markets, it also exposes one-tap `Remove closed`
+• `Trader` connect flow is shorter:
+  - after `/connect <wallet>`, the bot now creates or reuses a signer session automatically
+  - users get the signer page CTA immediately instead of having to discover `/signer` as a separate step
+  - `/connect` without args also surfaces the signer step again for non-ready wallets
