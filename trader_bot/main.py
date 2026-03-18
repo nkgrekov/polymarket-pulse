@@ -67,6 +67,7 @@ TEXTS: dict[str, dict[str, str]] = {
     "help": {
         "en": (
             "<b>Trader commands</b>\n\n"
+            "/ready — execution readiness in one view\n"
             "/connect &lt;wallet&gt; — register primary wallet\n"
             "/signer — create or inspect signer session\n"
             "/markets — live markets to trade from\n"
@@ -82,6 +83,7 @@ TEXTS: dict[str, dict[str, str]] = {
         ),
         "ru": (
             "<b>Команды Trader</b>\n\n"
+            "/ready — readiness в одном экране\n"
             "/connect &lt;wallet&gt; — зарегистрировать основной кошелёк\n"
             "/signer — создать или посмотреть signer-session\n"
             "/markets — live рынки для исполнения\n"
@@ -584,13 +586,15 @@ def main_keyboard(lang: str) -> ReplyKeyboardMarkup:
         [
             ["Markets", "Positions"],
             ["Rules", "Connect wallet"],
-            ["Agent", "Help"],
+            ["Ready", "Agent"],
+            ["Help"],
         ]
         if lang == "en"
         else [
             ["Рынки", "Позиции"],
             ["Правила", "Подключить кошелёк"],
-            ["Агент", "Помощь"],
+            ["Готовность", "Агент"],
+            ["Помощь"],
         ]
     )
     return ReplyKeyboardMarkup(
@@ -727,6 +731,37 @@ def wallet_next_line(lang: str, wallet: dict[str, Any] | None) -> str:
         if lang == "en"
         else "Следующий блокер: signer ещё не active, поэтому worker будет отклонять execution, пока это не изменится. Следующий шаг: <code>/signer</code>."
     )
+
+
+def render_readiness(lang: str, account_id: int, wallet: dict[str, Any] | None, risk: dict[str, Any], recent_orders: list[dict[str, Any]]) -> str:
+    header = "<b>Execution readiness</b>" if lang == "en" else "<b>Execution readiness</b>"
+    lines = [
+        header,
+        "",
+        render_wallet_status(lang, wallet),
+        wallet_next_line(lang, wallet),
+        signer_status_summary(lang, account_id, wallet),
+        "",
+        render_risk(lang, risk),
+    ]
+    if recent_orders:
+        latest = recent_orders[0]
+        lines += [
+            "",
+            "<b>Latest worker state</b>" if lang == "en" else "<b>Последний worker state</b>",
+            f"order: <code>#{latest['id']}</code> | status: <code>{latest['status']}</code>",
+            render_order_worker_state(lang, latest),
+        ]
+    else:
+        lines += [
+            "",
+            (
+                "No order drafts yet. Next: <code>/markets</code> then <code>/buy market_id yes 10</code>."
+                if lang == "en"
+                else "Черновиков ордеров пока нет. Дальше: <code>/markets</code>, затем <code>/buy market_id yes 10</code>."
+            )
+        ]
+    return "\n".join(lines)
 
 
 def worker_reason_message(lang: str, reason: str | None) -> tuple[str, str]:
@@ -930,6 +965,8 @@ async def on_menu_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "Правила": cmd_rules,
         "Connect wallet": cmd_connect,
         "Подключить кошелёк": cmd_connect,
+        "Ready": cmd_ready,
+        "Готовность": cmd_ready,
         "Agent": cmd_agent,
         "Агент": cmd_agent,
         "Help": cmd_help,
@@ -983,6 +1020,19 @@ async def cmd_connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         + "\n"
         + signer_status_summary(lang, account_id, saved),
         parse_mode="HTML",
+    )
+
+
+async def cmd_ready(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id, account_id, lang = resolve_identity(update)
+    wallet = db_fetch_one(SQL_PRIMARY_WALLET, (account_id,))
+    risk = db_fetch_one(SQL_RISK, (account_id,))
+    recent_orders = db_fetch_all(SQL_RECENT_ORDERS, (account_id,))
+    log_event(user_id, account_id, "ready_open", {"has_wallet": bool(wallet), "orders": len(recent_orders)})
+    await update.effective_message.reply_text(
+        render_readiness(lang, account_id, wallet, risk, recent_orders),
+        parse_mode="HTML",
+        reply_markup=links_keyboard(lang),
     )
 
 
@@ -1297,6 +1347,7 @@ async def cmd_unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def post_init(app: Application) -> None:
     commands = [
         BotCommand("start", "open trader alpha"),
+        BotCommand("ready", "execution readiness"),
         BotCommand("connect", "register wallet"),
         BotCommand("signer", "open signer session"),
         BotCommand("markets", "live trade queue"),
@@ -1319,6 +1370,7 @@ async def post_init(app: Application) -> None:
 def build_application() -> Application:
     app = Application.builder().token(TRADER_BOT_TOKEN).post_init(post_init).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("ready", cmd_ready))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("connect", cmd_connect))
     app.add_handler(CommandHandler("signer", cmd_signer))

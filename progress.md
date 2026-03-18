@@ -203,6 +203,37 @@ Practical effect:
 
 ---
 
+# Pulse Quiet-State Guidance + Trader Readiness Surface (2026-03-18)
+
+Moved both bots one step closer to “explain what to do next” instead of only showing state.
+
+Files updated:
+
+• `bot/main.py`
+• `trader_bot/main.py`
+
+What changed:
+
+• `Pulse` quiet states in `/watchlist` and `/inbox` now add a direct next-step line based on context:
+  - closed markets in watchlist
+  - no quotes in both windows yet
+  - threshold filtering out signals
+  - empty watchlist
+• `Trader` now has a dedicated `/ready` command
+• `/ready` combines:
+  - wallet state
+  - signer state
+  - risk state
+  - latest worker status when present
+• `Trader` reply keyboard now includes a human-labeled readiness entry
+
+Practical effect:
+
+• `Pulse` no longer leaves quiet users with only diagnostics; it now tells them what to do next
+• `Trader` now has one obvious command for “am I actually ready to use this thing?”
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

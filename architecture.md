@@ -207,6 +207,55 @@ Operational implication:
 
 ---
 
+# Pulse Quiet-State Guidance Contract (2026-03-18)
+
+Quiet-state responses in the Pulse bot now include an explicit next-step layer.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract:
+
+• `/watchlist` and `/inbox` quiet states now append a context-aware follow-up line
+• the guidance branches on:
+  - threshold-filtered candidates
+  - closed markets parked in watchlist
+  - active markets without quotes in both windows yet
+  - empty watchlist
+
+Operational implication:
+
+• diagnostics remain visible, but the user is no longer left to infer the next move
+• this supports post-start retention by reducing “the bot feels dead” moments
+
+---
+
+# Trader Readiness Surface Contract (2026-03-18)
+
+The Trader bot now has a dedicated user-facing readiness surface.
+
+Updated artifact:
+
+• `trader_bot/main.py`
+
+Contract:
+
+• `/ready` is the single command for execution readiness
+• it combines:
+  - wallet status
+  - signer summary
+  - risk state
+  - latest worker state if an order exists
+• the reply keyboard now exposes this surface through a human label rather than forcing the user to infer it from `/connect`, `/risk`, and `/order`
+
+Operational implication:
+
+• the execution alpha path is easier to read as a sequence
+• this reduces confusion around what still blocks the user after wallet connection
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

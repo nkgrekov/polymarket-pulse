@@ -1321,6 +1321,71 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
+def quiet_followup_text(
+    locale: str,
+    *,
+    user_ctx: dict,
+    diag: dict[str, Any] | None = None,
+    view: str = "watchlist",
+) -> str:
+    diag = diag or {}
+    watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
+    threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    if view == "inbox":
+        total = int(diag.get("candidates_total") or 0)
+        over = int(diag.get("over_threshold") or 0)
+        if total > 0 and over == 0:
+            return (
+                f"Best next step: lower threshold below {threshold} if you want more sensitivity, or wait for the next live window."
+                if locale == "en"
+                else f"Лучший следующий шаг: опустите threshold ниже {threshold}, если хотите больше чувствительности, или дождитесь следующего live-окна."
+            )
+        if closed_count > 0:
+            return (
+                "Best next step: clear closed markets or replace one of them with a live candidate below."
+                if locale == "en"
+                else "Лучший следующий шаг: очистите закрытые рынки или замените один из них на live-кандидата ниже."
+            )
+        if watchlist_count > 0:
+            return (
+                "Best next step: keep one or two live markets in watchlist and check back after the next bucket closes."
+                if locale == "en"
+                else "Лучший следующий шаг: держите 1–2 live-рынка в watchlist и проверьте снова после следующего закрытия бакета."
+            )
+        return (
+            "Best next step: add one live market first, then come back to Inbox."
+            if locale == "en"
+            else "Лучший следующий шаг: сначала добавьте один live-рынок, затем вернитесь в Inbox."
+        )
+
+    wl_active = int(diag.get("wl_active") or 0)
+    wl_with_quotes_both = int(diag.get("wl_with_quotes_both") or 0)
+    if closed_count > 0:
+        return (
+            "Best next step: remove closed markets or replace one quiet market below."
+            if locale == "en"
+            else "Лучший следующий шаг: очистите закрытые рынки или замените один тихий рынок ниже."
+        )
+    if wl_active > 0 and wl_with_quotes_both == 0:
+        return (
+            "Best next step: your markets are tracked, but not quoting in both windows yet. Replace one with a more active market or wait for the next live window."
+            if locale == "en"
+            else "Лучший следующий шаг: рынки уже отслеживаются, но ещё не котируются в обоих окнах. Замените один на более активный или дождитесь следующего live-окна."
+        )
+    if watchlist_count > 0:
+        return (
+            "Best next step: keep this list tight. One active market is better than three quiet ones."
+            if locale == "en"
+            else "Лучший следующий шаг: держите список компактным. Один активный рынок лучше трёх тихих."
+        )
+    return (
+        "Best next step: add one live market and come back after the next bucket."
+        if locale == "en"
+        else "Лучший следующий шаг: добавьте один live-рынок и возвращайтесь после следующего бакета."
+    )
+
+
 def watchlist_result(text: str, *, outcome: str, **meta: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {"text": text, "outcome": outcome}
     payload.update(meta)
@@ -1693,7 +1758,10 @@ async def send_inbox_view(
             )
         )
         await message.reply_text(
-            reason + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}"),
+            reason
+            + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}")
+            + "\n"
+            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, view="inbox"),
             reply_markup=reply_markup,
         )
         return
@@ -1807,7 +1875,9 @@ async def send_watchlist_view(
                 else "По вашему watchlist сейчас нет live-изменений.\n"
                 f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
                 f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}"
-            ),
+            )
+            + "\n"
+            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, view="watchlist"),
             reply_markup=reply_markup,
         )
         return
