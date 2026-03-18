@@ -117,6 +117,37 @@ Operational implication:
 
 ---
 
+# JIT Social Queue Contract (2026-03-18)
+
+The growth layer now has an explicit operator-facing execution queue for manual posting.
+
+Updated artifacts:
+
+• `scripts/growth/build_social_queue.py`
+• `docs/social_pipeline.md`
+• `docs/social_queue_latest.md`
+
+Contract:
+
+• the queue builder reads fresh/liquid candidates from `public.top_movers_latest`
+• the queue builder applies the same freshness and liquidity constraints as the draft layer
+• output is a single markdown file that maps:
+  - current live move
+  - post copy theme
+  - video asset
+  - posting order
+• when the market window is too stale or too thin, the correct contract is:
+  - generate queue
+  - return `skip posting`
+  - wait for a better window
+
+Operational implication:
+
+• social execution is now a repeatable loop rather than a collection of one-off manual decisions
+• manual posting stays aligned with the same “signal > noise” rule as the product itself
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.

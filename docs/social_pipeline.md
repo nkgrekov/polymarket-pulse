@@ -35,6 +35,24 @@ Notes:
   - minimum latest-bucket liquidity (`--min-liquidity`)
 - If the market set is stale or too thin, skip posting instead of pushing dead content
 
+## Daily execution queue
+Run right before posting:
+
+```bash
+PG_CONN="postgresql://..." api/.venv/bin/python scripts/growth/build_social_queue.py \
+  --max-age-minutes 30 \
+  --min-liquidity 5000
+```
+
+Output:
+- `docs/social_queue_latest.md`
+
+What it does:
+- picks the freshest liquid movers from `public.top_movers_latest`
+- maps them onto the current pain-first posting order
+- attaches the correct current video asset path for each slot
+- tells the operator what to post now, what to mirror in Threads, and what to skip if the window is stale
+
 ## Competitor scan refresh
 Run:
 

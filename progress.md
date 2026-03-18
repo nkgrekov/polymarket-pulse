@@ -115,6 +115,35 @@ Practical effect:
 
 ---
 
+# JIT Social Execution Queue (2026-03-18)
+
+Turned the social layer into a daily operator queue instead of a loose set of drafts and video files.
+
+Files updated:
+
+• `scripts/growth/build_social_queue.py`
+• `docs/social_pipeline.md`
+• `docs/social_queue_latest.md`
+
+What changed:
+
+• added a queue builder that reads fresh/liquid movers from `public.top_movers_latest`
+• the queue maps live data into the current pain-first posting order:
+  - manual workflow pain
+  - threads mirror
+  - alert fatigue
+  - dashboard overload
+• each queue slot now includes the correct current video asset path
+• if no mover passes the freshness/liquidity gate, the system now explicitly returns `skip posting`
+
+Practical effect:
+
+• daily social ops now has one file that answers “what do we post right now?”
+• the operator no longer has to manually stitch together live data, text drafts, and video assets
+• stale windows correctly produce no-post guidance instead of dead content
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.
