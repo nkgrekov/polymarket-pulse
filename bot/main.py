@@ -322,11 +322,45 @@ limit %s;
 """
 
 SQL_WATCHLIST_LIST = """
-select w.market_id, m.question, w.created_at
-from bot.watchlist w
-join public.markets m on m.market_id = w.market_id
-where w.user_id = %s::uuid
-order by w.created_at desc
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket
+), base as (
+  select
+    w.market_id,
+    m.question,
+    w.created_at,
+    coalesce(m.status, 'unknown') as market_status
+  from bot.watchlist w
+  join public.markets m on m.market_id = w.market_id
+  where w.user_id = %s::uuid
+), live_last as (
+  select distinct ms.market_id
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket = lb.last_bucket
+    and ms.yes_bid is not null
+    and ms.yes_ask is not null
+), live_prev as (
+  select distinct ms.market_id
+  from public.market_snapshots ms, prev
+  where ms.ts_bucket = prev.prev_bucket
+    and ms.yes_bid is not null
+    and ms.yes_ask is not null
+)
+select
+  b.market_id,
+  b.question,
+  b.created_at,
+  b.market_status,
+  (ll.market_id is not null) as has_last_quotes,
+  (lp.market_id is not null) as has_prev_quotes
+from base b
+left join live_last ll on ll.market_id = b.market_id
+left join live_prev lp on lp.market_id = b.market_id
+order by b.created_at desc
 limit %s;
 """
 
@@ -2765,8 +2799,24 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     lines = []
     for idx, row in enumerate(rows, start=1):
-        lines.append(f"{idx}. {row['market_id']} — {row['question']}")
-    await update.message.reply_text(("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines))
+        market_status = str(row.get("market_status") or "unknown")
+        has_last = bool(row.get("has_last_quotes"))
+        has_prev = bool(row.get("has_prev_quotes"))
+        if market_status == "closed":
+            state = "closed" if locale == "en" else "closed"
+        elif has_last and has_prev:
+            state = "ready" if locale == "en" else "ready"
+        elif has_last or has_prev:
+            state = "partial" if locale == "en" else "partial"
+        else:
+            state = "no_quotes" if locale == "en" else "no_quotes"
+        lines.append(f"{idx}. [{state}] {row['market_id']} — {row['question']}")
+    footer = (
+        "\n\nUse /watchlist to see live changes, or /watchlist_remove <market_id|slug> to clean quiet markets."
+        if locale == "en"
+        else "\n\nИспользуйте /watchlist для live-изменений или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
+    )
+    await update.message.reply_text(("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines) + footer)
 
 
 async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -234,6 +234,35 @@ Practical effect:
 
 ---
 
+# Watchlist Status Review + Trader Ready Hand-Off (2026-03-18)
+
+Improved the “what do I do now?” layer after onboarding by making watchlist review and trader readiness easier to interpret.
+
+Files updated:
+
+• `bot/main.py`
+• `trader_bot/main.py`
+
+What changed:
+
+• `/watchlist_list` now shows per-market status labels:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+• watchlist review now explicitly points users toward:
+  - `/watchlist`
+  - `/watchlist_remove <market_id|slug>`
+• `Trader` empty positions copy now points users to `/ready`
+• `Trader` order-save confirmation now also points users to `/ready` as the one-screen readiness summary
+
+Practical effect:
+
+• Pulse users can now audit whether their watchlist is actually alive instead of seeing a raw list only
+• Trader users get a clearer next action after creating a draft or finding no positions
+
+---
+
 # Manual Tabs Pain Video Render + X Credits Reality (2026-03-17)
 
 Built the first pain-first branded short for manual posting and corrected the X API blocker in project memory.

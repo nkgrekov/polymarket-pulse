@@ -256,6 +256,53 @@ Operational implication:
 
 ---
 
+# Watchlist Review Status Contract (2026-03-18)
+
+The Pulse bot now exposes per-market watchlist state in the list view.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract:
+
+• `/watchlist_list` now resolves, per market:
+  - lifecycle status (`active` / `closed`)
+  - quote presence in `last`
+  - quote presence in `prev`
+• the command maps those fields to user-facing states:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+
+Operational implication:
+
+• watchlist review is now an audit surface, not just a raw list of ids
+• this supports retention by helping the user prune dead markets before the product feels broken
+
+---
+
+# Trader Ready Hand-Off Contract (2026-03-18)
+
+The Trader bot now uses `/ready` as the explicit follow-up surface after low-information states.
+
+Updated artifact:
+
+• `trader_bot/main.py`
+
+Contract:
+
+• order-save confirmations now point users to `/ready`
+• empty positions state now also points users to `/ready`
+
+Operational implication:
+
+• `/ready` becomes the canonical “what blocks me now?” surface
+• this reduces command drift between wallet, order, and risk flows
+
+---
+
 # Manual Tabs Pain Video Layer (2026-03-17)
 
 The growth stack now has a first post-specific short-form render, not just generic social cards or a generic glitch clip.
