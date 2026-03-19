@@ -22,6 +22,7 @@ load_dotenv()
 
 PG_CONN = os.environ.get("PG_CONN", "")
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
+PULSE_BOT_URL = "https://t.me/polymarket_pulse_bot?start=email_backup"
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Polymarket Pulse <onboarding@resend.dev>")
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -1781,6 +1782,108 @@ def log_site_event(
         return
 
 
+def render_email_shell(*, title: str, body_html: str, cta_label: str, cta_url: str, footer_html: str = "") -> str:
+    return f"""
+    <div style="margin:0;padding:24px;background:#0d0f0e;color:#e8ede9;font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;">
+      <div style="max-width:640px;margin:0 auto;background:#131714;border:1px solid #1e2520;border-radius:16px;padding:28px;">
+        <div style="color:#6b7a6e;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Polymarket Pulse // email backup</div>
+        <h1 style="margin:0 0 16px;font-size:28px;line-height:1.05;color:#e8ede9;">{title}</h1>
+        <div style="font-size:14px;line-height:1.65;color:#8fa88f;">{body_html}</div>
+        <p style="margin:24px 0 0;">
+          <a href="{cta_url}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">{cta_label}</a>
+        </p>
+        {footer_html}
+      </div>
+    </div>
+    """
+
+
+def render_status_page(*, title: str, body_html: str, primary_label: str, primary_url: str, secondary_html: str = "") -> str:
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,follow" />
+  <title>{title}</title>
+  <style>
+    :root {{
+      --bg: #0d0f0e;
+      --panel: #131714;
+      --line: #1e2520;
+      --text: #e8ede9;
+      --muted: #8fa88f;
+      --muted-soft: #6b7a6e;
+      --accent: #00ff88;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(1200px 800px at 85% -20%, rgba(0, 255, 136, 0.08) 0%, transparent 60%),
+        linear-gradient(180deg, #0a0c0b 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    }}
+    .card {{
+      width: min(640px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 24px 72px rgba(0,0,0,0.38);
+    }}
+    .kicker {{
+      margin: 0 0 12px;
+      color: var(--muted-soft);
+      font: 12px/1.4 "JetBrains Mono", monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }}
+    h1 {{
+      margin: 0 0 14px;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 0.98;
+      text-transform: uppercase;
+    }}
+    .body {{
+      color: var(--muted);
+      font: 15px/1.65 "JetBrains Mono", monospace;
+    }}
+    .cta {{
+      display: inline-block;
+      margin-top: 22px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #0a0c0b;
+      text-decoration: none;
+      font-weight: 700;
+    }}
+    .secondary {{
+      margin-top: 16px;
+      color: var(--muted-soft);
+      font: 13px/1.6 "JetBrains Mono", monospace;
+    }}
+    .secondary a {{ color: var(--text); }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="kicker">Polymarket Pulse // email backup</p>
+    <h1>{title}</h1>
+    <div class="body">{body_html}</div>
+    <a class="cta" href="{primary_url}">{primary_label}</a>
+    <div class="secondary">{secondary_html}</div>
+  </div>
+</body>
+</html>"""
+
+
 def send_email(to_email: str, subject: str, html: str) -> None:
     if not RESEND_API_KEY:
         return
@@ -2492,21 +2595,41 @@ def waitlist(data: WaitlistRequest, request: Request) -> JSONResponse:
     )
 
     if req_lang == "ru":
-        html = (
-            "<h2>Подтвердите email</h2>"
-            "<p>Нажмите, чтобы подтвердить подписку на обновления Polymarket Pulse:</p>"
-            f"<p><a href=\"{confirm_link}\">Подтвердить email</a></p>"
+        html = render_email_shell(
+            title="Подтвердите email backup",
+            body_html=(
+                "<p>Подтвердите email, чтобы включить резервный канал Polymarket Pulse.</p>"
+                "<p>Что дальше:</p>"
+                "<ul>"
+                "<li>Telegram остаётся основным live-каналом</li>"
+                "<li>Email будет нужен для дайджеста и product updates</li>"
+                "<li>Подписку можно выключить из любого письма</li>"
+                "</ul>"
+            ),
+            cta_label="Подтвердить email",
+            cta_url=confirm_link,
+            footer_html='<p style="margin:20px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;">Сначала бот для live-сигналов. Email нужен как backup и для digest.</p>',
         )
         subject = "Подтвердите подписку Polymarket Pulse"
-        message = "Письмо для подтверждения отправлено"
+        message = "Письмо отправлено. Подтвердите email, чтобы включить backup и digest."
     else:
-        html = (
-            "<h2>Confirm your email</h2>"
-            "<p>Click to confirm your subscription to Polymarket Pulse updates:</p>"
-            f"<p><a href=\"{confirm_link}\">Confirm email</a></p>"
+        html = render_email_shell(
+            title="Confirm your email backup",
+            body_html=(
+                "<p>Confirm your email to enable the backup channel for Polymarket Pulse.</p>"
+                "<p>What this does:</p>"
+                "<ul>"
+                "<li>Telegram stays the primary live signal loop</li>"
+                "<li>Email handles digest delivery and launch updates</li>"
+                "<li>You can unsubscribe from any message</li>"
+                "</ul>"
+            ),
+            cta_label="Confirm email",
+            cta_url=confirm_link,
+            footer_html='<p style="margin:20px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;">Use Telegram for action now. Keep email as backup for digest and updates.</p>',
         )
         subject = "Confirm your Polymarket Pulse subscription"
-        message = "Confirmation email sent"
+        message = "Confirmation email sent. Check your inbox to enable digest backup."
 
     try:
         send_email(data.email, subject, html)
@@ -2547,8 +2670,26 @@ def confirm(token: str, request: Request) -> HTMLResponse:
             details={**details, "reason": "invalid_or_expired_token"},
         )
         if req_lang == "ru":
-            return HTMLResponse("<h3>Токен недействителен или истёк.</h3>", status_code=400)
-        return HTMLResponse("<h3>Invalid or expired confirmation token.</h3>", status_code=400)
+            return HTMLResponse(
+                render_status_page(
+                    title="Ссылка недействительна",
+                    body_html="Токен подтверждения недействителен или уже использован. Если нужно, просто отправьте email заново с главной страницы.",
+                    primary_label="Открыть Telegram-бота",
+                    primary_url=PULSE_BOT_URL,
+                    secondary_html=f'Вернитесь на <a href="{base_url()}">главную</a> и отправьте email ещё раз.',
+                ),
+                status_code=400,
+            )
+        return HTMLResponse(
+            render_status_page(
+                title="Link expired",
+                body_html="This confirmation token is invalid or already used. If needed, resubmit your email from the homepage and we will send a fresh link.",
+                primary_label="Open Telegram Bot",
+                primary_url=PULSE_BOT_URL,
+                secondary_html=f'Go back to the <a href="{base_url()}">homepage</a> and request a fresh email.',
+            ),
+            status_code=400,
+        )
 
     email = row[0]
     log_site_event(
@@ -2564,22 +2705,64 @@ def confirm(token: str, request: Request) -> HTMLResponse:
             send_email(
                 email,
                 "Добро пожаловать в Polymarket Pulse",
-                "<h2>Добро пожаловать</h2><p>Подписка подтверждена. Ежедневный дайджест включён.</p>"
-                f"<p><a href=\"{unsub}\">Отписаться</a></p>",
+                render_email_shell(
+                    title="Email подтверждён",
+                    body_html=(
+                        "<p>Подписка подтверждена. Email-дайджест включён.</p>"
+                        "<p>Что теперь:</p>"
+                        "<ul>"
+                        "<li>Следите за live-сигналами в Telegram</li>"
+                        "<li>Email будет приходить как backup и digest</li>"
+                        "<li>Если сигналов нет, это нормально: quiet-state тоже часть продукта</li>"
+                        "</ul>"
+                    ),
+                    cta_label="Открыть Telegram-бота",
+                    cta_url=PULSE_BOT_URL,
+                    footer_html=f'<p style="margin:20px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;"><a href="{unsub}" style="color:#8fa88f;">Отписаться</a></p>',
+                ),
             )
         except Exception:
             pass
-        return HTMLResponse("<h3>Email подтверждён. Ежедневный дайджест включён.</h3>")
+        return HTMLResponse(
+            render_status_page(
+                title="Email подтверждён",
+                body_html="Дайджест включён. Лучше всего использовать Telegram как основной live-канал, а email оставить как backup для digest и updates.",
+                primary_label="Открыть Telegram-бота",
+                primary_url=PULSE_BOT_URL,
+                secondary_html=f'<a href="{unsub}">Отписаться</a>',
+            )
+        )
     try:
         send_email(
             email,
             "Welcome to Polymarket Pulse",
-            "<h2>Welcome</h2><p>You are confirmed for daily digest updates.</p>"
-            f"<p><a href=\"{unsub}\">Unsubscribe</a></p>",
+            render_email_shell(
+                title="Email confirmed",
+                body_html=(
+                    "<p>You are now confirmed for Polymarket Pulse email updates.</p>"
+                    "<p>What to expect:</p>"
+                    "<ul>"
+                    "<li>Telegram stays your primary live signal loop</li>"
+                    "<li>Email works as backup for digest and launch updates</li>"
+                    "<li>Quiet days are expected; we do not force noise into the feed</li>"
+                    "</ul>"
+                ),
+                cta_label="Open Telegram Bot",
+                cta_url=PULSE_BOT_URL,
+                footer_html=f'<p style="margin:20px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;"><a href="{unsub}" style="color:#8fa88f;">Unsubscribe</a></p>',
+            ),
         )
     except Exception:
         pass
-    return HTMLResponse("<h3>Email confirmed. Daily digest is enabled.</h3>")
+    return HTMLResponse(
+        render_status_page(
+            title="Email confirmed",
+            body_html="Daily digest is enabled. Use Telegram for the live loop now, and keep email as backup for digest and updates.",
+            primary_label="Open Telegram Bot",
+            primary_url=PULSE_BOT_URL,
+            secondary_html=f'<a href="{unsub}">Unsubscribe</a>',
+        )
+    )
 
 
 @app.get("/unsubscribe", response_class=HTMLResponse)
@@ -2614,8 +2797,26 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
             details={**details, "reason": "token_not_found_or_already_unsubscribed"},
         )
         if req_lang == "ru":
-            return HTMLResponse("<h3>Токен не найден или уже отписан.</h3>", status_code=400)
-        return HTMLResponse("<h3>Token not found or already unsubscribed.</h3>", status_code=400)
+            return HTMLResponse(
+                render_status_page(
+                    title="Отписка не сработала",
+                    body_html="Токен не найден или этот email уже был отписан.",
+                    primary_label="Открыть Telegram-бота",
+                    primary_url=PULSE_BOT_URL,
+                    secondary_html=f'<a href="{base_url()}">Вернуться на сайт</a>',
+                ),
+                status_code=400,
+            )
+        return HTMLResponse(
+            render_status_page(
+                title="Unsubscribe failed",
+                body_html="This token was not found or the email was already unsubscribed.",
+                primary_label="Open Telegram Bot",
+                primary_url=PULSE_BOT_URL,
+                secondary_html=f'<a href="{base_url()}">Back to homepage</a>',
+            ),
+            status_code=400,
+        )
 
     log_site_event(
         event_type="unsubscribe_success",
@@ -2625,5 +2826,21 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
         details=details,
     )
     if req_lang == "ru":
-        return HTMLResponse("<h3>Вы успешно отписались.</h3>")
-    return HTMLResponse("<h3>You have been unsubscribed.</h3>")
+        return HTMLResponse(
+            render_status_page(
+                title="Вы отписаны",
+                body_html="Email-дайджест и product updates больше не будут приходить на этот адрес.",
+                primary_label="Открыть Telegram-бота",
+                primary_url=PULSE_BOT_URL,
+                secondary_html=f'<a href="{base_url()}">Вернуться на сайт</a>',
+            )
+        )
+    return HTMLResponse(
+        render_status_page(
+            title="You are unsubscribed",
+            body_html="Daily digest and product updates will no longer be sent to this email.",
+            primary_label="Open Telegram Bot",
+            primary_url=PULSE_BOT_URL,
+            secondary_html=f'<a href="{base_url()}">Back to homepage</a>',
+        )
+    )

@@ -18,6 +18,37 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Email Backup Retention Contract (2026-03-19)
+
+The email layer now acts as a branded Pulse backup surface instead of a bare confirmation transport.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/digest_job.py`
+• `docs/social_pipeline.md`
+
+Contract changes:
+
+• confirmation emails now explicitly frame email as:
+  - backup for digest and updates
+  - secondary to the Telegram live loop
+• confirm, invalid-confirm, and unsubscribe pages now render through a shared branded status-page helper
+• welcome emails now reinforce the Pulse-first hierarchy and direct the user back into the Telegram bot
+• digest emails now use a shared branded email shell and include:
+  - summary framing
+  - formatted alert list
+  - CTA back into Pulse
+  - unsubscribe path via `confirm_token`
+
+Operational implication:
+
+• email remains a supporting retention channel, not a primary acquisition surface
+• the product story is now consistent across site -> Telegram -> email
+• digest output is safer operationally because unsubscribe URLs now use the same token contract as the rest of the email system
+
+---
+
 # TG Activation First Funnel Contract (2026-03-19)
 
 The weekly operating focus now treats the Pulse acquisition funnel as the primary system boundary. Trader remains deployed, but acquisition and measurement are now deliberately centered on Pulse.

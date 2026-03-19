@@ -96,9 +96,10 @@ Output:
 - `docs/growth_kpi_latest.md`
 
 Metrics:
-- `page_view -> tg_click -> waitlist_submit -> confirm_success`
+- `page_view -> tg_click -> tg_start -> watchlist_add`
+- email backup path: `waitlist_submit -> confirm_success`
 - `tg_click` split by `utm_source`
-- activation proxy: `telegram identities -> users_with_watchlist_add`
+- activation cross-check: `watchlist_add users` vs `telegram identities -> users_with_watchlist_add`
 
 ## Visual assets
 - `assets/social/top3-template.svg`

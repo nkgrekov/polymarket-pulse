@@ -18,6 +18,42 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Email Backup + Digest Retention Pass (2026-03-19)
+
+Upgraded the email layer from a bare confirmation transport into a clearer retention surface that matches the current Pulse-first product story.
+
+Files updated:
+
+• `api/main.py`
+• `api/digest_job.py`
+• `docs/social_pipeline.md`
+
+What changed:
+
+• confirmation emails now explain the real contract:
+  - Telegram is the live signal loop
+  - email is the backup channel for digest and updates
+• confirmation emails now use a branded dark/green shell instead of a raw HTML link
+• confirm-success pages now render as branded status screens instead of plain `<h3>` responses
+• invalid-confirm and unsubscribe states now also render as branded status screens with a clear next action back into Pulse
+• welcome emails now reinforce the same product hierarchy:
+  - Telegram first
+  - email backup second
+• digest emails now render inside a branded shell and include:
+  - summary framing
+  - clearer alert list
+  - direct CTA back into the Telegram bot
+  - working unsubscribe link via `confirm_token`
+• `docs/social_pipeline.md` funnel notes were updated so the weekly growth documentation no longer points only at the older waitlist-confirm path
+
+Practical effect:
+
+• email now behaves more like a real backup/retention layer and less like a generic form receipt
+• the product story stays coherent across landing, Telegram, and email
+• digest unsubscribe links now point at the correct token contract
+
+---
+
 # TG Activation First: Pulse-First Site + Real watchlist_add Attribution (2026-03-19)
 
 Shifted the weekly execution layer away from Trader expansion and tightened the real Pulse funnel around the agreed KPI: `tg_click -> /start -> watchlist_add`.

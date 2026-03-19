@@ -11,6 +11,8 @@ load_dotenv()
 PG_CONN = os.environ.get("PG_CONN", "")
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Polymarket Pulse <onboarding@resend.dev>")
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "https://polymarketpulse.app").rstrip("/")
+PULSE_BOT_URL = "https://t.me/polymarket_pulse_bot?start=email_digest"
 
 
 def send_email(to_email: str, subject: str, html: str) -> None:
@@ -33,6 +35,25 @@ def send_email(to_email: str, subject: str, html: str) -> None:
     resp.raise_for_status()
 
 
+def render_digest_email(*, items_html: str, unsub_url: str, stats_line: str) -> str:
+    return f"""
+    <div style="margin:0;padding:24px;background:#0d0f0e;color:#e8ede9;font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;">
+      <div style="max-width:680px;margin:0 auto;background:#131714;border:1px solid #1e2520;border-radius:16px;padding:28px;">
+        <div style="color:#6b7a6e;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Polymarket Pulse // daily digest</div>
+        <h1 style="margin:0 0 14px;font-size:28px;line-height:1.05;color:#e8ede9;">Your markets, without the dashboard crawl.</h1>
+        <p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#8fa88f;">This digest is your backup view of what actually moved. For live action, Telegram is still the primary loop.</p>
+        <p style="margin:0 0 18px;color:#6b7a6e;font-size:12px;line-height:1.6;">{stats_line}</p>
+        <div style="font-size:14px;line-height:1.65;color:#e8ede9;">{items_html}</div>
+        <p style="margin:24px 0 0;">
+          <a href="{PULSE_BOT_URL}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">Open Telegram Bot</a>
+        </p>
+        <p style="margin:18px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;">Telegram is for the live signal loop. Email stays as backup for digest and updates.</p>
+        <p style="margin:18px 0 0;color:#8fa88f;font-size:12px;line-height:1.6;"><a href="{unsub_url}" style="color:#8fa88f;">Unsubscribe</a></p>
+      </div>
+    </div>
+    """
+
+
 def main() -> None:
     if not PG_CONN:
         raise RuntimeError("PG_CONN is required")
@@ -44,7 +65,7 @@ def main() -> None:
             cur.execute("set statement_timeout = '12000ms'")
             cur.execute(
                 """
-                select id, email, user_id
+                select id, email, user_id, confirm_token
                 from app.email_subscribers
                 where confirmed_at is not null
                   and unsubscribed_at is null
@@ -54,7 +75,7 @@ def main() -> None:
             subscribers = cur.fetchall()
 
             sent = 0
-            for sub_id, email, user_id in subscribers:
+            for sub_id, email, user_id, confirm_token in subscribers:
                 if user_id is None:
                     continue
 
@@ -75,9 +96,20 @@ def main() -> None:
 
                 lines = []
                 for market_id, alert_type, abs_delta, bucket in rows:
-                    lines.append(f"<li>{alert_type}: {market_id} | Δ={abs_delta} | {bucket}</li>")
+                    lines.append(
+                        "<li style=\"margin:0 0 10px;\">"
+                        f"<strong>{alert_type}</strong> · {market_id}<br />"
+                        f"<span style=\"color:#8fa88f;\">Δ={abs_delta} · {bucket}</span>"
+                        "</li>"
+                    )
 
-                html = "<h2>Your daily digest</h2><ul>" + "".join(lines) + "</ul>"
+                unsub_url = f"{APP_BASE_URL}/unsubscribe?token={confirm_token}" if confirm_token else APP_BASE_URL
+                stats_line = f"{len(rows)} alert candidate(s) from the last 24 hours."
+                html = render_digest_email(
+                    items_html="<ul style=\"padding-left:18px;margin:0;\">" + "".join(lines) + "</ul>",
+                    unsub_url=unsub_url,
+                    stats_line=stats_line,
+                )
                 send_email(email, "Polymarket Pulse daily digest", html)
 
                 cur.execute(
