@@ -52,6 +52,22 @@ group by start_source
 order by starts desc, start_source;
 """
 
+SQL_WATCHLIST_ADD = """
+select
+  count(*)::bigint as watchlist_add_events,
+  count(distinct nullif(details->>'app_user_id', ''))::bigint as watchlist_add_users,
+  count(
+    distinct case
+      when coalesce(details->>'first_watchlist_add', 'false') = 'true'
+      then nullif(details->>'app_user_id', '')
+      else null
+    end
+  )::bigint as first_watchlist_add_users
+from app.site_events
+where created_at >= %s
+  and event_type = 'watchlist_add';
+"""
+
 SQL_TOP_PLACEMENTS = """
 select
   coalesce(nullif(details->>'placement', ''), 'unknown') as placement,
@@ -118,6 +134,12 @@ def main() -> None:
             source_rows = cur.fetchall()
             cur.execute(SQL_TG_START_SPLIT, (since,))
             tg_start_rows = cur.fetchall()
+            cur.execute(SQL_WATCHLIST_ADD, (since,))
+            watchlist_add_row = cur.fetchone() or {
+                "watchlist_add_events": 0,
+                "watchlist_add_users": 0,
+                "first_watchlist_add_users": 0,
+            }
             cur.execute(SQL_TOP_PLACEMENTS, (since, args.top_placements))
             placement_rows = cur.fetchall()
             cur.execute(SQL_BOT_ACTIVATION, (since, since))
@@ -130,10 +152,13 @@ def main() -> None:
     page_view = funnel.get("page_view", 0)
     tg_click = funnel.get("tg_click", 0)
     tg_start = funnel.get("tg_start", 0)
+    watchlist_add_events = int(watchlist_add_row.get("watchlist_add_events") or 0)
+    watchlist_add_users = int(watchlist_add_row.get("watchlist_add_users") or 0)
+    first_watchlist_add_users = int(watchlist_add_row.get("first_watchlist_add_users") or 0)
     waitlist_submit = funnel.get("waitlist_submit", 0)
     confirm_success = funnel.get("confirm_success", 0)
     started_users = int(activation_row.get("started_users") or 0)
-    watchlist_add_users = int(activation_row.get("users_with_watchlist_add") or 0)
+    watchlist_add_users_proxy = int(activation_row.get("users_with_watchlist_add") or 0)
 
     lines: list[str] = [
         f"# Growth KPI Report ({now.isoformat()})",
@@ -145,14 +170,18 @@ def main() -> None:
         f"- page_view: **{page_view}**",
         f"- tg_click: **{tg_click}** (`{pct(tg_click, page_view)}` from page_view)",
         f"- tg_start: **{tg_start}** (`{pct(tg_start, tg_click)}` from tg_click)",
+        f"- watchlist_add events: **{watchlist_add_events}**",
+        f"- watchlist_add users: **{watchlist_add_users}** (`{pct(watchlist_add_users, tg_start)}` from tg_start)",
+        f"- first_watchlist_add users: **{first_watchlist_add_users}** (`{pct(first_watchlist_add_users, tg_start)}` from tg_start)",
         f"- waitlist_submit: **{waitlist_submit}** (`{pct(waitlist_submit, page_view)}` from page_view)",
         f"- confirm_success: **{confirm_success}** (`{pct(confirm_success, waitlist_submit)}` from waitlist_submit)",
         "",
-        "## Telegram Activation (DB proxy)",
+        "## Telegram Activation Cross-Check",
         "",
         f"- started_users (`app.identities provider=telegram`): **{started_users}**",
-        f"- users_with_watchlist_add (`bot.watchlist`): **{watchlist_add_users}**",
-        f"- start_to_watchlist_add proxy: **{pct(watchlist_add_users, started_users)}**",
+        f"- users_with_watchlist_add proxy (`bot.watchlist`): **{watchlist_add_users_proxy}**",
+        f"- start_to_watchlist_add proxy: **{pct(watchlist_add_users_proxy, started_users)}**",
+        f"- event_to_proxy gap (`watchlist_add users` vs `bot.watchlist` proxy): **{watchlist_add_users - watchlist_add_users_proxy:+d}**",
         "",
         "## tg_click by UTM Source",
         "",
@@ -198,9 +227,9 @@ def main() -> None:
         "",
         "- Scale sources with highest tg_click share (`x`, `threads`, or direct).",
         "- If `tg_start/tg_click` is low: inspect Telegram deep-link friction and social CTA clarity.",
+        "- If `watchlist_add/tg_start` is low: simplify first add, quiet-state recovery, and returning-user resume paths.",
         "- If one `start_payload` consistently wins: keep posting into that pain theme.",
         "- If `tg_click/page_view` is low: iterate hero and CTA copy on landing.",
-        "- If `start_to_watchlist_add` is low: simplify `/start -> /watchlist_add` flow in bot.",
         "- If `confirm_success/waitlist_submit` is low: review email deliverability and confirm page UX.",
         "",
     ]

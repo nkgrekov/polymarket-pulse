@@ -18,6 +18,56 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# TG Activation First Funnel Contract (2026-03-19)
+
+The weekly operating focus now treats the Pulse acquisition funnel as the primary system boundary. Trader remains deployed, but acquisition and measurement are now deliberately centered on Pulse.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+
+Contract changes:
+
+• the homepage EN acquisition layer now prioritizes only the Pulse path:
+  - primary CTA: Telegram bot
+  - secondary CTA: email backup / waitlist
+• Trader Alpha is no longer linked from the homepage search/intents hub during this weekly focus window
+• EN SEO pages no longer append Trader Alpha into their related-link cluster
+• `/telegram-bot` comparison content is now framed around:
+  - dashboard overload
+  - noisy alert feeds
+  - signal trust
+  rather than Pulse -> Trader expansion
+
+Measurement additions:
+
+• the Pulse bot now emits `event_type='watchlist_add'` into `app.site_events`
+• event details include:
+  - `app_user_id`
+  - Telegram identity metadata
+  - `market_id`
+  - `outcome`
+  - `live_state`
+  - `previous_watchlist_count`
+  - `first_watchlist_add`
+  - `placement`
+• this makes the intended weekly funnel measurable as real event stages:
+  - `page_view`
+  - `tg_click`
+  - `tg_start`
+  - `watchlist_add`
+
+Operational implication:
+
+• growth decisions this week should optimize the Pulse acquisition funnel first
+• any Trader work is now out of scope unless it is a production bugfix
+• KPI reporting should prefer event-based `watchlist_add` counts and use the older `bot.watchlist` proxy only as a cross-check
+
+---
+
 # Pulse Watchlist Add Outcome Contract (2026-03-17)
 
 The Pulse bot now uses a single watchlist-add outcome contract across both manual and picker-driven onboarding.

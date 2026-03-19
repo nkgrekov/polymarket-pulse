@@ -631,7 +631,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         else "Join Email Waitlist" if lang == "en" else "Email как backup" if slug in {"analytics", "signals", "telegram-bot", "top-movers", "watchlist-alerts"} else "Вступить в Email Waitlist"
     )
     cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
-    cta_trade_text = "Join Trader Alpha" if lang == "en" else "Вступить в Trader Alpha"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
     faq_head = "Common questions" if lang == "en" else "Частые вопросы"
@@ -726,18 +725,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     links = "".join(
         f'<a href="/{name}">{SEO_PAGES[name]["en"]["h1"]}</a>'
         for name in related_page_slugs
-        if name in SEO_PAGES and name != slug
+        if name in SEO_PAGES and name != slug and name != "trader-bot"
     )
-    trade_href = f"/trader-bot?placement=seo_{slug}"
-    links += f'<a href="{trade_href}">{cta_trade_text}</a>'
     guide_href = f"/how-it-works?placement=telegram_bot_page"
     guide_cta = (
         f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
-        if slug == "telegram-bot"
-        else ""
-    )
-    trade_cta = (
-        f'<a id="trade-link" class="cta-secondary" href="{trade_href}">{cta_trade_text}</a>'
         if slug == "telegram-bot"
         else ""
     )
@@ -753,14 +745,14 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         else "<strong>Dashboard-инструменты</strong> заставляют вас искать движение. <strong>Pulse</strong> приносит его прямо в Telegram."
     )
     compare_2 = (
-        "<strong>Copy-trading bots</strong> start from someone else's behavior. <strong>Pulse + Trader</strong> starts from actual repricing."
+        "<strong>Noisy alert feeds</strong> force you to second-guess every ping. <strong>Pulse</strong> starts from actual repricing and honest quiet states."
         if lang == "en"
-        else "<strong>Copy-trading боты</strong> стартуют с чужого поведения. <strong>Pulse + Trader</strong> стартует с реального repricing."
+        else "<strong>Шумные алерты</strong> заставляют сомневаться в каждом пинге. <strong>Pulse</strong> стартует с реального repricing и честных quiet-state."
     )
     compare_3 = (
-        "<strong>Our edge</strong>: signal first, action second, execution third. That keeps noise low and intent high."
+        "<strong>Our edge</strong>: signal first, watchlist second, action only when the move is worth caring about."
         if lang == "en"
-        else "<strong>Наш угол атаки</strong>: сначала сигнал, потом действие, затем execution. Так шум ниже, а намерение сильнее."
+        else "<strong>Наш угол атаки</strong>: сначала сигнал, потом watchlist, а действие только когда движение реально заслуживает внимания."
     )
     compare_block = (
         f"""
@@ -774,7 +766,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         </article>
         <article class="preview-card">
           <p class="preview-kicker">02</p>
-          <h3 class="preview-title">Pulse -> Trader</h3>
+          <h3 class="preview-title">Trust the feed</h3>
           <p class="preview-copy">{compare_2}</p>
         </article>
         <article class="preview-card">
@@ -1206,7 +1198,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
         <a id="waitlist-link" class="cta-secondary" href="/#waitlist-form">{cta_waitlist_text}</a>
         {guide_cta}
-        {trade_cta}
       </div>
       <p class="cta-note">{cta_note}</p>
     </article>
@@ -1275,9 +1266,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     }});
     document.getElementById('waitlist-link')?.addEventListener('click', () => {{
       trackEvent('waitlist_intent', {{ ...details, placement: 'seo_waitlist' }});
-    }});
-    document.getElementById('trade-link')?.addEventListener('click', () => {{
-      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_trader_alpha' }});
     }});
   </script>
 </body>

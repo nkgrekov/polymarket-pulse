@@ -942,6 +942,50 @@ def log_telegram_start_sync(update: Update, user_ctx: dict, *, locale: str, star
     )
 
 
+def log_watchlist_add_sync(
+    update: Update,
+    user_ctx: dict,
+    *,
+    locale: str,
+    market_id: str,
+    result: dict[str, str],
+    source: str,
+) -> None:
+    tg_user = update.effective_user
+    tg_chat = update.effective_chat
+    previous_watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    outcome = str(result.get("outcome") or "")
+    payload = Jsonb(
+        {
+            "app_user_id": user_ctx.get("user_id"),
+            "telegram_id": tg_user.id if tg_user else None,
+            "chat_id": tg_chat.id if tg_chat else None,
+            "username": tg_user.username if tg_user else None,
+            "plan": user_ctx.get("plan"),
+            "threshold": str(user_ctx.get("threshold")),
+            "market_id": market_id,
+            "outcome": outcome,
+            "live_state": result.get("live_state"),
+            "previous_watchlist_count": previous_watchlist_count,
+            "first_watchlist_add": outcome == "added" and previous_watchlist_count == 0,
+            "placement": source,
+        }
+    )
+    execute_db_write(
+        SQL_SITE_EVENT_INSERT,
+        (
+            "watchlist_add",
+            None,
+            "telegram_bot",
+            locale,
+            "/watchlist_add",
+            "telegram-bot",
+            None,
+            payload,
+        ),
+    )
+
+
 def ensure_payment_schema_sync() -> None:
     execute_db_write(SQL_ENSURE_PAYMENT_EVENTS, ())
 
@@ -2903,7 +2947,19 @@ async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     market = market_rows[0]
     market_id = str(market["market_id"])
     result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
-    outcome = result["outcome"]
+    if result.get("outcome") in {"added", "replaced"}:
+        try:
+            await asyncio.to_thread(
+                log_watchlist_add_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                market_id=market_id,
+                result=result,
+                source="watchlist_add_command",
+            )
+        except Exception:
+            log.exception("watchlist add attribution insert failed")
     reply_markup = await watchlist_post_add_markup(update.message, context, user_ctx, result, locale=locale)
     await update.message.reply_text(result["text"], reply_markup=reply_markup)
 
@@ -3143,6 +3199,19 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, market_id, locale=locale)
+        if result.get("outcome") in {"added", "replaced"}:
+            try:
+                await asyncio.to_thread(
+                    log_watchlist_add_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    market_id=market_id,
+                    result=result,
+                    source="watchlist_picker",
+                )
+            except Exception:
+                log.exception("watchlist picker attribution insert failed")
         reply_markup = await watchlist_post_add_markup(query.message, context, user_ctx, result, locale=locale)
         await query.message.reply_text(result["text"], reply_markup=reply_markup)
         return
@@ -3160,6 +3229,19 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         user_ctx = await resolve_user_context(update)
         result = await asyncio.to_thread(replace_watchlist_market_sync, user_ctx, market_id, locale=locale)
+        if result.get("outcome") in {"added", "replaced"}:
+            try:
+                await asyncio.to_thread(
+                    log_watchlist_add_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    market_id=market_id,
+                    result=result,
+                    source="watchlist_replace_picker",
+                )
+            except Exception:
+                log.exception("watchlist replace attribution insert failed")
         reply_markup = await watchlist_post_add_markup(query.message, context, user_ctx, result, locale=locale)
         await query.message.reply_text(result["text"], reply_markup=reply_markup)
         return

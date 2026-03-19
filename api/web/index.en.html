@@ -61,8 +61,7 @@
         {"@type": "ListItem", "position": 5, "url": "https://polymarketpulse.app/watchlist-alerts", "name": "Polymarket Watchlist Alerts"},
         {"@type": "ListItem", "position": 6, "url": "https://polymarketpulse.app/dashboard", "name": "Polymarket Dashboard Alternative"},
         {"@type": "ListItem", "position": 7, "url": "https://polymarketpulse.app/how-it-works", "name": "How Polymarket Pulse Works"},
-        {"@type": "ListItem", "position": 8, "url": "https://polymarketpulse.app/commands", "name": "Pulse Bot Commands"},
-        {"@type": "ListItem", "position": 9, "url": "https://polymarketpulse.app/trader-bot", "name": "Trader Alpha"}
+        {"@type": "ListItem", "position": 8, "url": "https://polymarketpulse.app/commands", "name": "Pulse Bot Commands"}
       ]
     }
   </script>
@@ -1157,8 +1156,8 @@
         <span class="signal-badge">Live signal engine</span>
       </div>
       <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
-      <h1>Markets moved.<br />Did you notice?</h1>
-      <p class="sub">Most tools optimize for dashboards. Polymarket Pulse optimizes for action: track live probability shifts and get clean Telegram signals before noise takes over.</p>
+      <h1>Too many tabs.<br />Too little signal.</h1>
+      <p class="sub">Polymarket Pulse cuts through dashboard overload: see live probability shifts in Telegram, track only the markets you care about, and stop finding moves after they are already old news.</p>
       <p class="scarcity"><span class="accent">847 traders on waitlist</span> · Telegram bot live now</p>
       <div class="hero-metrics">
         <article class="metric">
@@ -1216,13 +1215,13 @@
         </article>
 
         <aside class="card cta-panel reveal delay-3">
-          <p class="cta-label">Fastest way to get value</p>
-          <h2 class="cta-title">Catch the move before everyone else.</h2>
-          <p class="cta-copy">Open the bot now for instant signals. Leave email as backup for launch updates and digest.</p>
+          <p class="cta-label">Why Telegram first</p>
+          <h2 class="cta-title">See the move in Telegram, not 10 tabs later.</h2>
+          <p class="cta-copy">Open the bot for the fastest path to first value. Keep email as a backup channel for launch updates and the digest.</p>
           <div class="speedrows" aria-label="What you get in 60 seconds">
-            <div class="speedrow">Connect in 1 tap, no setup friction.</div>
-            <div class="speedrow">Top movers and watchlist deltas in one feed.</div>
-            <div class="speedrow">Signal-first alerts, not noisy chatter.</div>
+            <div class="speedrow">Skip the dashboard scan and go straight to the move.</div>
+            <div class="speedrow">Track top movers and your watchlist in one Telegram loop.</div>
+            <div class="speedrow">Get honest quiet states instead of noisy alert spam.</div>
           </div>
 
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
@@ -1295,20 +1294,6 @@
       </div>
     </section>
 
-    <section class="trade-strip reveal delay-7" aria-label="Trader alpha strip">
-      <div class="trade-strip-grid">
-        <div>
-          <p class="proof-head">NEXT LAYER · EXECUTION BOT ALPHA</p>
-          <h3 class="trade-strip-title">Pulse finds. Trader acts.</h3>
-          <p class="trade-strip-copy">We are building a sibling Telegram product for execution: Polymarket-only, non-custodial first, and rule-bound AI trader agent. Pulse stays your signal feed. Trader becomes the action layer.</p>
-        </div>
-        <div class="trade-strip-actions">
-          <a id="trade-strip-link" class="trade-link" href="/trader-bot?placement=landing_trade_strip">Join Trader Alpha</a>
-          <a class="trade-link" href="/telegram-bot">See current Pulse bot</a>
-        </div>
-      </div>
-    </section>
-
     <section class="intent-links reveal delay-8" aria-label="Related SEO pages">
       <p class="intent-title">SEARCH PATHS · CRAWLABLE ENTRY POINTS</p>
       <div class="intent-grid">
@@ -1320,7 +1305,6 @@
         <a class="intent-link" href="/dashboard"><span class="intent-name">Dashboard Alternative</span><span class="intent-copy">Why a Telegram-first workflow can beat another tab full of widgets.</span></a>
         <a class="intent-link" href="/how-it-works"><span class="intent-name">How It Works</span><span class="intent-copy">Human-friendly onboarding guide for the bot flow and command surfaces.</span></a>
         <a class="intent-link" href="/commands"><span class="intent-name">Command Guide</span><span class="intent-copy">Slash commands, watchlist controls, and the clean path to first value.</span></a>
-        <a class="intent-link" href="/trader-bot"><span class="intent-name">Trader Alpha</span><span class="intent-copy">Execution layer for power users: Pulse finds, Trader acts.</span></a>
       </div>
       <p class="intent-note">These pages exist to answer different search intents cleanly, then move the user into the Telegram activation path without dashboard friction.</p>
       <div class="faq">
@@ -1381,7 +1365,6 @@
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
     const proStarsBtn = document.querySelector('.pro-stars');
-    const tradeStripLink = document.getElementById('trade-strip-link');
     const liveRows = document.getElementById('live-movers-rows');
     const liveTitle = document.getElementById('live-movers-title');
 
@@ -1515,10 +1498,6 @@
     proStarsBtn?.addEventListener('click', () => {
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });
     });
-    tradeStripLink?.addEventListener('click', () => {
-      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'landing_trade_strip', product: 'trader_alpha' });
-    });
-
     checkoutBtn?.addEventListener('click', async () => {
       const email = (proEmail?.value || emailInput.value || '').trim();
       if (!email) {

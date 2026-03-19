@@ -18,6 +18,57 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# TG Activation First: Pulse-First Site + Real watchlist_add Attribution (2026-03-19)
+
+Shifted the weekly execution layer away from Trader expansion and tightened the real Pulse funnel around the agreed KPI: `tg_click -> /start -> watchlist_add`.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `docs/growth_kpi_latest.md`
+
+What changed:
+
+• homepage hero copy now speaks more directly to dashboard overload and delayed discovery pain
+• homepage CTA panel now frames the product as a Telegram-first relief valve for:
+  - too many tabs
+  - stale discovery
+  - noisy alerts
+• homepage Trader Alpha strip was removed from the main acquisition path
+• homepage intent/search hub no longer links to Trader Alpha during this weekly focus window
+• EN SEO pages now keep related links and comparison blocks focused on Pulse, not Pulse+Trader
+• `/telegram-bot` style SEO surfaces no longer push Trader as a secondary CTA for this week’s funnel
+• the Pulse bot now logs real `watchlist_add` events into `app.site_events`
+• watchlist-add attribution now includes:
+  - app user id
+  - Telegram identity
+  - market id
+  - outcome
+  - live state
+  - previous watchlist count
+  - `first_watchlist_add`
+  - placement source (`watchlist_add_command`, `watchlist_picker`, `watchlist_replace_picker`)
+• weekly KPI reporting now shows:
+  - `watchlist_add events`
+  - `watchlist_add users`
+  - `first_watchlist_add users`
+  - cross-check against the older `bot.watchlist` proxy
+
+Practical effect:
+
+• the public acquisition layer now stays centered on one main job: get the user into the Pulse Telegram bot
+• weekly reporting no longer depends only on indirect DB proxies for first activation
+• we can now inspect the real drop-off from:
+  - page_view
+  - tg_click
+  - tg_start
+  - watchlist_add
+
+---
+
 # Pulse Watchlist Add Activation Unification (2026-03-17)
 
 Closed an activation gap between the slash-command path and the picker path for watchlist onboarding.
