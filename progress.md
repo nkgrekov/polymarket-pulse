@@ -45,12 +45,22 @@ What changed:
   - direct CTA back into the Telegram bot
   - working unsubscribe link via `confirm_token`
 • `docs/social_pipeline.md` funnel notes were updated so the weekly growth documentation no longer points only at the older waitlist-confirm path
+• production smoke caught and fixed a real route-order bug where `/{slug}` intercepted `/confirm` and `/unsubscribe`
+• after moving the SEO catch-all route below the explicit email routes, the full production flow passed with a temporary test subscriber:
+  - `/api/waitlist`
+  - `/confirm`
+  - `/unsubscribe`
+• production DB smoke confirmed:
+  - `confirmed_at` populated
+  - `unsubscribed_at` populated
+  - `waitlist_submit`, `confirm_success`, and `unsubscribe_success` events logged with the expected placement/UTM context
 
 Practical effect:
 
 • email now behaves more like a real backup/retention layer and less like a generic form receipt
 • the product story stays coherent across landing, Telegram, and email
 • digest unsubscribe links now point at the correct token contract
+• the public email confirmation path is now actually reachable in production, not shadowed by the generic SEO route
 
 ---
 

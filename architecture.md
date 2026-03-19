@@ -40,12 +40,14 @@ Contract changes:
   - formatted alert list
   - CTA back into Pulse
   - unsubscribe path via `confirm_token`
+• explicit system/email routes such as `/confirm` and `/unsubscribe` must stay registered above the generic `/{slug}` SEO route
 
 Operational implication:
 
 • email remains a supporting retention channel, not a primary acquisition surface
 • the product story is now consistent across site -> Telegram -> email
 • digest output is safer operationally because unsubscribe URLs now use the same token contract as the rest of the email system
+• route ordering is now part of the site contract; otherwise generic SEO routing can silently break product-critical flows in production
 
 ---
 

@@ -2353,14 +2353,6 @@ def trader_connect_page(request: Request, token: str) -> HTMLResponse:
     return HTMLResponse(render_trader_connect_page(session, lang))
 
 
-@app.get("/{slug}", response_class=HTMLResponse)
-def seo_page(slug: str, request: Request) -> HTMLResponse:
-    if slug not in SEO_PAGES:
-        raise HTTPException(status_code=404, detail="Not found")
-    lang = detect_site_lang(request)
-    return HTMLResponse(render_seo_page(slug, lang))
-
-
 @app.post("/api/events")
 def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     req_lang = detect_lang(request)
@@ -2844,3 +2836,11 @@ def unsubscribe(token: str, request: Request) -> HTMLResponse:
             secondary_html=f'<a href="{base_url()}">Back to homepage</a>',
         )
     )
+
+
+@app.get("/{slug}", response_class=HTMLResponse)
+def seo_page(slug: str, request: Request) -> HTMLResponse:
+    if slug not in SEO_PAGES:
+        raise HTTPException(status_code=404, detail="Not found")
+    lang = detect_site_lang(request)
+    return HTMLResponse(render_seo_page(slug, lang))
