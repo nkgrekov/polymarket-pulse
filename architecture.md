@@ -55,6 +55,35 @@ Operational implication:
 
 ---
 
+# EN SEO Page CTA Hierarchy Contract (2026-03-20)
+
+The shared EN intent-page template now mirrors the homepage conversion order so search-entry pages do not drift into a softer or more ambiguous funnel.
+
+Updated artifact:
+
+• `api/main.py`
+
+Contract changes:
+
+• the shared `render_seo_page(...)` CTA block now includes a compact trust strip below the Telegram CTA:
+  - no signup required
+  - one-tap open
+  - email backup only
+• the shared CTA helper copy now explicitly frames email as:
+  - backup for digest and launch updates
+  - secondary to the Telegram live loop
+• this contract applies across the EN acquisition pages built from the shared SEO template, so homepage and intent pages keep the same CTA hierarchy
+
+Operational implication:
+
+• landing and SEO-page conversion work should stay synchronized through the shared hierarchy:
+  - Telegram primary
+  - guide/support secondary
+  - email tertiary
+• future copy changes to EN intent pages should preserve this order rather than reintroducing email as an equal first-screen action
+
+---
+
 # Email Backup Retention Contract (2026-03-19)
 
 The email layer now acts as a branded Pulse backup surface instead of a bare confirmation transport.

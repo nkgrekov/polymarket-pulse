@@ -55,6 +55,39 @@ Practical effect:
 
 ---
 
+# EN Intent Pages CTA Alignment (2026-03-20)
+
+Aligned the main EN acquisition pages with the homepage CTA hierarchy so `/telegram-bot` and `/signals` no longer feel like slightly different funnels.
+
+Files updated:
+
+• `api/main.py`
+
+What changed:
+
+• the shared SEO-page CTA block now includes a compact trust strip under the Telegram button:
+  - `No signup required`
+  - `1 tap to open`
+  - `Email backup only`
+• shared CTA copy now explicitly frames email as a secondary backup channel for digest and launch updates
+• this alignment applies to the dynamic EN intent pages generated through `render_seo_page(...)`, including:
+  - `/analytics`
+  - `/signals`
+  - `/telegram-bot`
+  - `/top-movers`
+  - `/watchlist-alerts`
+  - `/dashboard`
+
+Practical effect:
+
+• the main search-entry pages now reinforce the same hierarchy as the homepage:
+  - Telegram primary
+  - guide/support secondary
+  - email backup tertiary
+• users arriving from search should now hit less copy drift between homepage and deeper intent pages
+
+---
+
 # Email Backup + Digest Retention Pass (2026-03-19)
 
 Upgraded the email layer from a bare confirmation transport into a clearer retention surface that matches the current Pulse-first product story.

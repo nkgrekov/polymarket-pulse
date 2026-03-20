@@ -642,6 +642,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         if lang == "en"
         else "Сначала откройте бота. Потом добавьте рынки. Пусть signal-слой сам подскажет, когда пора реагировать.",
     )
+    cta_backup_note = (
+        "Keep email only as a backup for digest and launch updates. Telegram stays the primary live loop."
+        if lang == "en"
+        else "Оставляйте email только как backup для дайджеста и обновлений. Telegram остаётся основным live-каналом."
+    )
     preview_copy_1 = (
         "Catch the fastest repricing in the current live window."
         if lang == "en"
@@ -997,12 +1002,35 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       border: 1px solid var(--line-soft);
     }}
     .cta-secondary:hover, .cta-secondary:focus-visible {{ border-color: var(--accent); outline: none; }}
+    .cta-trust {{
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }}
+    .trust-pill {{
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #131714;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      line-height: 1;
+    }}
     .cta-note {{
       margin: 10px 0 0;
       color: var(--muted-soft);
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       line-height: 1.55;
+    }}
+    .cta-backup-note {{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
     }}
     .preview {{
       margin-top: 16px;
@@ -1200,7 +1228,13 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         <a id="waitlist-link" class="cta-secondary" href="/#waitlist-form">{cta_waitlist_text}</a>
         {guide_cta}
       </div>
+      <div class="cta-trust" aria-label="Telegram trust strip">
+        <span class="trust-pill">No signup required</span>
+        <span class="trust-pill">1 tap to open</span>
+        <span class="trust-pill">Email backup only</span>
+      </div>
       <p class="cta-note">{cta_note}</p>
+      <p class="cta-backup-note">{cta_backup_note}</p>
     </article>
     <section class="preview reveal delay-3">
       <p class="links-title">{preview_head}</p>
