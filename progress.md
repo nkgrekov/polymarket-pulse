@@ -115,6 +115,39 @@ Practical effect:
 
 ---
 
+# Pulse Retention Pass: Watchlist and Inbox Next Steps (2026-03-20)
+
+Improved the main analytics bot screens after first activation so `/watchlist`, `/inbox`, and `/watchlist_list` lead users toward the next useful action instead of acting like static dumps.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• `/watchlist` now ends with a clearer next-step hint when live deltas exist:
+  - open Inbox
+  - review list health
+  - add one more live market if coverage feels thin
+• `/inbox` now ends with a clearer next-step hint when alerts exist:
+  - compare against Watchlist
+  - review quiet markets
+  - adjust threshold if needed
+• quiet-state versions of `/watchlist` and `/inbox` now use Pulse-native action keyboards instead of routing the user toward Trader surfaces
+• `/watchlist_list` now includes a plain-English state legend for:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+
+Practical effect:
+
+• the main retention screens now behave more like product surfaces and less like raw output
+• users get a clearer answer to “what should I do next?” after opening watchlist or inbox
+• the main analytics bot is now cleaner about staying inside the Pulse loop instead of mixing in unnecessary execution cues
+
+---
+
 # Email Backup + Digest Retention Pass (2026-03-19)
 
 Upgraded the email layer from a bare confirmation transport into a clearer retention surface that matches the current Pulse-first product story.

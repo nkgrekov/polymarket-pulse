@@ -1399,6 +1399,42 @@ def watchlist_added_inline(locale: str) -> InlineKeyboardMarkup:
     )
 
 
+def watchlist_live_inline(locale: str, *, has_closed: bool = False) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+            InlineKeyboardButton("Review list" if locale == "en" else "Проверить список", callback_data="menu:watchlist_list"),
+        ],
+        [
+            InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+            InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+        ],
+    ]
+    if has_closed:
+        rows.append(
+            [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")]
+        )
+    return InlineKeyboardMarkup(rows)
+
+
+def inbox_live_inline(locale: str, *, has_closed: bool = False) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+            InlineKeyboardButton("Review list" if locale == "en" else "Проверить список", callback_data="menu:watchlist_list"),
+        ],
+        [
+            InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
+            InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+        ],
+    ]
+    if has_closed:
+        rows.append(
+            [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")]
+        )
+    return InlineKeyboardMarkup(rows)
+
+
 def quiet_followup_text(
     locale: str,
     *,
@@ -1862,16 +1898,15 @@ async def send_inbox_view(
             )
         else:
             reason = "No alerts in the current window." if locale == "en" else "Нет алертов в текущем окне."
-        reply_markup = (
-            await build_recovery_inline(message, context, user_ctx, locale=locale)
-            if context is not None
-            else InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton("Top movers", callback_data="menu:movers"),
-                    InlineKeyboardButton("Change threshold" if locale == "en" else "Сменить threshold", callback_data="menu:threshold"),
-                ]]
+        has_closed = int(user_ctx.get("watchlist_closed_count") or 0) > 0
+        if context is not None:
+            recovery = await build_recovery_inline(message, context, user_ctx, locale=locale)
+            reply_markup = merge_inline_markups(
+                inbox_live_inline(locale, has_closed=has_closed),
+                recovery,
             )
-        )
+        else:
+            reply_markup = inbox_live_inline(locale, has_closed=has_closed)
         await message.reply_text(
             reason
             + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}")
@@ -1883,11 +1918,17 @@ async def send_inbox_view(
 
     header = "Inbox alerts:" if limit == 10 else ("Inbox alerts (20):" if locale == "en" else "Inbox alerts (20):")
     await message.reply_text(
-        header + "\n\n" + "\n\n".join(fmt_alert_row(r) for r in rows),
-        reply_markup=trader_surface_keyboard(
-            locale=locale,
-            placement="bot_inbox",
-            market_id=str(rows[0].get("market_id")) if rows else None,
+        header
+        + "\n\n"
+        + "\n\n".join(fmt_alert_row(r) for r in rows)
+        + (
+            "\n\nNext: open Watchlist to compare live deltas, review the list if too many markets stay quiet, or tighten threshold if the feed feels noisy."
+            if locale == "en"
+            else "\n\nДальше: откройте Watchlist, чтобы сравнить live-дельты, проверьте список рынков, если много тихих, или подтяните threshold, если фид шумит."
+        ),
+        reply_markup=inbox_live_inline(
+            locale,
+            has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
         ),
     )
 
@@ -1964,23 +2005,15 @@ async def send_watchlist_view(
         except Exception:
             log.exception("watchlist diagnostics failed")
             diag = {}
-        reply_markup = (
-            await build_recovery_inline(message, context, user_ctx, locale=locale)
-            if context is not None
-            else InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
-                        InlineKeyboardButton("Top movers", callback_data="menu:movers"),
-                    ],
-                    [InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")],
-                ]
+        has_closed = int(diag.get("wl_closed", 0) or 0) > 0
+        if context is not None:
+            recovery = await build_recovery_inline(message, context, user_ctx, locale=locale)
+            reply_markup = merge_inline_markups(
+                watchlist_live_inline(locale, has_closed=has_closed),
+                recovery,
             )
-        )
-        if context is not None and int(diag.get("wl_closed", 0) or 0) > 0:
-            rows = list(reply_markup.inline_keyboard)
-            rows.append([InlineKeyboardButton("Remove closed" if locale == "en" else "Очистить закрытые", callback_data="menu:cleanup_closed")])
-            reply_markup = InlineKeyboardMarkup(rows)
+        else:
+            reply_markup = watchlist_live_inline(locale, has_closed=has_closed)
         await message.reply_text(
             (
                 "No live changes in your watchlist right now.\n"
@@ -1998,11 +2031,16 @@ async def send_watchlist_view(
         return
 
     await message.reply_text(
-        ("Watchlist live changes:\n\n" if locale == "en" else "Live-изменения watchlist:\n\n") + "\n\n".join(fmt_mover_row(r) for r in rows),
-        reply_markup=trader_surface_keyboard(
-            locale=locale,
-            placement="bot_watchlist",
-            market_id=str(rows[0].get("market_id")) if rows else None,
+        ("Watchlist live changes:\n\n" if locale == "en" else "Live-изменения watchlist:\n\n")
+        + "\n\n".join(fmt_mover_row(r) for r in rows)
+        + (
+            "\n\nNext: open Inbox for thresholded alerts, review the list if one market stays quiet, or add one more live market if coverage feels too thin."
+            if locale == "en"
+            else "\n\nДальше: откройте Inbox для пороговых алертов, проверьте список рынков, если один из них тихий, или добавьте ещё один live-рынок, если покрытия мало."
+        ),
+        reply_markup=watchlist_live_inline(
+            locale,
+            has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
         ),
     )
 
@@ -2913,9 +2951,11 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
             state = "no_quotes" if locale == "en" else "no_quotes"
         lines.append(f"{idx}. [{state}] {row['market_id']} — {row['question']}")
     footer = (
-        "\n\nUse /watchlist to see live changes, or /watchlist_remove <market_id|slug> to clean quiet markets."
+        "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup.\n"
+        "Next: open /watchlist for live changes, /inbox for thresholded alerts, or /watchlist_remove <market_id|slug> to clean quiet markets."
         if locale == "en"
-        else "\n\nИспользуйте /watchlist для live-изменений или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
+        else "\n\nСтатусы: ready = котируется в обоих live-окнах, partial = live только одно окно, no_quotes = рынок уже отслеживается, но ещё не котируется, closed = кандидат на очистку.\n"
+        "Дальше: откройте /watchlist для live-изменений, /inbox для пороговых алертов или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
     )
     await update.message.reply_text(
         ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines) + footer,

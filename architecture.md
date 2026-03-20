@@ -107,6 +107,41 @@ Operational implication:
 
 ---
 
+# Pulse Retention Surface Contract: Watchlist, Inbox, Review (2026-03-20)
+
+The main analytics bot screens now act as retention surfaces with explicit next actions, rather than as isolated text views.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• `/watchlist` and `/inbox` responses with real data now append short next-step guidance instead of ending immediately after the list of rows
+• quiet-state `/watchlist` and `/inbox` now prefer Pulse-native action keyboards:
+  - watchlist
+  - inbox
+  - review list
+  - add market
+  - threshold
+  - remove closed, when relevant
+• `/watchlist_list` now includes a compact state legend for:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+
+Operational implication:
+
+• retention improvements in the analytics bot should keep the user inside the Pulse workflow first
+• execution/trader surfaces should not be the default follow-up path for core analytics views during the current weekly Pulse focus
+• future bot UX work should treat `/watchlist`, `/inbox`, and `/watchlist_list` as a connected loop:
+  - see movement
+  - review list health
+  - adjust threshold or coverage
+
+---
+
 # Email Backup Retention Contract (2026-03-19)
 
 The email layer now acts as a branded Pulse backup surface instead of a bare confirmation transport.
