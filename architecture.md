@@ -84,6 +84,29 @@ Operational implication:
 
 ---
 
+# Homepage Decision Panel Contract (2026-03-20)
+
+The homepage hero-right CTA panel is now treated as a dedicated decision panel whose main job is to reduce `page_view -> tg_click` friction.
+
+Updated artifact:
+
+• `api/web/index.en.html`
+
+Contract changes:
+
+• the primary Telegram CTA now carries stronger immediacy (`Open Telegram Bot in 1 Tap`)
+• guide/help remains present but is intentionally de-emphasized as an inline support link rather than a second full-width CTA block
+• email capture is now visually isolated inside an optional backup shell
+• the panel includes a compact proof line clarifying that the adjacent movers preview is fed from live DB data, not static marketing imagery
+
+Operational implication:
+
+• future homepage CTA experiments should keep the decision panel focused on one main click
+• support/help and email backup can exist, but should not visually compete with the Telegram action at the same level
+• if `tg_click/page_view` remains weak after this, the next iteration should target proof density and first-screen trust rather than re-expanding CTA choice
+
+---
+
 # Email Backup Retention Contract (2026-03-19)
 
 The email layer now acts as a branded Pulse backup surface instead of a bare confirmation transport.

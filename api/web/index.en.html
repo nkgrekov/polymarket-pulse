@@ -443,6 +443,18 @@
       line-height: 1.5;
     }
 
+    .cta-proof {
+      margin: 10px 0 0;
+      border: 1px solid rgba(0, 255, 136, 0.18);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: rgba(0, 255, 136, 0.04);
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .speedrows {
       margin: 12px 0 0;
       display: grid;
@@ -536,25 +548,42 @@
       margin-top: 8px;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      width: 100%;
-      min-height: 42px;
-      border: 1px solid var(--line-soft);
-      border-radius: 10px;
-      background: #131714;
-      color: var(--muted);
+      justify-content: flex-start;
+      width: fit-content;
+      min-height: auto;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted-soft);
       text-decoration: none;
       font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      transition: border-color 0.2s ease, color 0.2s ease;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.2s ease;
     }
 
     .guide-link:hover,
     .guide-link:focus-visible {
-      border-color: var(--accent);
       color: var(--text);
       outline: none;
+    }
+
+    .backup-shell {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(15, 20, 16, 0.82);
+    }
+
+    .backup-kicker {
+      margin: 0 0 10px;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
     }
 
     .email-backup-note {
@@ -1275,7 +1304,8 @@
         <aside class="card cta-panel reveal delay-3">
           <p class="cta-label">Telegram-first workflow</p>
           <h2 class="cta-title">Open the bot. Add one market. Get the move.</h2>
-          <p class="cta-copy">Telegram is the shortest path to first value here. No dashboard setup, no account wall, and no guessing whether the alert feed is worth trusting.</p>
+          <p class="cta-copy">Telegram is the fastest way to decide whether a move matters. Open the bot, add one market, and get a useful answer before another dashboard tab steals your attention.</p>
+          <p class="cta-proof">The live movers panel on the left pulls from the current DB preview, so the click path starts with real repricing instead of static marketing shots.</p>
           <div class="flow-strip" aria-label="Telegram activation path">
             <div class="flow-step">
               <p class="flow-kicker">Step 01</p>
@@ -1296,24 +1326,27 @@
             <div class="speedrow">You get honest quiet states instead of low-trust alert spam.</div>
           </div>
 
-          <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
+          <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot in 1 Tap →</a>
           <div class="cta-trust" aria-label="Telegram trust strip">
             <span class="trust-pill">No signup required</span>
             <span class="trust-pill">1 tap to open</span>
             <span class="trust-pill">Email optional backup</span>
           </div>
-          <a class="guide-link" href="/how-it-works?placement=main_cta">How it works?</a>
+          <a class="guide-link" href="/how-it-works?placement=main_cta">See the bot flow first</a>
 
           <div class="divider"></div>
 
-          <form id="waitlist-form" class="form" novalidate>
-            <div>
-              <label class="label" for="email">Waitlist email</label>
-              <p class="email-backup-note">Keep email only as a backup channel for the digest and launch updates. Telegram remains the primary live signal loop.</p>
-              <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
-            </div>
-            <button type="submit">Get Email Access</button>
-          </form>
+          <div class="backup-shell">
+            <p class="backup-kicker">Optional backup only</p>
+            <form id="waitlist-form" class="form" novalidate>
+              <div>
+                <label class="label" for="email">Waitlist email</label>
+                <p class="email-backup-note">Keep email only as a backup channel for the digest and launch updates. Telegram remains the primary live signal loop.</p>
+                <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
+              </div>
+              <button type="submit">Get Email Access</button>
+            </form>
+          </div>
           <div id="msg" class="note" role="status" aria-live="polite">We will send a confirmation email.</div>
         </aside>
       </div>

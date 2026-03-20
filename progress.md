@@ -88,6 +88,33 @@ Practical effect:
 
 ---
 
+# Landing -> Telegram Conversion Pass 3 (2026-03-20)
+
+Ran a third homepage conversion pass after the fresh KPI report confirmed that the weakest point in the funnel is still `page_view -> tg_click`.
+
+Files updated:
+
+• `api/web/index.en.html`
+
+What changed:
+
+• the hero CTA panel now uses a tighter decision pattern:
+  - stronger primary CTA copy (`Open Telegram Bot in 1 Tap`)
+  - smaller, lower-contrast guide link
+  - backup email wrapped in its own optional shell instead of reading like a competing primary form
+• added a compact proof note above the CTA path clarifying that the movers panel is powered by the live DB preview, not static screenshots
+• CTA copy now speaks more directly to the conversion moment:
+  - decide whether the move matters
+  - avoid losing attention to more dashboard tabs
+
+Practical effect:
+
+• the first-screen decision panel now has less visual competition around the Telegram click
+• guide/help remains available, but no longer competes with the primary action like a second button-level CTA
+• email still exists for retention, but reads more clearly as a tertiary backup channel
+
+---
+
 # Email Backup + Digest Retention Pass (2026-03-19)
 
 Upgraded the email layer from a bare confirmation transport into a clearer retention surface that matches the current Pulse-first product story.
