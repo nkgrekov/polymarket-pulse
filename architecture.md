@@ -18,6 +18,43 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Homepage Conversion Contract: Telegram First, Email Backup (2026-03-20)
+
+The EN homepage acquisition layer now treats Telegram activation as the only primary action and frames email explicitly as a secondary backup channel.
+
+Updated artifact:
+
+• `api/web/index.en.html`
+
+Contract changes:
+
+• hero and CTA copy now describe a concrete first-value path:
+  - open the bot
+  - add one market
+  - get the move
+• the CTA panel now includes a compact trust strip reinforcing lower-friction activation:
+  - no signup required
+  - one-tap open
+  - email optional backup
+• the supporting bullets now emphasize real acquisition pains:
+  - too much manual dashboard scanning
+  - movers + watchlist in one loop
+  - quiet states instead of low-trust alert spam
+• the email form remains below the Telegram CTA, but its helper copy now explicitly says:
+  - email is for digest and updates
+  - Telegram is the primary live loop
+
+Operational implication:
+
+• homepage changes should continue to optimize for `tg_click` first, not for email capture parity
+• any future homepage CTA work must preserve the hierarchy:
+  - Telegram primary
+  - guide secondary
+  - email backup tertiary
+• visual changes on the homepage still need to stay inside the current dark/green terminal system defined by the active brand tokens
+
+---
+
 # Email Backup Retention Contract (2026-03-19)
 
 The email layer now acts as a branded Pulse backup surface instead of a bare confirmation transport.

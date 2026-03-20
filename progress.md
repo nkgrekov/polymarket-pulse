@@ -18,6 +18,43 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Landing -> Telegram Conversion Pass 2 (2026-03-20)
+
+Tightened the EN homepage around one clearer activation story: open Telegram, add one market, and get to first value without treating email like an equal primary action.
+
+Files updated:
+
+• `api/web/index.en.html`
+
+What changed:
+
+• hero subcopy now explains the exact friction more directly:
+  - dashboard/tab babysitting
+  - noisy feeds
+  - fast move visibility in Telegram
+• the right-side CTA panel now frames activation as a concrete 3-step path:
+  - open the bot
+  - add one market
+  - get the move
+• added a compact trust strip under the main Telegram CTA:
+  - `No signup required`
+  - `1 tap to open`
+  - `Email optional backup`
+• the “why this loop feels better” bullets now speak more directly to real pains:
+  - manual dashboard confirmation
+  - one-loop watchlist + movers
+  - low-trust alert spam
+• the email form remains on the page, but now explicitly explains its role as a secondary backup channel for digest and updates
+
+Practical effect:
+
+• the homepage now makes the Telegram path feel lower-friction and more obvious
+• email is still available, but no longer reads like a competing primary choice
+• the top-of-funnel narrative aligns more tightly with the weekly KPI:
+  - `tg_click -> /start -> watchlist_add`
+
+---
+
 # Email Backup + Digest Retention Pass (2026-03-19)
 
 Upgraded the email layer from a bare confirmation transport into a clearer retention surface that matches the current Pulse-first product story.

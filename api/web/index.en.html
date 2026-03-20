@@ -459,6 +459,37 @@
       background: #131714;
     }
 
+    .flow-strip {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .flow-step {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(19, 23, 20, 0.95);
+    }
+
+    .flow-kicker {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .flow-copy {
+      margin: 6px 0 0;
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .tg-btn {
       display: inline-flex;
       align-items: center;
@@ -475,6 +506,24 @@
       font-weight: 700;
       text-decoration: none;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cta-trust {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .trust-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #131714;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      line-height: 1;
     }
 
     .tg-btn:hover,
@@ -506,6 +555,14 @@
       border-color: var(--accent);
       color: var(--text);
       outline: none;
+    }
+
+    .email-backup-note {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .divider {
@@ -1125,6 +1182,7 @@
       h1 { font-size: clamp(34px, 15vw, 56px); }
       .sub { font-size: 14px; }
       .market { max-width: 68%; }
+      .flow-strip { grid-template-columns: 1fr; }
       .screens-grid { grid-template-columns: 1fr; }
       .proof-grid { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
@@ -1157,7 +1215,7 @@
       </div>
       <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
       <h1>Too many tabs.<br />Too little signal.</h1>
-      <p class="sub">Polymarket Pulse cuts through dashboard overload: see live probability shifts in Telegram, track only the markets you care about, and stop finding moves after they are already old news.</p>
+      <p class="sub">Polymarket Pulse cuts through dashboard overload: open Telegram, add one market, and see live probability shifts without babysitting a tab stack or second-guessing noisy feeds.</p>
       <p class="scarcity"><span class="accent">847 traders on waitlist</span> · Telegram bot live now</p>
       <div class="hero-metrics">
         <article class="metric">
@@ -1215,16 +1273,35 @@
         </article>
 
         <aside class="card cta-panel reveal delay-3">
-          <p class="cta-label">Why Telegram first</p>
-          <h2 class="cta-title">See the move in Telegram, not 10 tabs later.</h2>
-          <p class="cta-copy">Open the bot for the fastest path to first value. Keep email as a backup channel for launch updates and the digest.</p>
-          <div class="speedrows" aria-label="What you get in 60 seconds">
-            <div class="speedrow">Skip the dashboard scan and go straight to the move.</div>
-            <div class="speedrow">Track top movers and your watchlist in one Telegram loop.</div>
-            <div class="speedrow">Get honest quiet states instead of noisy alert spam.</div>
+          <p class="cta-label">Telegram-first workflow</p>
+          <h2 class="cta-title">Open the bot. Add one market. Get the move.</h2>
+          <p class="cta-copy">Telegram is the shortest path to first value here. No dashboard setup, no account wall, and no guessing whether the alert feed is worth trusting.</p>
+          <div class="flow-strip" aria-label="Telegram activation path">
+            <div class="flow-step">
+              <p class="flow-kicker">Step 01</p>
+              <p class="flow-copy">Open the bot and land straight in the live signal loop.</p>
+            </div>
+            <div class="flow-step">
+              <p class="flow-kicker">Step 02</p>
+              <p class="flow-copy">Add one market from movers or your own watchlist.</p>
+            </div>
+            <div class="flow-step">
+              <p class="flow-kicker">Step 03</p>
+              <p class="flow-copy">See whether the move is real, quiet, or not worth chasing.</p>
+            </div>
+          </div>
+          <div class="speedrows" aria-label="Why this loop feels better">
+            <div class="speedrow">You stop scanning dashboards just to confirm a move already happened.</div>
+            <div class="speedrow">You track top movers and your watchlist in one Telegram loop.</div>
+            <div class="speedrow">You get honest quiet states instead of low-trust alert spam.</div>
           </div>
 
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
+          <div class="cta-trust" aria-label="Telegram trust strip">
+            <span class="trust-pill">No signup required</span>
+            <span class="trust-pill">1 tap to open</span>
+            <span class="trust-pill">Email optional backup</span>
+          </div>
           <a class="guide-link" href="/how-it-works?placement=main_cta">How it works?</a>
 
           <div class="divider"></div>
@@ -1232,6 +1309,7 @@
           <form id="waitlist-form" class="form" novalidate>
             <div>
               <label class="label" for="email">Waitlist email</label>
+              <p class="email-backup-note">Keep email only as a backup channel for the digest and launch updates. Telegram remains the primary live signal loop.</p>
               <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
             </div>
             <button type="submit">Get Email Access</button>
