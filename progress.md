@@ -18,6 +18,39 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Homepage Hero Right Panel Revert (2026-03-23)
+
+Reverted the right panel of the EN homepage hero back to the simpler conversion panel contract after the workflow-heavy version drifted away from the intended landing behavior.
+
+Files updated:
+
+• `api/web/index.en.html`
+
+What changed:
+
+• restored the right panel to the tighter structure:
+  - `FASTEST WAY TO GET VALUE`
+  - `CATCH THE MOVE BEFORE EVERYONE ELSE.`
+  - short Telegram-first subline
+  - three stacked dark feature rows
+  - primary green Telegram CTA
+  - secondary outlined `How it works?` button
+  - `WAITLIST EMAIL` kicker
+  - existing waitlist form
+  - confirmation note below the form
+• removed from the right panel:
+  - workflow/step blocks
+  - “You stop scanning...” style callouts
+  - explanation box about the left panel
+  - the `TELEGRAM-FIRST WORKFLOW` kicker
+
+Practical effect:
+
+• the hero-right decision surface is back to a simpler landing-first conversion contract
+• the left movers panel, the metrics row, and the rest of the page remain untouched
+
+---
+
 # Weekly Focus Implementation: Pulse, Search, Retention, Core Hardening (2026-03-23)
 
 Implemented the next weekly slice around the agreed focus:

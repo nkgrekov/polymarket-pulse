@@ -422,7 +422,7 @@
     .cta-label {
       font-size: 12px;
       font-family: "JetBrains Mono", monospace;
-      color: var(--muted);
+      color: var(--muted-soft);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin: 0;
@@ -430,8 +430,8 @@
 
     .cta-title {
       margin: 8px 0 10px;
-      font-size: clamp(24px, 4vw, 34px);
-      line-height: 1;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
       text-transform: uppercase;
     }
 
@@ -439,7 +439,7 @@
       margin: 0;
       font-family: "JetBrains Mono", monospace;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.5;
     }
 
@@ -460,14 +460,14 @@
       display: grid;
       gap: 8px;
       font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--muted);
     }
 
     .speedrow {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px 10px;
+      border-radius: 8px;
+      padding: 10px 14px;
       background: #131714;
     }
 
@@ -545,36 +545,34 @@
     }
 
     .guide-link {
-      margin-top: 8px;
+      margin-top: 10px;
       display: inline-flex;
       align-items: center;
-      justify-content: flex-start;
-      width: fit-content;
-      min-height: auto;
-      border: none;
-      border-radius: 0;
+      justify-content: center;
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #2a332b;
+      border-radius: 12px;
       background: transparent;
-      color: var(--muted-soft);
+      color: #8fa88f;
       text-decoration: none;
       font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      transition: color 0.2s ease;
+      padding: 12px;
+      transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
     }
 
     .guide-link:hover,
     .guide-link:focus-visible {
       color: var(--text);
+      border-color: var(--accent);
+      background: rgba(19, 23, 20, 0.85);
       outline: none;
     }
 
     .backup-shell {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      background: rgba(15, 20, 16, 0.82);
+      margin-top: 12px;
     }
 
     .backup-kicker {
@@ -616,12 +614,12 @@
       width: 100%;
       min-height: 48px;
       border: 1px solid var(--line);
-      border-radius: 11px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 12px 14px;
       font-family: "JetBrains Mono", monospace;
       font-size: 14px;
       color: var(--text);
-      background: var(--bg-2);
+      background: #131714;
     }
 
     input[type="email"]:focus {
@@ -633,12 +631,12 @@
     button {
       min-height: 48px;
       border: 1px solid var(--line);
-      border-radius: 11px;
+      border-radius: 12px;
       background: #131714;
       color: var(--text);
       font-family: "JetBrains Mono", monospace;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
       transition: border-color 0.2s ease, background 0.2s ease;
     }
@@ -843,7 +841,7 @@
       min-height: 20px;
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
-      color: var(--muted);
+      color: var(--muted-soft);
     }
 
     .meta {
@@ -1302,46 +1300,22 @@
         </article>
 
         <aside class="card cta-panel reveal delay-3">
-          <p class="cta-label">Telegram-first workflow</p>
-          <h2 class="cta-title">Open the bot. Add one market. Get the move.</h2>
-          <p class="cta-copy">Telegram is the fastest way to decide whether a move matters. Open the bot, add one market, and get a useful answer before another dashboard tab steals your attention.</p>
-          <p class="cta-proof">The live movers panel on the left pulls from the current DB preview, so the click path starts with real repricing instead of static marketing shots.</p>
-          <div class="flow-strip" aria-label="Telegram activation path">
-            <div class="flow-step">
-              <p class="flow-kicker">Step 01</p>
-              <p class="flow-copy">Open the bot and land straight in the live signal loop.</p>
-            </div>
-            <div class="flow-step">
-              <p class="flow-kicker">Step 02</p>
-              <p class="flow-copy">Add one market from movers or your own watchlist.</p>
-            </div>
-            <div class="flow-step">
-              <p class="flow-kicker">Step 03</p>
-              <p class="flow-copy">See whether the move is real, quiet, or not worth chasing.</p>
-            </div>
-          </div>
-          <div class="speedrows" aria-label="Why this loop feels better">
-            <div class="speedrow">You stop scanning dashboards just to confirm a move already happened.</div>
-            <div class="speedrow">You track top movers and your watchlist in one Telegram loop.</div>
-            <div class="speedrow">You get honest quiet states instead of low-trust alert spam.</div>
+          <p class="cta-label">FASTEST WAY TO GET VALUE</p>
+          <h2 class="cta-title">CATCH THE MOVE BEFORE EVERYONE ELSE.</h2>
+          <p class="cta-copy">Open the bot now for instant signals. Leave email as backup for launch updates and digest.</p>
+          <div class="speedrows" aria-label="Fastest way to get value">
+            <div class="speedrow">Connect in 1 tap, no setup friction.</div>
+            <div class="speedrow">Top movers and watchlist deltas in one feed.</div>
+            <div class="speedrow">Signal-first alerts, not noisy chatter.</div>
           </div>
 
-          <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot in 1 Tap →</a>
-          <div class="cta-trust" aria-label="Telegram trust strip">
-            <span class="trust-pill">No signup required</span>
-            <span class="trust-pill">1 tap to open</span>
-            <span class="trust-pill">Email optional backup</span>
-          </div>
-          <a class="guide-link" href="/how-it-works?placement=main_cta">See the bot flow and proof</a>
-
-          <div class="divider"></div>
+          <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
+          <a class="guide-link" href="/how-it-works?lang=en">How it works?</a>
 
           <div class="backup-shell">
-            <p class="backup-kicker">Optional backup only</p>
+            <p class="backup-kicker">WAITLIST EMAIL</p>
             <form id="waitlist-form" class="form" novalidate>
               <div>
-                <label class="label" for="email">Waitlist email</label>
-                <p class="email-backup-note">Keep email only as a backup channel for the digest and launch updates. Telegram remains the primary live signal loop.</p>
                 <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
               </div>
               <button type="submit">Get Email Access</button>

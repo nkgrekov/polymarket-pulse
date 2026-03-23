@@ -18,6 +18,36 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Homepage Hero Right Panel Contract Revert (2026-03-23)
+
+The EN homepage hero-right panel has been explicitly reverted to the simpler conversion panel contract.
+
+Updated artifact:
+
+• `api/web/index.en.html`
+
+Contract changes:
+
+• the right panel now follows this fixed order again:
+  - value kicker
+  - short all-caps headline
+  - monospace subline
+  - three stacked feature rows
+  - primary Telegram CTA
+  - secondary `How it works?` button
+  - waitlist email kicker
+  - existing waitlist form
+  - confirmation note
+• workflow-step cards and extra explanatory callouts are removed from the panel
+• the left movers panel, the metrics row, and lower homepage sections remain unchanged
+
+Operational implication:
+
+• homepage hero experimentation should not reintroduce workflow-heavy explanation blocks into the right panel without an explicit decision
+• the right panel is again treated as a compact conversion surface, not a mini onboarding page
+
+---
+
 # Weekly Focus Contract: Pulse, Search, Retention, Core Hardening (2026-03-23)
 
 The current weekly execution layer now treats the system as four connected tracks:
