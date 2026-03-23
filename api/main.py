@@ -101,10 +101,10 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "telegram-bot": {
         "en": {
-            "title": "Polymarket Telegram Bot - Live Movers, Watchlists, and Signals",
-            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and low-noise probability alerts built for fast action.",
-            "h1": "The Telegram bot that gets you to first value fast.",
-            "intro": "Most tools optimize for dashboards. Pulse optimizes for action: open Telegram, add one live market, and get a useful signal before the tab collectors even orient themselves.",
+            "title": "Polymarket Pulse Telegram Bot - Live Movers, Watchlists, and Signals",
+            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and low-noise probability alerts built for fast action on Polymarket.",
+            "h1": "Polymarket Pulse, as a Telegram bot.",
+            "intro": "If you are looking for a Polymarket Telegram bot, this is the Pulse flow: open Telegram, add one live market, and get a useful signal before dashboard scanning catches up.",
             "k1": "One-tap path from /start to live market tracking",
             "k2": "Clear movers, inbox, and watchlist flow in one bot",
             "k3": "Signal quality over noise with threshold and dedup",
@@ -233,6 +233,10 @@ SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "q": "How fast can a new user get to first value?",
                 "a": "The intended path is simple: open the bot, add one live market, and get your first useful signal in under 60 seconds.",
+            },
+            {
+                "q": "Is Polymarket Pulse a Telegram bot for Polymarket?",
+                "a": "Yes. Polymarket Pulse is a Telegram-first signal product for Polymarket. It focuses on top movers, watchlist tracking, and low-noise alerts rather than dashboard overload.",
             },
             {
                 "q": "Why do /movers or /inbox sometimes show zero?",
@@ -685,7 +689,12 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
             "description": page["description"],
             "inLanguage": "en-US" if lang == "en" else "ru-RU",
             "isPartOf": {"@type": "WebSite", "url": base, "name": "Polymarket Pulse"},
-            "about": {"@type": "Thing", "name": "Polymarket live analytics and Telegram signals"},
+            "about": {
+                "@type": "Thing",
+                "name": "Polymarket Pulse Telegram bot for live analytics and signals"
+                if slug == "telegram-bot" and lang == "en"
+                else "Polymarket live analytics and Telegram signals"
+            },
         },
         ensure_ascii=False,
     )

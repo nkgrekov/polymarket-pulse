@@ -18,6 +18,40 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Brand Query and Digest Return Contract (2026-03-23)
+
+The weekly acquisition/retention layer now includes a safer brand-entity pass and a sharper digest-return surface without changing public routing or the live Pulse runtime.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `api/digest_job.py`
+
+Contract changes:
+
+• homepage metadata now identifies the product more explicitly as `Polymarket Pulse Telegram Bot`
+• Organization and WebSite JSON-LD on the homepage now reinforce the Telegram-first product identity instead of leaving the brand too abstract
+• the EN `/telegram-bot` page now makes the brand-query contract clearer:
+  - the page title includes `Polymarket Pulse Telegram Bot`
+  - the description ties the brand to the Polymarket Telegram-bot use case
+  - FAQ and `WebPage.about` reinforce the same entity pairing
+• daily digest now uses a more return-oriented contract:
+  - strongest market label can appear in the subject / kicker
+  - primary CTA becomes `Resume in Telegram`
+  - the email stays a backup surface, but the return path into Pulse is more explicit
+
+Operational implication:
+
+• this is a safe SEO/entity hardening step, not a structural content expansion
+• the goal is not to chase more keywords blindly, but to help Google connect:
+  - `Polymarket Pulse`
+  - `Telegram bot`
+  - `Polymarket signals`
+• digest continues to serve as backup retention, but now pushes the reader back into the live bot loop more clearly
+
+---
+
 # Pulse Watchlist Review Surface Contract (2026-03-23)
 
 The watchlist review screen now acts as a genuine retention surface instead of a passive list dump.

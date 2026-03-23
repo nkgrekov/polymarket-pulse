@@ -36,7 +36,14 @@ def send_email(to_email: str, subject: str, html: str) -> None:
     resp.raise_for_status()
 
 
-def render_digest_email(*, items_html: str, unsub_url: str, stats_line: str, kicker_line: str) -> str:
+def render_digest_email(
+    *,
+    items_html: str,
+    unsub_url: str,
+    stats_line: str,
+    kicker_line: str,
+    cta_label: str,
+) -> str:
     return f"""
     <div style="margin:0;padding:24px;background:#0d0f0e;color:#e8ede9;font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;">
       <div style="max-width:680px;margin:0 auto;background:#131714;border:1px solid #1e2520;border-radius:16px;padding:28px;">
@@ -47,7 +54,7 @@ def render_digest_email(*, items_html: str, unsub_url: str, stats_line: str, kic
         <p style="margin:0 0 18px;color:#8fa88f;font-size:13px;line-height:1.6;">{kicker_line}</p>
         <div style="font-size:14px;line-height:1.65;color:#e8ede9;">{items_html}</div>
         <p style="margin:24px 0 0;">
-          <a href="{PULSE_BOT_URL}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">Open Telegram Bot</a>
+          <a href="{PULSE_BOT_URL}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">{cta_label}</a>
         </p>
         <p style="margin:18px 0 0;color:#6b7a6e;font-size:12px;line-height:1.6;">Telegram is for the live signal loop. Email stays as backup for digest and updates.</p>
         <p style="margin:18px 0 0;color:#8fa88f;font-size:12px;line-height:1.6;"><a href="{unsub_url}" style="color:#8fa88f;">Unsubscribe</a></p>
@@ -105,6 +112,7 @@ def main() -> None:
                 lines = []
                 unique_markets = set()
                 max_delta = None
+                strongest_label = None
                 for market_id, alert_type, abs_delta, bucket, market_label in rows:
                     unique_markets.add(str(market_id))
                     try:
@@ -112,7 +120,9 @@ def main() -> None:
                     except Exception:
                         abs_delta_val = None
                     if abs_delta_val is not None:
-                        max_delta = abs_delta_val if max_delta is None else max(max_delta, abs_delta_val)
+                        if max_delta is None or abs_delta_val > max_delta:
+                            max_delta = abs_delta_val
+                            strongest_label = str(market_label)
                     alert_label = str(alert_type or "delta").replace("_", " ")
                     lines.append(
                         "<li style=\"margin:0 0 10px;\">"
@@ -124,8 +134,8 @@ def main() -> None:
                 unsub_url = f"{APP_BASE_URL}/unsubscribe?token={confirm_token}" if confirm_token else APP_BASE_URL
                 stats_line = f"{len(rows)} alert candidate(s) across {len(unique_markets)} market(s) from the last 24 hours."
                 kicker_line = (
-                    f"Strongest move in this backup pass: Δ={max_delta:.3f}. Open Telegram if you want the live loop, not the recap."
-                    if max_delta is not None
+                    f"Strongest move in this backup pass: {html.escape(str(strongest_label))} at Δ={max_delta:.3f}. Open Telegram if you want the live loop, not the recap."
+                    if max_delta is not None and strongest_label
                     else "Open Telegram if you want the live loop, not the recap."
                 )
                 html = render_digest_email(
@@ -133,8 +143,14 @@ def main() -> None:
                     unsub_url=unsub_url,
                     stats_line=stats_line,
                     kicker_line=kicker_line,
+                    cta_label="Resume in Telegram",
                 )
-                send_email(email, f"Polymarket Pulse daily digest: {len(rows)} alert candidate(s)", html)
+                subject = (
+                    f"Polymarket Pulse digest: {strongest_label}"
+                    if strongest_label
+                    else f"Polymarket Pulse daily digest: {len(rows)} alert candidate(s)"
+                )
+                send_email(email, subject, html)
 
                 cur.execute(
                     """

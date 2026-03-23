@@ -18,6 +18,43 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Brand Query and Digest Retention Pass (2026-03-23)
+
+Improved two safe supporting layers for the current weekly focus:
+
+• branded search/entity recognition around `Polymarket Pulse + Telegram bot`  
+• daily digest usefulness as a return-to-Pulse retention surface
+
+Files updated:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `api/digest_job.py`
+
+What changed:
+
+• homepage metadata now ties the brand more explicitly to the Telegram-bot use case:
+  - title and description mention `Polymarket Pulse Telegram Bot`
+  - Organization / WebSite JSON-LD now describe the product as a Telegram-first signal layer
+  - homepage ItemList now names the key path as `Polymarket Pulse Telegram Bot`
+• `/telegram-bot` EN page now carries the brand phrase more explicitly in:
+  - title
+  - description
+  - h1 / intro
+  - FAQ
+  - `WebPage.about`
+• daily digest now behaves more like a useful backup loop:
+  - subject can use the strongest market label
+  - CTA now says `Resume in Telegram`
+  - kicker calls out the strongest move by market name, not only by raw delta
+
+Practical effect:
+
+• Google now gets a clearer entity hint that `Polymarket Pulse` is specifically a Telegram bot / Telegram-first signal product for Polymarket
+• email digest is better positioned to bring a confirmed subscriber back into the live Pulse loop instead of acting like a generic recap mail
+
+---
+
 # Pulse Watchlist Review Flow Pass (2026-03-23)
 
 Improved the `Pulse` watchlist review surface so it works consistently from both slash commands and inline buttons, and so weak watchlist coverage gets an obvious next action instead of a passive status list.
