@@ -1705,6 +1705,18 @@ def watchlist_list_inline(locale: str, *, has_closed: bool = False) -> InlineKey
     return InlineKeyboardMarkup(rows)
 
 
+def watchlist_review_needs_recovery(
+    *,
+    ready_count: int,
+    partial_count: int,
+    no_quotes_count: int,
+    closed_count: int,
+) -> bool:
+    if closed_count > 0 or no_quotes_count > 0:
+        return True
+    return ready_count == 0 and partial_count > 0
+
+
 def returning_start_inline(locale: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
@@ -2915,11 +2927,20 @@ async def cmd_watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-    locale = locale_from_update(update)
     user_ctx = await resolve_user_context(update)
+    await send_watchlist_list_view(update.message, context, user_ctx, locale=locale_from_update(update))
+
+
+async def send_watchlist_list_view(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    user_ctx: dict,
+    *,
+    locale: str = "ru",
+) -> None:
     rows = run_db_query(SQL_WATCHLIST_LIST, (user_ctx["user_id"], 50), row_factory=dict_row)
     if not rows:
-        await update.message.reply_text(
+        await message.reply_text(
             "Your watchlist is empty. Use /watchlist_add <market_id|slug>."
             if locale == "en"
             else "Ваш watchlist пуст. Используйте /watchlist_add <market_id|slug>."
@@ -2950,22 +2971,71 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
             state = "no_quotes" if locale == "en" else "no_quotes"
             no_quotes_count += 1
         lines.append(f"{idx}. [{state}] {row['market_id']} — {row['question']}")
+
     summary = (
         f"Coverage now: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
         if locale == "en"
         else f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
     )
-    footer = (
-        "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup.\n"
-        "Next: open /watchlist for live changes, /inbox for thresholded alerts, or /watchlist_remove <market_id|slug> to clean quiet markets."
+    guide = (
+        "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup."
         if locale == "en"
-        else "\n\nСтатусы: ready = котируется в обоих live-окнах, partial = live только одно окно, no_quotes = рынок уже отслеживается, но ещё не котируется, closed = кандидат на очистку.\n"
-        "Дальше: откройте /watchlist для live-изменений, /inbox для пороговых алертов или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
+        else "\n\nСтатусы: ready = котируется в обоих live-окнах, partial = live только одно окно, no_quotes = рынок уже отслеживается, но ещё не котируется, closed = кандидат на очистку."
     )
-    await update.message.reply_text(
-        ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + summary + "\n".join(lines) + footer,
-        reply_markup=watchlist_list_inline(locale, has_closed=has_closed),
+    next_line = (
+        "\nNext: open /watchlist for live changes, /inbox for thresholded alerts, or /watchlist_remove <market_id|slug> to clean quiet markets."
+        if locale == "en"
+        else "\nДальше: откройте /watchlist для live-изменений, /inbox для пороговых алертов или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
     )
+    if watchlist_review_needs_recovery(
+        ready_count=ready_count,
+        partial_count=partial_count,
+        no_quotes_count=no_quotes_count,
+        closed_count=closed_count,
+    ):
+        recovery_line = (
+            "\nBest next step: swap one quiet market for a live candidate below."
+            if locale == "en"
+            else "\nЛучший следующий шаг: замените один тихий рынок на live-кандидат ниже."
+        )
+    elif ready_count <= 1 and len(rows) > 1:
+        recovery_line = (
+            "\nCoverage is still thin. One more live market will make watchlist and inbox more useful."
+            if locale == "en"
+            else "\nПокрытие ещё тонкое. Ещё один live-рынок сделает watchlist и inbox полезнее."
+        )
+    else:
+        recovery_line = ""
+
+    reply_markup = watchlist_list_inline(locale, has_closed=has_closed)
+    if watchlist_review_needs_recovery(
+        ready_count=ready_count,
+        partial_count=partial_count,
+        no_quotes_count=no_quotes_count,
+        closed_count=closed_count,
+    ):
+        reply_markup = merge_inline_markups(
+            reply_markup,
+            await build_recovery_inline(message, context, user_ctx, locale=locale),
+        )
+
+    await message.reply_text(
+        ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n")
+        + summary
+        + "\n".join(lines)
+        + guide
+        + recovery_line
+        + next_line,
+        reply_markup=reply_markup,
+    )
+
+
+async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    locale = locale_from_update(update)
+    user_ctx = await resolve_user_context(update)
+    await send_watchlist_list_view(update.message, context, user_ctx, locale=locale)
 
 
 async def cmd_watchlist_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3117,6 +3187,10 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu:watchlist":
         user_ctx = await resolve_user_context(update)
         await send_watchlist_view(query.message, user_ctx, locale=locale, show_loader=False, context=context)
+        return
+    if data == "menu:watchlist_list":
+        user_ctx = await resolve_user_context(update)
+        await send_watchlist_list_view(query.message, context, user_ctx, locale=locale)
         return
     if data == "menu:inbox":
         user_ctx = await resolve_user_context(update)

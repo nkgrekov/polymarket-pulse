@@ -18,6 +18,36 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Pulse Watchlist Review Flow Pass (2026-03-23)
+
+Improved the `Pulse` watchlist review surface so it works consistently from both slash commands and inline buttons, and so weak watchlist coverage gets an obvious next action instead of a passive status list.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• added a real callback handler for `menu:watchlist_list`, so existing `Review list` buttons no longer dead-end
+• extracted a shared `send_watchlist_list_view(...)` surface used by both:
+  - `/watchlist_list`
+  - inline `Review list`
+• `watchlist_list` now detects when coverage is weak:
+  - too many `no_quotes`
+  - `closed` markets
+  - zero `ready` markets with only `partial` coverage
+• in those cases the screen now:
+  - tells the user the best next step
+  - merges live recovery candidates directly into the inline actions
+• if coverage is merely thin, the screen nudges the user to add one more live market instead of stopping at diagnostics
+
+Practical effect:
+
+• the watchlist review path is now a real retention surface instead of a static debug-ish list
+• users can move from “my watchlist coverage is weak” to “here is the next live market to swap in” in one screen
+
+---
+
 # Homepage Hero Right Panel Revert (2026-03-23)
 
 Reverted the right panel of the EN homepage hero back to the simpler conversion panel contract after the workflow-heavy version drifted away from the intended landing behavior.

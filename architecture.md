@@ -18,6 +18,36 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Pulse Watchlist Review Surface Contract (2026-03-23)
+
+The watchlist review screen now acts as a genuine retention surface instead of a passive list dump.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• `/watchlist_list` and inline `Review list` now share the same renderer:
+  - `send_watchlist_list_view(...)`
+• `menu:watchlist_list` is now a live callback route, so buttons from watchlist/inbox quiet states and related screens resolve correctly
+• the review surface now classifies list-health into actionable states:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+• when the list is weak, the screen now upgrades from diagnostics to action:
+  - explicit “best next step” guidance
+  - merged live recovery candidates through the existing picker/replacement contract
+• when coverage is only thin, the review screen nudges toward adding one more live market rather than stopping at status text
+
+Operational implication:
+
+• `watchlist_list` is now part of the main retention loop, not just a support/debug command
+• recovery and cleanup stay inside the current `bot.*` runtime and reuse the existing add/replace picker contract, so no source-of-truth migration is introduced
+
+---
+
 # Homepage Hero Right Panel Contract Revert (2026-03-23)
 
 The EN homepage hero-right panel has been explicitly reverted to the simpler conversion panel contract.
