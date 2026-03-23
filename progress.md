@@ -55,6 +55,29 @@ Practical effect:
 
 ---
 
+# Homepage Brand Layer Rebalance (2026-03-23)
+
+Softened the homepage brand metadata back to the broader product layer after the first brand-query pass over-narrowed the whole site toward `Telegram bot` wording.
+
+Files updated:
+
+• `api/web/index.en.html`
+
+What changed:
+
+• homepage title / description are back to the wider brand surface:
+  - `Polymarket Pulse`
+  - signal terminal / live movers / watchlists / Telegram alerts
+• removed the overly narrow homepage `alternateName` that made the whole brand read like only a Telegram-bot landing
+• kept the sharper `Telegram bot` pairing on the dedicated `/telegram-bot` page, where that search intent belongs
+
+Practical effect:
+
+• homepage now represents the broader product again
+• `/telegram-bot` still carries the stronger search-intent targeting for bot-specific discovery
+
+---
+
 # Pulse Watchlist Review Flow Pass (2026-03-23)
 
 Improved the `Pulse` watchlist review surface so it works consistently from both slash commands and inline buttons, and so weak watchlist coverage gets an obvious next action instead of a passive status list.

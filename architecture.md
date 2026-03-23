@@ -52,6 +52,29 @@ Operational implication:
 
 ---
 
+# Homepage Brand Scope Guardrail (2026-03-23)
+
+The homepage brand layer should stay broader than the dedicated `/telegram-bot` landing.
+
+Updated artifact:
+
+• `api/web/index.en.html`
+
+Contract changes:
+
+• homepage metadata now represents `Polymarket Pulse` as the wider signal/analytics product
+• the exact `Polymarket Pulse + Telegram Bot` pairing remains strongest on `/telegram-bot`, not on the whole brand root
+• Organization / WebSite metadata on the homepage now describe the broader signal terminal rather than reducing the whole product identity to only the bot
+
+Operational implication:
+
+• brand-query SEO work should distinguish between:
+  - homepage = broad product/entity layer
+  - `/telegram-bot` = bot-intent landing
+• this avoids over-narrowing the brand while still giving Google a stronger bot-specific target page
+
+---
+
 # Pulse Watchlist Review Surface Contract (2026-03-23)
 
 The watchlist review screen now acts as a genuine retention surface instead of a passive list dump.
