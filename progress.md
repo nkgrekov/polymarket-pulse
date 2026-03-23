@@ -18,6 +18,87 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Weekly Focus Implementation: Pulse, Search, Retention, Core Hardening (2026-03-23)
+
+Implemented the next weekly slice around the agreed focus:
+
+• `Pulse` stays the main product surface  
+• the site stays Telegram-first  
+• email remains a backup/retention channel  
+• `Trader` stays frozen outside of its existing alpha contour  
+• the `public` analytical core is now hardened through read-only health/reporting rather than runtime rewiring  
+
+Files updated:
+
+• `api/web/index.en.html`  
+• `api/main.py`  
+• `bot/main.py`  
+• `api/digest_job.py`  
+• `db/migrations/012_analytics_core_health.sql`  
+• `scripts/growth/weekly_kpi_report.py`  
+• `scripts/data_core_health_report.py`  
+• `docs/data_core_contract_2026-03-23.md`  
+• `docs/data_core_health_latest.md`  
+• `docs/growth_kpi_latest.md`  
+
+What changed:
+
+• homepage hero now uses a cleaner proof line:
+  - live DB preview on the left
+  - Telegram bot live now
+• EN SEO pages now keep the CTA hierarchy stricter:
+  - Telegram primary
+  - bot-flow/proof secondary
+  - email backup tertiary
+• the main Pulse bot no longer pushes Trader from core analytics views like `/movers`, fallback watchlist windows, `/start`, `/help`, `/limits`, or free-plan followups
+• `/watchlist_list` now shows compact coverage counts before the per-market rows:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+• daily digest now reads more like a product surface:
+  - joins market question labels
+  - summarizes alert breadth
+  - highlights the strongest move in the backup pass
+• added `public.analytics_core_health_latest` as the new read-only health view for the canonical Layer II core
+• added a dedicated data-core contract doc and a generated data-core health report
+• weekly KPI reporting now includes a compact core-health section alongside the growth funnel
+
+Practical effect:
+
+• acquisition pages now push one clearer path into Telegram without treating email as an equal first-screen choice
+• Pulse core screens stay inside the analytics loop instead of leaking execution-alpha prompts into the main retention surfaces
+• weekly review now has two live readouts:
+  - funnel health (`docs/growth_kpi_latest.md`)
+  - analytical core health (`docs/data_core_health_latest.md`)
+• the data-layer audit is now converted into a safe hardening layer rather than a reason to rewrite the live `bot.*` runtime
+
+---
+
+# Public Data Layer Audit Snapshot (2026-03-20)
+
+Captured a dedicated read-only audit of the live Supabase `public` schema so the Layer II analytical core has a current health snapshot alongside the ongoing growth work.
+
+Files updated:
+
+• `docs/data_layer_public_schema_audit_2026-03-20.md`
+
+What was documented:
+
+• the current live-state of `market_snapshots`, `market_universe`, and the movers views
+• the distinction between the healthy analytical core and the weaker transitional/legacy shell in `public`
+• specific drift points around:
+  - `watchlist` vs `watchlist_markets`
+  - empty alert surfaces
+  - semantically weak metadata such as `markets.category`
+
+Practical effect:
+
+• the project now has a dedicated written snapshot of how the Layer II data substrate actually behaves in production
+• this gives us a clearer baseline before any future cleanup of public-schema contracts or alert/watchlist derivations
+
+---
+
 # Landing -> Telegram Conversion Pass 2 (2026-03-20)
 
 Tightened the EN homepage around one clearer activation story: open Telegram, add one market, and get to first value without treating email like an equal primary action.

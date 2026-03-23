@@ -1417,6 +1417,21 @@ def watchlist_live_inline(locale: str, *, has_closed: bool = False) -> InlineKey
     return InlineKeyboardMarkup(rows)
 
 
+def movers_live_inline(locale: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+            ],
+            [
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+                InlineKeyboardButton("Plan" if locale == "en" else "План", callback_data="menu:plan"),
+            ],
+        ]
+    )
+
+
 def inbox_live_inline(locale: str, *, has_closed: bool = False) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = [
         [
@@ -1601,7 +1616,7 @@ def upgrade_followup_inline(locale: str, *, pro: bool = False) -> InlineKeyboard
             ],
             [
                 InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
-                InlineKeyboardButton("Trade" if locale == "en" else "Трейд", callback_data="menu:trade"),
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
             ],
         ]
     )
@@ -1776,14 +1791,7 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
     if rows:
         await message.reply_text(
             "Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows),
-            reply_markup=trader_surface_keyboard(
-                locale=locale,
-                placement="bot_movers",
-                market_id=str(rows[0].get("market_id")) if rows else None,
-                extra_buttons=[
-                    InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
-                ],
-            ),
+            reply_markup=movers_live_inline(locale),
         )
         return
 
@@ -1800,11 +1808,7 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
                 else "В текущем окне движение плоское. Показываю fallback 30m movers:\n\n"
             )
             + "\n\n".join(fmt_mover_row(r) for r in rows_30m),
-            reply_markup=trader_surface_keyboard(
-                locale=locale,
-                placement="bot_movers_30m",
-                market_id=str(rows_30m[0].get("market_id")) if rows_30m else None,
-            ),
+            reply_markup=movers_live_inline(locale),
         )
         return
 
@@ -1821,11 +1825,7 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
                 else "В текущем окне last/prev движение плоское. Показываю 1h movers:\n\n"
             )
             + "\n\n".join(fmt_mover_row(r) for r in rows_1h),
-            reply_markup=trader_surface_keyboard(
-                locale=locale,
-                placement="bot_movers_1h",
-                market_id=str(rows_1h[0].get("market_id")) if rows_1h else None,
-            ),
+            reply_markup=movers_live_inline(locale),
         )
         return
 
@@ -1973,10 +1973,9 @@ async def send_watchlist_view(
                     else "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
                 )
                 + "\n\n".join(fmt_mover_row(r) for r in rows_30m),
-                reply_markup=trader_surface_keyboard(
-                    locale=locale,
-                    placement="bot_watchlist_30m",
-                    market_id=str(rows_30m[0].get("market_id")) if rows_30m else None,
+                reply_markup=watchlist_live_inline(
+                    locale,
+                    has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
                 ),
             )
             return
@@ -1993,10 +1992,9 @@ async def send_watchlist_view(
                     else "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
                 )
                 + "\n\n".join(fmt_mover_row(r) for r in rows_1h),
-                reply_markup=trader_surface_keyboard(
-                    locale=locale,
-                    placement="bot_watchlist_1h",
-                    market_id=str(rows_1h[0].get("market_id")) if rows_1h else None,
+                reply_markup=watchlist_live_inline(
+                    locale,
+                    has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
                 ),
             )
             return
@@ -2064,12 +2062,12 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
         if locale == "en":
             return watchlist_result(
                 f"{plan_label} limit: {limit} markets. "
-                "Remove one via /watchlist_remove, replace a quiet market below, upgrade via /upgrade, or join execution alpha via /trade",
+                "Remove one via /watchlist_remove, replace a quiet market below, or upgrade via /upgrade.",
                 outcome="limit",
             )
         return watchlist_result(
             f"Лимит {plan_label}: {limit} рынка. "
-            "Удалите один через /watchlist_remove, замените тихий рынок ниже, измените план через /upgrade или идите в execution alpha через /trade",
+            "Удалите один через /watchlist_remove, замените тихий рынок ниже или измените план через /upgrade.",
             outcome="limit",
         )
 
@@ -2585,8 +2583,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Next:\n"
             "/help — command reference\n"
-            "/upgrade — move to PRO\n"
-            "/trade — join execution alpha"
+            "/upgrade — move to PRO"
             if locale == "en"
             else "Профиль активирован.\n\n"
             "Что бот делает:\n"
@@ -2601,8 +2598,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Полезно дальше:\n"
             "/help — все команды и расширенные опции\n"
-            "/upgrade — как перейти на PRO\n"
-            "/trade — execution alpha"
+            "/upgrade — как перейти на PRO"
         ),
         reply_markup=quick_reply_keyboard(locale),
     )
@@ -2690,8 +2686,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/watchlist_remove <market_id|slug>\n"
             "/threshold 0.03 — personal threshold\n"
             "/limits — FREE/PRO limits\n"
-            "/inbox20 — extended inbox\n"
-            "/trade — execution alpha handoff"
+            "/inbox20 — extended inbox"
             if locale == "en"
             else "Основные команды:\n"
             "/start — активация профиля\n"
@@ -2707,8 +2702,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/watchlist_remove <market_id|slug>\n"
             "/threshold 0.03 — персональный порог\n"
             "/limits — лимиты FREE/PRO\n"
-            "/inbox20 — расширенный inbox\n"
-            "/trade — переход в execution alpha"
+            "/inbox20 — расширенный inbox"
         )
     )
 
@@ -2752,8 +2746,7 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• email digest included\n\n"
             f"PRO price: about ${PRO_MONTHLY_USD}/month in Telegram Stars\n\n"
             f"Your current usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
-            "Upgrade: /upgrade\n"
-            "Need execution alpha? /trade"
+            "Upgrade: /upgrade"
             if locale == "en"
             else "Лимиты и доступ:\n\n"
             "FREE:\n"
@@ -2765,8 +2758,7 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• email-дайджест включен\n\n"
             f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
             f"Ваш текущий usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
-            "Чтобы перейти на PRO: /upgrade\n"
-            "Нужен execution alpha? /trade"
+            "Чтобы перейти на PRO: /upgrade"
         )
     )
 
@@ -2936,6 +2928,10 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     lines = []
     has_closed = False
+    ready_count = 0
+    partial_count = 0
+    no_quotes_count = 0
+    closed_count = 0
     for idx, row in enumerate(rows, start=1):
         market_status = str(row.get("market_status") or "unknown")
         has_last = bool(row.get("has_last_quotes"))
@@ -2943,13 +2939,22 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if market_status == "closed":
             state = "closed" if locale == "en" else "closed"
             has_closed = True
+            closed_count += 1
         elif has_last and has_prev:
             state = "ready" if locale == "en" else "ready"
+            ready_count += 1
         elif has_last or has_prev:
             state = "partial" if locale == "en" else "partial"
+            partial_count += 1
         else:
             state = "no_quotes" if locale == "en" else "no_quotes"
+            no_quotes_count += 1
         lines.append(f"{idx}. [{state}] {row['market_id']} — {row['question']}")
+    summary = (
+        f"Coverage now: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
+        if locale == "en"
+        else f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
+    )
     footer = (
         "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup.\n"
         "Next: open /watchlist for live changes, /inbox for thresholded alerts, or /watchlist_remove <market_id|slug> to clean quiet markets."
@@ -2958,7 +2963,7 @@ async def cmd_watchlist_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "Дальше: откройте /watchlist для live-изменений, /inbox для пороговых алертов или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
     )
     await update.message.reply_text(
-        ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + "\n".join(lines) + footer,
+        ("Your watchlist:\n" if locale == "en" else "Ваш watchlist:\n") + summary + "\n".join(lines) + footer,
         reply_markup=watchlist_list_inline(locale, has_closed=has_closed),
     )
 

@@ -18,6 +18,91 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Weekly Focus Contract: Pulse, Search, Retention, Core Hardening (2026-03-23)
+
+The current weekly execution layer now treats the system as four connected tracks:
+
+• site/search acquisition  
+• Pulse bot activation + retention  
+• email as backup retention  
+• read-only analytical core health  
+
+Trader remains deployed, but is intentionally outside the main weekly optimization path.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `bot/main.py`
+• `api/digest_job.py`
+• `db/migrations/012_analytics_core_health.sql`
+• `scripts/growth/weekly_kpi_report.py`
+• `scripts/data_core_health_report.py`
+• `docs/data_core_contract_2026-03-23.md`
+
+Contract changes:
+
+• EN acquisition pages now use one stricter CTA hierarchy:
+  - Telegram primary
+  - bot-flow/proof secondary
+  - email backup tertiary
+• homepage proof language now references the live DB preview directly instead of social-proof/waitlist framing
+• core Pulse analytics views no longer default to Trader/execution prompts during the current weekly focus
+• `/movers`, watchlist fallback windows, `/start`, `/help`, `/limits`, and free-plan followups now keep the user inside the Pulse loop first
+• `/watchlist_list` now exposes compact list-health counts before the detailed rows, making review/cleanup decisions faster
+• `public.analytics_core_health_latest` now acts as the compact read-only health surface for the canonical analytical core:
+  - freshness lag
+  - latest quote coverage
+  - universe coverage
+  - movers output health
+• `scripts/growth/weekly_kpi_report.py` now includes a core-health block, so weekly review can see both:
+  - growth funnel health
+  - analytical core health
+
+Operational implication:
+
+• the canonical Layer II spine is now clearer:
+  - `public.market_snapshots`
+  - `public.market_universe`
+  - `public.snapshot_health`
+  - `public.top_movers_*`
+  - `public.analytics_core_health_latest`
+• the live Pulse runtime still stays on `bot.*`; this weekly slice does not re-plumb watchlist or alert source-of-truth
+• growth and bot UX iterations can now use a shared weekly review without confusing a weak compatibility surface in `public` with a broken runtime
+
+---
+
+# Public Data Layer Contract Snapshot (2026-03-20)
+
+The live Supabase `public` schema currently acts as both the Layer II analytical core and a compatibility shell for older user-facing derived objects.
+
+Updated artifact:
+
+• `docs/data_layer_public_schema_audit_2026-03-20.md`
+
+Current contract understanding:
+
+• the canonical analytical core is centered on:
+  - `market_snapshots`
+  - `market_universe`
+  - `snapshot_health`
+  - `top_movers_*`
+• this core is healthy enough to support the current intelligence-layer product story
+• the weakest part of `public` is not raw market data but the transitional application surface around it, especially:
+  - watchlist-derived objects
+  - alert-derived objects
+  - legacy log tables
+  - semantically weak metadata fields such as `markets.category`
+
+Operational implication:
+
+• future data-layer work should distinguish clearly between:
+  - canonical analytical surfaces
+  - legacy or compatibility surfaces
+• cleanup priority should start with public watchlist and alert contracts before deeper changes to the raw market ingestion layer
+
+---
+
 # Homepage Conversion Contract: Telegram First, Email Backup (2026-03-20)
 
 The EN homepage acquisition layer now treats Telegram activation as the only primary action and frames email explicitly as a secondary backup channel.

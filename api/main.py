@@ -626,12 +626,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     related_page_slugs = SEO_PAGE_LINKS.get(slug, [name for name in SEO_PAGES if name != slug])
     page_label = slug.replace("-", " ").upper()
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
-    cta_waitlist_text = (
-        "Keep Email as Backup"
-        if slug in {"analytics", "signals", "telegram-bot", "top-movers", "watchlist-alerts"} and lang == "en"
-        else "Join Email Waitlist" if lang == "en" else "Email как backup" if slug in {"analytics", "signals", "telegram-bot", "top-movers", "watchlist-alerts"} else "Вступить в Email Waitlist"
-    )
-    cta_guide_text = "How it works?" if lang == "en" else "Как это работает?"
+    cta_guide_text = "See the bot flow" if lang == "en" else "Как это работает?"
+    cta_backup_link_text = "Keep email as backup" if lang == "en" else "Email как backup"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
     faq_head = "Common questions" if lang == "en" else "Частые вопросы"
@@ -733,12 +729,10 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         for name in related_page_slugs
         if name in SEO_PAGES and name != slug and name != "trader-bot"
     )
-    guide_href = f"/how-it-works?placement=telegram_bot_page"
-    guide_cta = (
-        f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
-        if slug == "telegram-bot"
-        else ""
-    )
+    guide_href = f"/how-it-works?placement=seo_{slug}_guide"
+    backup_href = f"/?placement=seo_{slug}_backup#waitlist-form"
+    guide_cta = f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
+    backup_cta = f'<a id="backup-link" class="cta-backup-link" href="{backup_href}">{cta_backup_link_text}</a>'
     compare_head = "Why Pulse instead of another dashboard" if lang == "en" else "Почему Pulse, а не ещё один dashboard"
     compare_title = (
         "Normal-user speed beats terminal cosplay."
@@ -1032,6 +1026,21 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       font-size: 12px;
       line-height: 1.5;
     }}
+    .cta-backup-link-wrap {{
+      margin: 8px 0 0;
+    }}
+    .cta-backup-link {{
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }}
+    .cta-backup-link:hover, .cta-backup-link:focus-visible {{
+      color: var(--text);
+      outline: none;
+    }}
     .preview {{
       margin-top: 16px;
       border: 1px solid var(--line);
@@ -1225,7 +1234,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
       <div class="cta-row">
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
-        <a id="waitlist-link" class="cta-secondary" href="/#waitlist-form">{cta_waitlist_text}</a>
         {guide_cta}
       </div>
       <div class="cta-trust" aria-label="Telegram trust strip">
@@ -1235,6 +1243,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
       <p class="cta-note">{cta_note}</p>
       <p class="cta-backup-note">{cta_backup_note}</p>
+      <p class="cta-backup-link-wrap">{backup_cta}</p>
     </article>
     <section class="preview reveal delay-3">
       <p class="links-title">{preview_head}</p>
@@ -1299,8 +1308,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     document.getElementById('tg-link')?.addEventListener('click', () => {{
       trackEvent('tg_click', details);
     }});
-    document.getElementById('waitlist-link')?.addEventListener('click', () => {{
-      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_waitlist' }});
+    document.getElementById('guide-link')?.addEventListener('click', () => {{
+      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_guide' }});
+    }});
+    document.getElementById('backup-link')?.addEventListener('click', () => {{
+      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_backup' }});
     }});
   </script>
 </body>

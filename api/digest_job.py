@@ -1,4 +1,5 @@
 import os
+import html
 from datetime import datetime, timedelta, timezone
 
 import psycopg
@@ -35,14 +36,15 @@ def send_email(to_email: str, subject: str, html: str) -> None:
     resp.raise_for_status()
 
 
-def render_digest_email(*, items_html: str, unsub_url: str, stats_line: str) -> str:
+def render_digest_email(*, items_html: str, unsub_url: str, stats_line: str, kicker_line: str) -> str:
     return f"""
     <div style="margin:0;padding:24px;background:#0d0f0e;color:#e8ede9;font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;">
       <div style="max-width:680px;margin:0 auto;background:#131714;border:1px solid #1e2520;border-radius:16px;padding:28px;">
         <div style="color:#6b7a6e;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Polymarket Pulse // daily digest</div>
         <h1 style="margin:0 0 14px;font-size:28px;line-height:1.05;color:#e8ede9;">Your markets, without the dashboard crawl.</h1>
         <p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#8fa88f;">This digest is your backup view of what actually moved. For live action, Telegram is still the primary loop.</p>
-        <p style="margin:0 0 18px;color:#6b7a6e;font-size:12px;line-height:1.6;">{stats_line}</p>
+        <p style="margin:0 0 10px;color:#6b7a6e;font-size:12px;line-height:1.6;">{stats_line}</p>
+        <p style="margin:0 0 18px;color:#8fa88f;font-size:13px;line-height:1.6;">{kicker_line}</p>
         <div style="font-size:14px;line-height:1.65;color:#e8ede9;">{items_html}</div>
         <p style="margin:24px 0 0;">
           <a href="{PULSE_BOT_URL}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">Open Telegram Bot</a>
@@ -81,11 +83,17 @@ def main() -> None:
 
                 cur.execute(
                     """
-                    select market_id, alert_type, abs_delta, bucket
-                    from bot.alert_events
-                    where user_id = %s
-                      and created_at >= %s
-                    order by abs_delta desc nulls last
+                    select
+                      ae.market_id,
+                      ae.alert_type,
+                      ae.abs_delta,
+                      ae.bucket,
+                      coalesce(m.question, ae.market_id) as market_label
+                    from bot.alert_events ae
+                    left join public.markets m on m.market_id = ae.market_id
+                    where ae.user_id = %s
+                      and ae.created_at >= %s
+                    order by ae.abs_delta desc nulls last
                     limit 10
                     """,
                     (user_id, since),
@@ -95,22 +103,38 @@ def main() -> None:
                     continue
 
                 lines = []
-                for market_id, alert_type, abs_delta, bucket in rows:
+                unique_markets = set()
+                max_delta = None
+                for market_id, alert_type, abs_delta, bucket, market_label in rows:
+                    unique_markets.add(str(market_id))
+                    try:
+                        abs_delta_val = float(abs_delta)
+                    except Exception:
+                        abs_delta_val = None
+                    if abs_delta_val is not None:
+                        max_delta = abs_delta_val if max_delta is None else max(max_delta, abs_delta_val)
+                    alert_label = str(alert_type or "delta").replace("_", " ")
                     lines.append(
                         "<li style=\"margin:0 0 10px;\">"
-                        f"<strong>{alert_type}</strong> · {market_id}<br />"
-                        f"<span style=\"color:#8fa88f;\">Δ={abs_delta} · {bucket}</span>"
+                        f"<strong>{html.escape(str(market_label))}</strong><br />"
+                        f"<span style=\"color:#8fa88f;\">{html.escape(alert_label)} · Δ={html.escape(str(abs_delta))} · {html.escape(str(bucket))}</span>"
                         "</li>"
                     )
 
                 unsub_url = f"{APP_BASE_URL}/unsubscribe?token={confirm_token}" if confirm_token else APP_BASE_URL
-                stats_line = f"{len(rows)} alert candidate(s) from the last 24 hours."
+                stats_line = f"{len(rows)} alert candidate(s) across {len(unique_markets)} market(s) from the last 24 hours."
+                kicker_line = (
+                    f"Strongest move in this backup pass: Δ={max_delta:.3f}. Open Telegram if you want the live loop, not the recap."
+                    if max_delta is not None
+                    else "Open Telegram if you want the live loop, not the recap."
+                )
                 html = render_digest_email(
                     items_html="<ul style=\"padding-left:18px;margin:0;\">" + "".join(lines) + "</ul>",
                     unsub_url=unsub_url,
                     stats_line=stats_line,
+                    kicker_line=kicker_line,
                 )
-                send_email(email, "Polymarket Pulse daily digest", html)
+                send_email(email, f"Polymarket Pulse daily digest: {len(rows)} alert candidate(s)", html)
 
                 cur.execute(
                     """

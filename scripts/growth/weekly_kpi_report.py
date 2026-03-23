@@ -98,6 +98,20 @@ select
 from tg, wl;
 """
 
+SQL_CORE_HEALTH = """
+select
+  latest_bucket_lag_seconds,
+  latest_yes_coverage_pct,
+  universe_count,
+  latest_universe_coverage,
+  prev_universe_coverage,
+  movers_latest_nonzero,
+  movers_1h_nonzero,
+  movers_24h_nonzero
+from public.analytics_core_health_latest
+limit 1;
+"""
+
 
 def pct(num: float, den: float) -> str:
     if den <= 0:
@@ -144,6 +158,8 @@ def main() -> None:
             placement_rows = cur.fetchall()
             cur.execute(SQL_BOT_ACTIVATION, (since, since))
             activation_row = cur.fetchone() or {"started_users": 0, "users_with_watchlist_add": 0}
+            cur.execute(SQL_CORE_HEALTH)
+            core_health_row = cur.fetchone() or {}
 
     funnel = to_map(funnel_rows, "event_type", "events")
     sources = to_map(source_rows, "utm_source", "clicks")
@@ -159,6 +175,14 @@ def main() -> None:
     confirm_success = funnel.get("confirm_success", 0)
     started_users = int(activation_row.get("started_users") or 0)
     watchlist_add_users_proxy = int(activation_row.get("users_with_watchlist_add") or 0)
+    latest_bucket_lag_seconds = int(core_health_row.get("latest_bucket_lag_seconds") or 0)
+    latest_yes_coverage_pct = float(core_health_row.get("latest_yes_coverage_pct") or 0.0)
+    universe_count = int(core_health_row.get("universe_count") or 0)
+    latest_universe_coverage = int(core_health_row.get("latest_universe_coverage") or 0)
+    prev_universe_coverage = int(core_health_row.get("prev_universe_coverage") or 0)
+    movers_latest_nonzero = int(core_health_row.get("movers_latest_nonzero") or 0)
+    movers_1h_nonzero = int(core_health_row.get("movers_1h_nonzero") or 0)
+    movers_24h_nonzero = int(core_health_row.get("movers_24h_nonzero") or 0)
 
     lines: list[str] = [
         f"# Growth KPI Report ({now.isoformat()})",
@@ -182,6 +206,14 @@ def main() -> None:
         f"- users_with_watchlist_add proxy (`bot.watchlist`): **{watchlist_add_users_proxy}**",
         f"- start_to_watchlist_add proxy: **{pct(watchlist_add_users_proxy, started_users)}**",
         f"- event_to_proxy gap (`watchlist_add users` vs `bot.watchlist` proxy): **{watchlist_add_users - watchlist_add_users_proxy:+d}**",
+        "",
+        "## Core Data Health",
+        "",
+        f"- latest bucket lag: **{latest_bucket_lag_seconds}s**",
+        f"- latest yes-quote coverage: **{latest_yes_coverage_pct:.1f}%**",
+        f"- universe coverage (latest): **{latest_universe_coverage}/{universe_count}**",
+        f"- universe coverage (prev): **{prev_universe_coverage}/{universe_count}**",
+        f"- non-zero movers: **latest {movers_latest_nonzero} / 1h {movers_1h_nonzero} / 24h {movers_24h_nonzero}**",
         "",
         "## tg_click by UTM Source",
         "",
@@ -231,6 +263,7 @@ def main() -> None:
         "- If one `start_payload` consistently wins: keep posting into that pain theme.",
         "- If `tg_click/page_view` is low: iterate hero and CTA copy on landing.",
         "- If `confirm_success/waitlist_submit` is low: review email deliverability and confirm page UX.",
+        "- If core freshness or universe coverage slips: fix the analytical core before iterating user-facing Pulse UX.",
         "",
     ]
 
