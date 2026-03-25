@@ -18,6 +18,34 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# New-User Start Funnel Tightening (2026-03-25)
+
+Simplified the new-user `/start` path in `Pulse` so the first useful action is more obvious and the bot spends less of the first screen budget on command-reference text.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• the initial `/start` message for brand-new users is now lighter:
+  - keeps the core product framing
+  - removes the old longer quick-start checklist from the top block
+• new users now get a separate action-first message:
+  - add one live market
+  - open Watchlist
+  - let Inbox stay quiet until the move matters
+• the live-candidate picker prompt is now more concrete:
+  - “Three live candidates right now”
+  - instead of a more generic add prompt
+
+Practical effect:
+
+• `/start` for a new user now points harder at the first add instead of making the user read the bot before using it
+• this is aimed directly at the current funnel gap between measured `tg_start` and `watchlist_add`
+
+---
+
 # Funnel Attribution Repair Pass (2026-03-25)
 
 Repaired the weekly measurement layer so the core `site -> tg_start -> watchlist_add` funnel reads more honestly and so future watchlist adds can be attributed back to the last Telegram start context.

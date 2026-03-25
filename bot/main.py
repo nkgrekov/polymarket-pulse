@@ -2605,13 +2605,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• shows top live movers\n"
             "• tracks your watchlist markets\n"
             "• sends push alerts on probability shifts\n\n"
-            "Quick start in 60 seconds:\n"
-            "1) /menu — open quick actions\n"
-            "2) /movers — view 3 live moves\n"
-            "3) /watchlist — view live delta for your list\n"
-            "4) /threshold 0.03 — set sensitivity\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-            "Next:\n"
+            "Useful next:\n"
             "/help — command reference\n"
             "/upgrade — move to PRO"
             if locale == "en"
@@ -2620,11 +2615,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• показывает top live movers\n"
             "• отслеживает ваши рынки в watchlist\n"
             "• присылает push по движению вероятностей\n\n"
-            "Быстрый старт за 60 секунд:\n"
-            "1) /menu — открыть быстрые кнопки\n"
-            "2) /movers — посмотреть 3 live движения\n"
-            "3) /watchlist — увидеть live-дельту по вашему списку\n"
-            "4) /threshold 0.03 — настроить чувствительность\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Полезно дальше:\n"
             "/help — все команды и расширенные опции\n"
@@ -2636,9 +2626,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if watchlist_count == 0:
         await update.message.reply_text(
             (
-                "First useful step: add one live market to your watchlist."
+                "Fastest path to first value:\n"
+                "1) add one live market below\n"
+                "2) open Watchlist for live deltas\n"
+                "3) let Inbox stay quiet until the move matters"
                 if locale == "en"
-                else "Первый полезный шаг: добавьте один live-рынок в watchlist."
+                else "Самый быстрый путь к первой пользе:\n"
+                "1) добавьте один live-рынок ниже\n"
+                "2) откройте Вотчлист для live-дельт\n"
+                "3) пусть Инбокс молчит, пока движение не станет важным"
             ),
             reply_markup=onboarding_start_inline(locale),
         )
@@ -2655,9 +2651,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if starter_rows:
             await update.message.reply_text(
                 (
-                    "Tap one market below to add it instantly:"
+                    "Three live candidates right now. Tap one to add it instantly:"
                     if locale == "en"
-                    else "Нажмите на один рынок ниже, чтобы добавить его сразу:"
+                    else "Вот три live-кандидата прямо сейчас. Нажмите на один, чтобы добавить его сразу:"
                 ),
                 reply_markup=onboarding_picker_inline(
                     update.effective_chat.id,

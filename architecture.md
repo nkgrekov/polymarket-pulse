@@ -18,6 +18,31 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# New-User `/start` Contract Tightening (2026-03-25)
+
+The new-user activation path in `Pulse` is now more explicitly action-first.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• `/start` still logs attribution before any user-facing branch
+• for a new user (`watchlist_count == 0`), the bot now separates:
+  - lightweight product framing
+  - explicit first-value instructions
+  - immediate live candidate picker
+• the old longer quick-start checklist has been reduced so the first activation screen spends less time on commands and more time on the first add
+
+Operational implication:
+
+• the new-user `/start` surface is now tuned more directly toward the current KPI:
+  - `tg_start -> watchlist_add`
+• command discovery still exists through `/help` and the menu system, but is no longer prioritized above the first live-market add
+
+---
+
 # Funnel Attribution Contract Repair (2026-03-25)
 
 The weekly growth review now distinguishes between raw Telegram starts and starts that were actually site-attributed, and `watchlist_add` events now carry the latest start context forward.
