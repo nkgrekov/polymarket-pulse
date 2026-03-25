@@ -1,6 +1,6 @@
-# Growth KPI Report (2026-03-25T13:00:39.001720+00:00)
+# Growth KPI Report (2026-03-25T15:57:33.313977+00:00)
 
-Window: `2026-03-18T13:00:39.001720+00:00` -> `2026-03-25T13:00:39.001720+00:00` (`7d`)
+Window: `2026-03-18T15:57:33.313977+00:00` -> `2026-03-25T15:57:33.313977+00:00` (`7d`)
 
 ## Funnel
 
@@ -25,11 +25,11 @@ Window: `2026-03-18T13:00:39.001720+00:00` -> `2026-03-25T13:00:39.001720+00:00`
 
 ## Core Data Health
 
-- latest bucket lag: **942s**
-- latest yes-quote coverage: **97.0%**
+- latest bucket lag: **755s**
+- latest yes-quote coverage: **97.1%**
 - universe coverage (latest): **200/200**
 - universe coverage (prev): **200/200**
-- non-zero movers: **latest 21 / 1h 94 / 24h 68**
+- non-zero movers: **latest 27 / 1h 119 / 24h 67**
 
 ## tg_click by UTM Source
 
@@ -52,6 +52,15 @@ Window: `2026-03-18T13:00:39.001720+00:00` -> `2026-03-25T13:00:39.001720+00:00`
 |---|---:|
 | hero_panel | 4 |
 | mobile_sticky | 1 |
+
+## CTA Surface Performance
+
+| Placement | Seen | tg_click | CTR |
+|---|---:|---:|---:|
+| hero_panel | 0 | 4 | n/a |
+| mobile_sticky | 0 | 1 | n/a |
+| proof_bridge | 0 | 0 | n/a |
+| seo_bridge | 0 | 0 | n/a |
 
 ## Action Notes
 

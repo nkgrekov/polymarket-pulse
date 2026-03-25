@@ -13,7 +13,8 @@ with events as (
     event_type,
     created_at,
     coalesce(nullif(details->>'utm_source', ''), source, 'unknown') as utm_source,
-    coalesce(nullif(details->>'placement', ''), 'unknown') as placement
+    coalesce(nullif(details->>'placement', ''), 'unknown') as placement,
+    coalesce(details->>'surface_impression', 'false') as surface_impression
   from app.site_events
   where created_at >= %s
 )
@@ -21,6 +22,7 @@ select
   event_type,
   count(*)::bigint as events
 from events
+where not (event_type = 'page_view' and surface_impression = 'true')
 group by event_type
 order by events desc, event_type;
 """
@@ -85,6 +87,44 @@ where created_at >= %s
 group by placement
 order by clicks desc, placement
 limit %s;
+"""
+
+SQL_CTA_SURFACES = """
+with surfaces as (
+  select * from (values
+    ('hero_panel'),
+    ('proof_bridge'),
+    ('seo_bridge'),
+    ('mobile_sticky')
+  ) as s(placement)
+),
+impressions as (
+  select
+    coalesce(nullif(details->>'placement', ''), 'unknown') as placement,
+    count(*)::bigint as seen
+  from app.site_events
+  where created_at >= %s
+    and event_type = 'page_view'
+    and coalesce(details->>'surface_impression', 'false') = 'true'
+  group by placement
+),
+clicks as (
+  select
+    coalesce(nullif(details->>'placement', ''), 'unknown') as placement,
+    count(*)::bigint as clicks
+  from app.site_events
+  where created_at >= %s
+    and event_type = 'tg_click'
+  group by placement
+)
+select
+  surfaces.placement,
+  coalesce(impressions.seen, 0)::bigint as seen,
+  coalesce(clicks.clicks, 0)::bigint as clicks
+from surfaces
+left join impressions using (placement)
+left join clicks using (placement)
+order by surfaces.placement;
 """
 
 SQL_BOT_ACTIVATION = """
@@ -164,6 +204,8 @@ def main() -> None:
             }
             cur.execute(SQL_TOP_PLACEMENTS, (since, args.top_placements))
             placement_rows = cur.fetchall()
+            cur.execute(SQL_CTA_SURFACES, (since, since))
+            cta_surface_rows = cur.fetchall()
             cur.execute(SQL_BOT_ACTIVATION, (since, since))
             activation_row = cur.fetchone() or {"started_users": 0, "users_with_watchlist_add": 0}
             cur.execute(SQL_CORE_HEALTH)
@@ -265,6 +307,22 @@ def main() -> None:
             lines.append(f"| {row['placement']} | {int(row['clicks'] or 0)} |")
     else:
         lines.append("| n/a | 0 |")
+
+    lines += [
+        "",
+        "## CTA Surface Performance",
+        "",
+        "| Placement | Seen | tg_click | CTR |",
+        "|---|---:|---:|---:|",
+    ]
+    if cta_surface_rows:
+        for row in cta_surface_rows:
+            seen = int(row.get("seen") or 0)
+            clicks = int(row.get("clicks") or 0)
+            ctr = pct(clicks, seen) if seen > 0 else "n/a"
+            lines.append(f"| {row['placement']} | {seen} | {clicks} | {ctr} |")
+    else:
+        lines.append("| n/a | 0 | 0 | n/a |")
 
     lines += [
         "",

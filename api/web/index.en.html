@@ -1301,7 +1301,7 @@
           </div>
         </article>
 
-        <aside class="card cta-panel reveal delay-3">
+        <aside id="hero-panel" class="card cta-panel reveal delay-3">
           <p class="cta-label">FASTEST WAY TO GET VALUE</p>
           <h2 class="cta-title">CATCH THE MOVE BEFORE EVERYONE ELSE.</h2>
           <p class="cta-copy">Open the bot now for instant signals. Leave email as backup for launch updates and digest.</p>
@@ -1381,7 +1381,7 @@
       </div>
     </section>
 
-    <section class="trade-strip reveal delay-7" aria-label="Telegram decision strip">
+    <section id="proof-bridge" class="trade-strip reveal delay-7" aria-label="Telegram decision strip">
       <div class="trade-strip-grid">
         <div>
           <p class="screen-kicker">AFTER THE PROOF</p>
@@ -1464,6 +1464,8 @@
     const tgLinkSticky = document.getElementById('tg-link-sticky');
     const guideLink = document.querySelector('.guide-link');
     const guideLinkBridge = document.getElementById('guide-link-bridge');
+    const heroPanel = document.getElementById('hero-panel');
+    const proofBridge = document.getElementById('proof-bridge');
     const checkoutBtn = document.getElementById('checkout-btn');
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
@@ -1589,6 +1591,31 @@
     trackEvent('page_view', { ...getAttribution(), placement: 'page' });
     loadLiveMovers();
     setInterval(loadLiveMovers, 120000);
+    if ('IntersectionObserver' in window) {
+      const seen = new Set();
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const placement = entry.target?.dataset?.placement;
+          if (!placement || seen.has(placement)) return;
+          seen.add(placement);
+          trackEvent('page_view', {
+            ...getAttribution(),
+            placement,
+            surface_impression: true
+          });
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.35 });
+      if (heroPanel) {
+        heroPanel.dataset.placement = 'hero_panel';
+        observer.observe(heroPanel);
+      }
+      if (proofBridge) {
+        proofBridge.dataset.placement = 'proof_bridge';
+        observer.observe(proofBridge);
+      }
+    }
     tgLink?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'hero_panel' });
     });

@@ -765,7 +765,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     )
     compare_block = (
         f"""
-    <section class="links-wrap reveal delay-4">
+    <section id="seo-bridge" class="links-wrap reveal delay-4">
       <p class="links-title">{compare_head}</p>
       <div class="preview-grid">
         <article class="preview-card">
@@ -1346,6 +1346,18 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       utm_campaign: p.get('utm_campaign') || ''
     }};
     trackEvent('page_view', details);
+    const seoBridge = document.getElementById('seo-bridge');
+    if ('IntersectionObserver' in window && seoBridge) {{
+      const observer = new IntersectionObserver((entries) => {{
+        entries.forEach((entry) => {{
+          if (!entry.isIntersecting || entry.target.dataset.seen === 'true') return;
+          entry.target.dataset.seen = 'true';
+          trackEvent('page_view', {{ ...details, placement: 'seo_bridge', surface_impression: true }});
+          observer.unobserve(entry.target);
+        }});
+      }}, {{ threshold: 0.35 }});
+      observer.observe(seoBridge);
+    }}
     document.getElementById('tg-link')?.addEventListener('click', () => {{
       trackEvent('tg_click', details);
     }});

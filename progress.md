@@ -4,6 +4,40 @@ This document tracks the current state of the project.
 
 ---
 
+# CTA Surface Measurement Pass (2026-03-25)
+
+Added placement-level impression tracking so the weekly growth review can compare `seen -> tg_click` on the main site CTA surfaces without breaking the canonical `page_view` denominator.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `docs/growth_kpi_latest.md`
+
+What changed:
+
+• homepage now emits one-time surface impressions via `page_view` for:
+  - `hero_panel`
+  - `proof_bridge`
+• EN `/telegram-bot` now emits one-time surface impressions via `page_view` for:
+  - `seo_bridge`
+• all surface impression events carry:
+  - `surface_impression = true`
+• weekly KPI report now excludes those surface-impression events from the top-level funnel `page_view` count
+• weekly KPI report now adds a `CTA Surface Performance` table:
+  - placement
+  - seen
+  - tg_click
+  - CTR
+
+Practical effect:
+
+• we can now evaluate hero vs bridge surfaces on a real denominator instead of raw click counts alone
+• the main funnel stays comparable week over week because generic `page_view` is no longer inflated by surface instrumentation
+
+---
+
 # Telegram-Bot Landing Bridge Pass (2026-03-25)
 
 Improved the EN `/telegram-bot` intent page with a second Telegram-first conversion moment so search users have a cleaner path from intent to action without relying only on the first CTA block.

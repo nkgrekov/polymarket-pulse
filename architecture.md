@@ -4,6 +4,43 @@ This document describes the technical architecture.
 
 ---
 
+# CTA Surface Impression Contract (2026-03-25)
+
+The weekly acquisition loop now distinguishes between whole-page visits and CTA-surface visibility on the main Telegram decision blocks.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `docs/growth_kpi_latest.md`
+
+Contract changes:
+
+• homepage now emits one-time `page_view` events with `surface_impression = true` for:
+  - `hero_panel`
+  - `proof_bridge`
+• EN `/telegram-bot` now emits one-time `page_view` events with `surface_impression = true` for:
+  - `seo_bridge`
+• these impression events reuse the existing `page_view` event family and do not introduce a new public event type
+• weekly KPI reporting now explicitly excludes `surface_impression = true` rows from the canonical funnel `page_view` count
+• weekly reporting now adds a dedicated `CTA Surface Performance` section to compare:
+  - surface seen count
+  - `tg_click`
+  - click-through rate
+
+Operational implication:
+
+• the acquisition loop can now evaluate hero and bridge surfaces on a meaningful denominator instead of raw click totals alone
+• the canonical growth funnel remains stable:
+  - `page_view`
+  - `tg_click`
+  - `tg_start`
+  - `watchlist_add`
+• this remains a read-only measurement-layer improvement; no routing, no bot contract, and no new source-of-truth changes are introduced
+
+---
+
 # Telegram-Bot Intent Bridge Contract (2026-03-25)
 
 The EN `/telegram-bot` landing now includes a second conversion bridge for search-intent traffic so the page can repeat the action path without changing the overall site-wide homepage contract.
