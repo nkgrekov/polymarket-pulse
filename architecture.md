@@ -15,6 +15,7 @@ Updated artifact:
 Contract changes:
 
 • introduced a shared `market_live_state_summary(market_id, locale)` helper that derives a compact post-add state from `SQL_MARKET_LIVE_STATUS`
+• introduced `SQL_MARKET_SNAPSHOT_PREVIEW` + `market_live_preview_line(...)` so `ready` markets can render a compact delta preview directly in the add/replace confirmation
 • add/replace results now carry `live_state` with one of:
   - `ready`
   - `partial`
@@ -31,7 +32,7 @@ Operational implication:
 
 • the first watchlist add is now closer to a guided product contract instead of a generic CRUD confirmation
 • the user gets immediate reinforcement toward either:
-  - checking `Watchlist` for live deltas
+  - checking `Watchlist` for live deltas after already seeing a compact preview
   - or replacing/reviewing a weak market before the first-value moment stalls
 • this is still fully inside the current `bot.*` runtime and does not alter the external command contract
 

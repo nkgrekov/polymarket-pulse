@@ -629,6 +629,44 @@ select
 from market_base mb;
 """
 
+SQL_MARKET_SNAPSHOT_PREVIEW = """
+with lb as (
+  select last_bucket from public.global_bucket_latest
+), prev as (
+  select max(ms.ts_bucket) as prev_bucket
+  from public.market_snapshots ms, lb
+  where ms.ts_bucket < lb.last_bucket
+), last_mid as (
+  select
+    ms.market_id,
+    max(((ms.yes_bid + ms.yes_ask) / 2::numeric)) as yes_mid_now
+  from public.market_snapshots ms
+  join lb on ms.ts_bucket = lb.last_bucket
+  where ms.market_id = %s
+  group by ms.market_id
+), prev_mid as (
+  select
+    ms.market_id,
+    max(((ms.yes_bid + ms.yes_ask) / 2::numeric)) as yes_mid_prev
+  from public.market_snapshots ms
+  join prev on ms.ts_bucket = prev.prev_bucket
+  where ms.market_id = %s
+  group by ms.market_id
+)
+select
+  m.market_id,
+  m.question,
+  lm.yes_mid_now,
+  pm.yes_mid_prev,
+  (lm.yes_mid_now - pm.yes_mid_prev) as delta_yes,
+  (select last_bucket from lb) as last_bucket,
+  (select prev_bucket from prev) as prev_bucket
+from public.markets m
+join last_mid lm on lm.market_id = m.market_id
+join prev_mid pm on pm.market_id = m.market_id
+where m.market_id = %s;
+"""
+
 SQL_FIND_MARKET = """
 select market_id, question, slug
 from public.markets
@@ -1602,6 +1640,25 @@ def market_live_state_summary(market_id: str, *, locale: str = "ru") -> dict[str
     }
 
 
+def market_live_preview_line(market_id: str, *, locale: str = "ru") -> str:
+    rows = run_db_query(SQL_MARKET_SNAPSHOT_PREVIEW, (market_id, market_id, market_id), row_factory=dict_row)
+    if not rows:
+        return ""
+    row = rows[0]
+    window = fmt_window(row.get("last_bucket"), row.get("prev_bucket"))
+    if locale == "en":
+        return (
+            "Live preview now: "
+            f"{_fmt_num(row.get('yes_mid_now'), 3)} -> {_fmt_num(row.get('yes_mid_prev'), 3)} | "
+            f"Δ {_fmt_num(row.get('delta_yes'), 3, signed=True)} · {window}"
+        )
+    return (
+        "Live preview сейчас: "
+        f"{_fmt_num(row.get('yes_mid_now'), 3)} -> {_fmt_num(row.get('yes_mid_prev'), 3)} | "
+        f"Δ {_fmt_num(row.get('delta_yes'), 3, signed=True)} · {window}"
+    )
+
+
 def merge_inline_markups(*markups: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup | None:
     rows: list[list[InlineKeyboardButton]] = []
     seen: set[tuple[str, str | None, str | None]] = set()
@@ -2166,10 +2223,13 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
     live_summary = market_live_state_summary(market_id, locale=locale)
+    preview_line = market_live_preview_line(market_id, locale=locale) if live_summary["live_state"] == "ready" else ""
+    preview_block = f"{preview_line}\n" if preview_line else ""
     if locale == "en":
         return watchlist_result(
             f"Added to watchlist: {market_id} — {market_rows[0]['question']}\n"
             f"{live_summary['status_line']}\n"
+            f"{preview_block}"
             f"{live_summary['next_line']}",
             outcome="added",
             live_state=live_summary["live_state"],
@@ -2177,6 +2237,7 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
     return watchlist_result(
         f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}\n"
         f"{live_summary['status_line']}\n"
+        f"{preview_block}"
         f"{live_summary['next_line']}",
         outcome="added",
         live_state=live_summary["live_state"],
@@ -2213,12 +2274,15 @@ def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str
     execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], target["market_id"]))
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
     live_summary = market_live_state_summary(market_id, locale=locale)
+    preview_line = market_live_preview_line(market_id, locale=locale) if live_summary["live_state"] == "ready" else ""
+    preview_block = f"{preview_line}\n" if preview_line else ""
     if locale == "en":
         return watchlist_result(
             f"Replaced watchlist market: {target['market_id']} -> {market_id}\n"
             f"Removed: {target['question']}\n"
             f"Added: {market_rows[0]['question']}\n"
             f"{live_summary['status_line']}\n"
+            f"{preview_block}"
             f"{live_summary['next_line']}",
             outcome="replaced",
             live_state=live_summary["live_state"],
@@ -2228,6 +2292,7 @@ def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str
         f"Убрали: {target['question']}\n"
         f"Добавили: {market_rows[0]['question']}\n"
         f"{live_summary['status_line']}\n"
+        f"{preview_block}"
         f"{live_summary['next_line']}",
         outcome="replaced",
         live_state=live_summary["live_state"],

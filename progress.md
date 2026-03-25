@@ -21,6 +21,11 @@ What changed:
   - `no_quotes`
   - `closed`
 • for `ready` markets the user is pushed straight toward `Watchlist`
+• for `ready` markets the add/replace confirmation now also shows a compact live preview:
+  - current mid
+  - previous mid
+  - delta
+  - bucket window
 • for quiet states the user now gets:
   - an honest status line
   - a concrete next-step line
@@ -31,6 +36,7 @@ Practical effect:
 
 • the first add is now closer to a real value moment:
   - if the market is already live, the user knows to check `Watchlist` immediately
+  - and gets a first live delta preview directly in the confirmation
   - if the market is weak, the user is told to swap/review it instead of waiting in confusion
 • this directly supports the current weekly KPI around `tg_start -> watchlist_add -> first useful signal`
 
