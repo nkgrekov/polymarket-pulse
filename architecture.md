@@ -4,6 +4,33 @@ This document describes the technical architecture.
 
 ---
 
+# Telegram-Bot Intent Bridge Contract (2026-03-25)
+
+The EN `/telegram-bot` landing now includes a second conversion bridge for search-intent traffic so the page can repeat the action path without changing the overall site-wide homepage contract.
+
+Updated artifact:
+
+• `api/main.py`
+
+Contract changes:
+
+• the EN `telegram-bot` SEO page now renders an additional `FASTEST NEXT STEP` section after the compare block
+• that section restates the intended search-intent path:
+  - open the bot
+  - add one live market
+  - use `Watchlist` / `Inbox` to judge whether the repricing matters
+  - keep email as backup only
+• added new tracking placements on the SEO page:
+  - `seo_bridge`
+  - `seo_bridge_guide`
+
+Operational implication:
+
+• `/telegram-bot` can now be optimized as a narrower bot-intent landing independently from the homepage
+• this gives the acquisition loop a second measurable CTA surface on a page that is already closer to search intent than the broad brand root
+
+---
+
 # Homepage Proof-Bridge Contract (2026-03-25)
 
 The EN homepage now includes a second Telegram-first decision surface below the historical proof block so scrolling users get another clear conversion moment without modifying the hero-right contract.

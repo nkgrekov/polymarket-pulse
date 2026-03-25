@@ -789,6 +789,37 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         if slug == "telegram-bot"
         else ""
     )
+    bridge_block = (
+        """
+    <section class="links-wrap reveal delay-4">
+      <p class="links-title">FASTEST NEXT STEP</p>
+      <div class="preview-grid">
+        <article class="preview-card">
+          <p class="preview-kicker">01</p>
+          <h3 class="preview-title">Open the bot now</h3>
+          <p class="preview-copy">Do not keep reading if the intent is clear. Open Telegram, hit /start, and add one live market before the move becomes old news.</p>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">02</p>
+          <h3 class="preview-title">What happens next</h3>
+          <p class="preview-copy">You land in movers, add one market, and use Watchlist or Inbox to decide whether the repricing actually matters.</p>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">03</p>
+          <h3 class="preview-title">Backup, not a detour</h3>
+          <p class="preview-copy">Email stays optional and secondary. Telegram is still the shortest path to first value.</p>
+        </article>
+      </div>
+      <div class="cta-row" style="margin-top:14px;">
+        <a id="tg-link-bridge" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_telegram-bot_bridge_en" target="_blank" rel="noopener noreferrer">Open Telegram Bot -></a>
+        <a id="guide-link-bridge" class="cta-secondary" href="/how-it-works?placement=seo_telegram-bot_bridge_guide">See the bot flow</a>
+      </div>
+      <p class="cta-note">The goal here is not another dashboard. It is one clean move from search intent to a live market in Telegram.</p>
+    </section>
+"""
+        if slug == "telegram-bot" and lang == "en"
+        else ""
+    )
 
     return f"""<!doctype html>
 <html lang="{lang}">
@@ -1278,6 +1309,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
     </section>
     {compare_block}
+    {bridge_block}
     {faq_block}
     <section class="links-wrap reveal delay-4">
       <p class="links-title">{links_head}</p>
@@ -1317,8 +1349,14 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     document.getElementById('tg-link')?.addEventListener('click', () => {{
       trackEvent('tg_click', details);
     }});
+    document.getElementById('tg-link-bridge')?.addEventListener('click', () => {{
+      trackEvent('tg_click', {{ ...details, placement: 'seo_bridge' }});
+    }});
     document.getElementById('guide-link')?.addEventListener('click', () => {{
       trackEvent('waitlist_intent', {{ ...details, placement: 'seo_guide' }});
+    }});
+    document.getElementById('guide-link-bridge')?.addEventListener('click', () => {{
+      trackEvent('waitlist_intent', {{ ...details, placement: 'seo_bridge_guide' }});
     }});
     document.getElementById('backup-link')?.addEventListener('click', () => {{
       trackEvent('waitlist_intent', {{ ...details, placement: 'seo_backup' }});

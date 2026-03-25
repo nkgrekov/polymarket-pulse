@@ -4,6 +4,33 @@ This document tracks the current state of the project.
 
 ---
 
+# Telegram-Bot Landing Bridge Pass (2026-03-25)
+
+Improved the EN `/telegram-bot` intent page with a second Telegram-first conversion moment so search users have a cleaner path from intent to action without relying only on the first CTA block.
+
+Files updated:
+
+• `api/main.py`
+
+What changed:
+
+• added a dedicated `FASTEST NEXT STEP` bridge section on the EN `/telegram-bot` page
+• the new block explains:
+  - open the bot now
+  - add one live market
+  - use Watchlist or Inbox to judge whether the move matters
+  - keep email as backup, not as a competing path
+• added separate tracking for this intent-page bridge:
+  - `seo_bridge`
+  - `seo_bridge_guide`
+
+Practical effect:
+
+• the `/telegram-bot` page now has a second search-intent conversion surface beyond the hero CTA
+• this gives us a safer way to test whether bot-intent traffic clicks better when proof and next-step guidance are repeated lower on the page
+
+---
+
 # Landing Proof Bridge Pass (2026-03-25)
 
 Added a mid-page Telegram conversion bridge on the EN homepage so users who scroll past the hero still get a clean proof-to-action step before dropping into SEO links and pricing.
