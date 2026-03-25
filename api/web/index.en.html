@@ -1381,6 +1381,20 @@
       </div>
     </section>
 
+    <section class="trade-strip reveal delay-7" aria-label="Telegram decision strip">
+      <div class="trade-strip-grid">
+        <div>
+          <p class="screen-kicker">AFTER THE PROOF</p>
+          <h3 class="trade-strip-title">OPEN PULSE IN TELEGRAM BEFORE THIS BECOMES ANOTHER TAB.</h3>
+          <p class="trade-strip-copy">You already saw the live DB preview and real repricing examples above. The next useful step is still simple: open the bot, add one market, and check one live delta before the move turns into dashboard backlog.</p>
+        </div>
+        <div class="trade-strip-actions">
+          <a id="tg-link-bridge" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_bridge">Open Telegram Bot →</a>
+          <a id="guide-link-bridge" class="trade-link" href="/how-it-works?lang=en&placement=bridge_cta">See the bot flow first</a>
+        </div>
+      </div>
+    </section>
+
     <section class="intent-links reveal delay-8" aria-label="Related SEO pages">
       <p class="intent-title">SEARCH PATHS · CRAWLABLE ENTRY POINTS</p>
       <div class="intent-grid">
@@ -1446,8 +1460,10 @@
     const waitlistMsg = document.getElementById('msg');
     const emailInput = document.getElementById('email');
     const tgLink = document.getElementById('tg-link');
+    const tgLinkBridge = document.getElementById('tg-link-bridge');
     const tgLinkSticky = document.getElementById('tg-link-sticky');
     const guideLink = document.querySelector('.guide-link');
+    const guideLinkBridge = document.getElementById('guide-link-bridge');
     const checkoutBtn = document.getElementById('checkout-btn');
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
@@ -1576,11 +1592,17 @@
     tgLink?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'hero_panel' });
     });
+    tgLinkBridge?.addEventListener('click', () => {
+      trackEvent('tg_click', { ...getAttribution(), placement: 'proof_bridge' });
+    });
     tgLinkSticky?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
     });
     guideLink?.addEventListener('click', () => {
       trackEvent('waitlist_intent', { ...getAttribution(), placement: 'how_it_works_link' });
+    });
+    guideLinkBridge?.addEventListener('click', () => {
+      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'proof_bridge_guide' });
     });
     proStarsBtn?.addEventListener('click', () => {
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });

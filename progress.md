@@ -4,6 +4,32 @@ This document tracks the current state of the project.
 
 ---
 
+# Landing Proof Bridge Pass (2026-03-25)
+
+Added a mid-page Telegram conversion bridge on the EN homepage so users who scroll past the hero still get a clean proof-to-action step before dropping into SEO links and pricing.
+
+Files updated:
+
+• `api/web/index.en.html`
+
+What changed:
+
+• inserted a new proof-driven conversion strip directly after the historical examples block
+• the strip now tells the user:
+  - you already saw the live DB preview
+  - you already saw real repricing examples
+  - the next useful action is still to open `Pulse` in Telegram and add one market
+• added separate tracking placements for this strip:
+  - `proof_bridge`
+  - `proof_bridge_guide`
+
+Practical effect:
+
+• the homepage now has a second strong Telegram decision moment without touching the reverted hero-right panel
+• this gives us a safer way to improve `page_view -> tg_click` while keeping the existing hero contract intact
+
+---
+
 # Return Loop Guidance Pass (2026-03-25)
 
 Improved the returning-user experience inside `Pulse` so `/watchlist` and `/inbox` behave more like guided “what to check first” screens and less like raw dumps.

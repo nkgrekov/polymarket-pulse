@@ -4,6 +4,32 @@ This document describes the technical architecture.
 
 ---
 
+# Homepage Proof-Bridge Contract (2026-03-25)
+
+The EN homepage now includes a second Telegram-first decision surface below the historical proof block so scrolling users get another clear conversion moment without modifying the hero-right contract.
+
+Updated artifact:
+
+• `api/web/index.en.html`
+
+Contract changes:
+
+• inserted a dedicated mid-page conversion strip after the historical examples section
+• the strip frames the transition explicitly:
+  - live DB preview already seen
+  - historical repricing proof already seen
+  - next useful step is to open `Pulse` in Telegram and add one market
+• added new homepage attribution placements:
+  - `proof_bridge` for the Telegram CTA
+  - `proof_bridge_guide` for the support/guide CTA
+
+Operational implication:
+
+• homepage conversion work can now test a second proof-to-action moment without destabilizing the reverted hero-right panel
+• this preserves the current hero contract while giving the weekly KPI a new measurable `page_view -> tg_click` surface
+
+---
+
 # Return-Loop Interpretation Contract (2026-03-25)
 
 The `Pulse` read surfaces for returning users now distinguish more clearly between “useful but quiet”, “healthy thresholded feed”, and “review this list before adding more noise”.
