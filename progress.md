@@ -4,6 +4,39 @@ This document tracks the current state of the project.
 
 ---
 
+# Return Loop Guidance Pass (2026-03-25)
+
+Improved the returning-user experience inside `Pulse` so `/watchlist` and `/inbox` behave more like guided “what to check first” screens and less like raw dumps.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• added a shared `active_followup_text(...)` helper for non-empty `watchlist` and `inbox` states
+• non-empty `watchlist` now tells the user how to read the screen:
+  - the first row is the strongest current live delta
+  - quiet markets in the same window are normal
+  - closed markets should push the user toward `Review list`
+• non-empty `inbox` now explains:
+  - the first alert is the strongest thresholded move right now
+  - when to raise threshold
+  - when to review the list instead of forcing more alerts
+• watchlist fallback windows (`30m`, `1h`) now explain that:
+  - the list may be slow, not broken
+  - broader-window rows are still useful
+  - the right next step is to wait or review, not assume failure
+
+Practical effect:
+
+• returning users now get more help with interpretation, not just more buttons
+• this should reduce the “quiet = broken” failure mode after the first successful add
+• it supports retention inside the current weekly path:
+  - `tg_start -> watchlist_add -> watchlist/inbox reuse`
+
+---
+
 # Post-Add First-Value Reinforcement (2026-03-25)
 
 Improved the `Pulse` watchlist add/replace path so the user gets a more honest and actionable next step immediately after adding a market.

@@ -1571,6 +1571,43 @@ def quiet_followup_text(
     )
 
 
+def active_followup_text(locale: str, *, user_ctx: dict, view: str, shown_count: int) -> str:
+    watchlist_count = int(user_ctx.get("watchlist_count") or 0)
+    closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
+    threshold = _fmt_num(user_ctx.get("threshold"), 3)
+
+    if view == "watchlist":
+        if watchlist_count > shown_count and closed_count > 0:
+            return (
+                f"Start here: the first row is your strongest live delta now. {closed_count} tracked market(s) are already closed, so use Review list if the rest feels too quiet."
+                if locale == "en"
+                else f"Начните с первой строки: это самая сильная live-дельта сейчас. {closed_count} рынка(ов) уже закрыты, так что откройте Проверить список, если остальное кажется слишком тихим."
+            )
+        if watchlist_count > shown_count:
+            return (
+                "Start here: the first row is your strongest live delta now. Some tracked markets are quiet in this window, and that is normal."
+                if locale == "en"
+                else "Начните с первой строки: это самая сильная live-дельта сейчас. Часть рынков в этом окне тихая, и это нормально."
+            )
+        return (
+            "Start here: the first row is your strongest live delta now. If this list feels thin later, add one more live market rather than chasing noise."
+            if locale == "en"
+            else "Начните с первой строки: это самая сильная live-дельта сейчас. Если позже список покажется слишком тонким, лучше добавьте ещё один live-рынок, чем гоняться за шумом."
+        )
+
+    if closed_count > 0:
+        return (
+            f"Start here: the first alert is your strongest thresholded move now. If inbox goes quiet later, review the list first because {closed_count} tracked market(s) are already closed."
+            if locale == "en"
+            else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Если позже inbox затихнет, сначала проверьте список, потому что {closed_count} рынка(ов) уже закрыты."
+        )
+    return (
+        f"Start here: the first alert is your strongest thresholded move now. If the feed feels noisy later, raise threshold above {threshold}; if it goes quiet, leave it alone before forcing more alerts."
+        if locale == "en"
+        else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Если позже фид покажется шумным, поднимите threshold выше {threshold}; если он затихнет, не форсируйте алерты раньше времени."
+    )
+
+
 def watchlist_result(text: str, *, outcome: str, **meta: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {"text": text, "outcome": outcome}
     payload.update(meta)
@@ -2071,11 +2108,8 @@ async def send_inbox_view(
         header
         + "\n\n"
         + "\n\n".join(fmt_alert_row(r) for r in rows)
-        + (
-            "\n\nNext: open Watchlist to compare live deltas, review the list if too many markets stay quiet, or tighten threshold if the feed feels noisy."
-            if locale == "en"
-            else "\n\nДальше: откройте Watchlist, чтобы сравнить live-дельты, проверьте список рынков, если много тихих, или подтяните threshold, если фид шумит."
-        ),
+        + "\n\n"
+        + active_followup_text(locale, user_ctx=user_ctx, view="inbox", shown_count=len(rows)),
         reply_markup=inbox_live_inline(
             locale,
             has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
@@ -2122,7 +2156,12 @@ async def send_watchlist_view(
                     if locale == "en"
                     else "В latest-окне изменений нет. Показываю fallback 30m:\n\n"
                 )
-                + "\n\n".join(fmt_mover_row(r) for r in rows_30m),
+                + "\n\n".join(fmt_mover_row(r) for r in rows_30m)
+                + (
+                    "\n\nThis is still useful: the first row is your strongest move from the wider 30m window. If the latest window stays quiet after that, leave it alone or review the list before forcing more markets."
+                    if locale == "en"
+                    else "\n\nЭто всё ещё полезно: первая строка — самое сильное движение в более широком окне 30m. Если latest-окно и дальше тихое, не форсируйте рынок, а сначала проверьте список."
+                ),
                 reply_markup=watchlist_live_inline(
                     locale,
                     has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
@@ -2141,7 +2180,12 @@ async def send_watchlist_view(
                     if locale == "en"
                     else "В latest/30m изменениях пусто. Показываю fallback 1h:\n\n"
                 )
-                + "\n\n".join(fmt_mover_row(r) for r in rows_1h),
+                + "\n\n".join(fmt_mover_row(r) for r in rows_1h)
+                + (
+                    "\n\nThis means your list is slow right now, not broken. Treat the first row as the strongest broader move, then decide whether to wait or review the list."
+                    if locale == "en"
+                    else "\n\nЭто значит, что список сейчас медленный, а не сломанный. Смотрите на первую строку как на самое сильное более широкое движение, а потом решайте — ждать дальше или проверить список."
+                ),
                 reply_markup=watchlist_live_inline(
                     locale,
                     has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,
@@ -2181,11 +2225,8 @@ async def send_watchlist_view(
     await message.reply_text(
         ("Watchlist live changes:\n\n" if locale == "en" else "Live-изменения watchlist:\n\n")
         + "\n\n".join(fmt_mover_row(r) for r in rows)
-        + (
-            "\n\nNext: open Inbox for thresholded alerts, review the list if one market stays quiet, or add one more live market if coverage feels too thin."
-            if locale == "en"
-            else "\n\nДальше: откройте Inbox для пороговых алертов, проверьте список рынков, если один из них тихий, или добавьте ещё один live-рынок, если покрытия мало."
-        ),
+        + "\n\n"
+        + active_followup_text(locale, user_ctx=user_ctx, view="watchlist", shown_count=len(rows)),
         reply_markup=watchlist_live_inline(
             locale,
             has_closed=int(user_ctx.get("watchlist_closed_count") or 0) > 0,

@@ -4,6 +4,35 @@ This document describes the technical architecture.
 
 ---
 
+# Return-Loop Interpretation Contract (2026-03-25)
+
+The `Pulse` read surfaces for returning users now distinguish more clearly between “useful but quiet”, “healthy thresholded feed”, and “review this list before adding more noise”.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• introduced `active_followup_text(...)` for non-empty `watchlist` and `inbox` responses
+• `watchlist` non-empty responses now frame the first row as the strongest current live delta and interpret the rest of the list relative to:
+  - total tracked markets
+  - closed markets
+  - quiet-but-normal coverage
+• `inbox` non-empty responses now frame the first row as the strongest thresholded alert and tie the next step back to:
+  - threshold tuning
+  - list review
+  - not forcing noise on quiet windows
+• watchlist fallback windows (`30m`, `1h`) now explicitly explain that broader-window output still has meaning and that “slow” does not imply “broken”
+
+Operational implication:
+
+• `Pulse` return screens are now more interpretive, not only navigational
+• this reduces the chance that users misread healthy quiet states as product failure after the first add
+• the external command contract stays unchanged; this is a guidance-layer upgrade inside the existing `bot.*` runtime
+
+---
+
 # Post-Add State-Aware Contract (2026-03-25)
 
 The `Pulse` watchlist add/replace flow now classifies the newly added market before deciding what follow-up text and inline actions to show.
