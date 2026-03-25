@@ -18,6 +18,36 @@ Architecture and rollout priorities must stay aligned with that plan and with `m
 
 ---
 
+# Funnel Attribution Contract Repair (2026-03-25)
+
+The weekly growth review now distinguishes between raw Telegram starts and starts that were actually site-attributed, and `watchlist_add` events now carry the latest start context forward.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `docs/growth_kpi_latest.md`
+
+Contract changes:
+
+• `log_watchlist_add_sync(...)` now augments each event with the latest known Telegram-start context for that user:
+  - `start_payload`
+  - `start_entrypoint`
+  - `site_attributed_start`
+• weekly KPI reporting now separates:
+  - `tg_start (all entrypoints)`
+  - `tg_start from site payloads`
+  - `watchlist_add users from site-attributed starts`
+• the report now explicitly notes that raw `tg_start` can exceed `tg_click` because direct Telegram opens and bot-internal paths are counted too
+
+Operational implication:
+
+• the decision loop is now better aligned with the actual weekly KPI
+• future watchlist-add events can be read as part of the acquisition funnel instead of as isolated bot-side actions
+• this remains a read-only attribution repair on top of the existing runtime; no product contract or source-of-truth migration is introduced
+
+---
+
 # Brand Query and Digest Return Contract (2026-03-23)
 
 The weekly acquisition/retention layer now includes a safer brand-entity pass and a sharper digest-return surface without changing public routing or the live Pulse runtime.

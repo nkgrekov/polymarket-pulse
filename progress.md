@@ -18,6 +18,39 @@ Scope: SEO + Bot UX + Multi-channel growth with Telegram activation as the prima
 
 ---
 
+# Funnel Attribution Repair Pass (2026-03-25)
+
+Repaired the weekly measurement layer so the core `site -> tg_start -> watchlist_add` funnel reads more honestly and so future watchlist adds can be attributed back to the last Telegram start context.
+
+Files updated:
+
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `docs/growth_kpi_latest.md`
+
+What changed:
+
+• `watchlist_add` events now inherit the latest `/start` context for the same user:
+  - `start_payload`
+  - `start_entrypoint`
+  - `site_attributed_start`
+• weekly KPI report no longer presents misleading `tg_start / tg_click` math when direct Telegram opens or `/upgrade` starts are mixed into the same window
+• weekly report now splits:
+  - `tg_start (all entrypoints)`
+  - `tg_start from site payloads`
+  - `watchlist_add users from site-attributed starts`
+
+Practical effect:
+
+• the growth loop is now closer to the actual weekly KPI:
+  - `Search / site -> tg_click -> /start -> watchlist_add`
+• the current report shows the real bottleneck more clearly:
+  - `tg_click` is still low
+  - site-attributed starts exist
+  - but `watchlist_add` is still not materializing in measured events yet
+
+---
+
 # Brand Query and Digest Retention Pass (2026-03-23)
 
 Improved two safe supporting layers for the current weekly focus:

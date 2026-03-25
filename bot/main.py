@@ -771,6 +771,17 @@ insert into trade.activity_events (
 values (%s::uuid, %s, %s, %s, %s);
 """
 
+SQL_LATEST_TG_START_CONTEXT = """
+select
+  coalesce(nullif(details->>'start_payload', ''), nullif(details->>'entrypoint', ''), 'telegram_direct') as start_source,
+  coalesce(details->>'entrypoint', 'telegram_direct') as entrypoint
+from app.site_events
+where event_type = 'tg_start'
+  and nullif(details->>'app_user_id', '') = %s
+order by created_at desc
+limit 1;
+"""
+
 SQL_ENSURE_PAYMENT_EVENTS = """
 create table if not exists app.payment_events (
   id bigserial primary key,
@@ -955,6 +966,10 @@ def log_watchlist_add_sync(
     tg_chat = update.effective_chat
     previous_watchlist_count = int(user_ctx.get("watchlist_count") or 0)
     outcome = str(result.get("outcome") or "")
+    start_rows = run_db_query(SQL_LATEST_TG_START_CONTEXT, (str(user_ctx.get("user_id")),), row_factory=dict_row)
+    latest_start = start_rows[0] if start_rows else {}
+    start_source = str(latest_start.get("start_source") or "unknown")
+    entrypoint = str(latest_start.get("entrypoint") or "telegram_direct")
     payload = Jsonb(
         {
             "app_user_id": user_ctx.get("user_id"),
@@ -968,6 +983,9 @@ def log_watchlist_add_sync(
             "live_state": result.get("live_state"),
             "previous_watchlist_count": previous_watchlist_count,
             "first_watchlist_add": outcome == "added" and previous_watchlist_count == 0,
+            "start_payload": start_source,
+            "start_entrypoint": entrypoint,
+            "site_attributed_start": start_source.startswith("site_"),
             "placement": source,
         }
     )

@@ -1,14 +1,16 @@
-# Growth KPI Report (2026-03-23T08:32:18.955333+00:00)
+# Growth KPI Report (2026-03-25T11:51:16.644485+00:00)
 
-Window: `2026-03-16T08:32:18.955333+00:00` -> `2026-03-23T08:32:18.955333+00:00` (`7d`)
+Window: `2026-03-18T11:51:16.644485+00:00` -> `2026-03-25T11:51:16.644485+00:00` (`7d`)
 
 ## Funnel
 
-- page_view: **87**
-- tg_click: **4** (`4.6%` from page_view)
-- tg_start: **2** (`50.0%` from tg_click)
+- page_view: **112**
+- tg_click: **4** (`3.6%` from page_view)
+- tg_start (all entrypoints): **5**
+- tg_start from site payloads: **3** (`75.0%` from tg_click)
 - watchlist_add events: **0**
-- watchlist_add users: **0** (`0.0%` from tg_start)
+- watchlist_add users: **0** (`0.0%` from all tg_start)
+- watchlist_add users from site-attributed starts: **0** (`0.0%` from site-attributed tg_start)
 - first_watchlist_add users: **0** (`0.0%` from tg_start)
 - waitlist_submit: **0** (`0.0%` from page_view)
 - confirm_success: **0** (`n/a` from waitlist_submit)
@@ -19,14 +21,15 @@ Window: `2026-03-16T08:32:18.955333+00:00` -> `2026-03-23T08:32:18.955333+00:00`
 - users_with_watchlist_add proxy (`bot.watchlist`): **1**
 - start_to_watchlist_add proxy: **50.0%**
 - event_to_proxy gap (`watchlist_add users` vs `bot.watchlist` proxy): **-1**
+- note: `tg_start` includes site, direct Telegram opens, and other bot entrypoints like `/upgrade`
 
 ## Core Data Health
 
-- latest bucket lag: **1041s**
-- latest yes-quote coverage: **92.4%**
+- latest bucket lag: **378s**
+- latest yes-quote coverage: **96.9%**
 - universe coverage (latest): **200/200**
 - universe coverage (prev): **200/200**
-- non-zero movers: **latest 33 / 1h 60 / 24h 69**
+- non-zero movers: **latest 24 / 1h 122 / 24h 69**
 
 ## tg_click by UTM Source
 
@@ -38,15 +41,17 @@ Window: `2026-03-16T08:32:18.955333+00:00` -> `2026-03-23T08:32:18.955333+00:00`
 
 | Start payload | tg_start | Share |
 |---|---:|---:|
-| site_en_sticky | 1 | 50.0% |
-| upgrade | 1 | 50.0% |
+| site_en | 2 | 40.0% |
+| site_en_sticky | 1 | 20.0% |
+| telegram_direct | 1 | 20.0% |
+| upgrade | 1 | 20.0% |
 
 ## Top tg_click Placements
 
 | Placement | tg_click |
 |---|---:|
-| hero_panel | 2 |
-| mobile_sticky | 2 |
+| hero_panel | 3 |
+| mobile_sticky | 1 |
 
 ## Action Notes
 

@@ -58,6 +58,13 @@ select
   count(distinct nullif(details->>'app_user_id', ''))::bigint as watchlist_add_users,
   count(
     distinct case
+      when coalesce(details->>'site_attributed_start', 'false') = 'true'
+      then nullif(details->>'app_user_id', '')
+      else null
+    end
+  )::bigint as site_watchlist_add_users,
+  count(
+    distinct case
       when coalesce(details->>'first_watchlist_add', 'false') = 'true'
       then nullif(details->>'app_user_id', '')
       else null
@@ -152,6 +159,7 @@ def main() -> None:
             watchlist_add_row = cur.fetchone() or {
                 "watchlist_add_events": 0,
                 "watchlist_add_users": 0,
+                "site_watchlist_add_users": 0,
                 "first_watchlist_add_users": 0,
             }
             cur.execute(SQL_TOP_PLACEMENTS, (since, args.top_placements))
@@ -164,12 +172,14 @@ def main() -> None:
     funnel = to_map(funnel_rows, "event_type", "events")
     sources = to_map(source_rows, "utm_source", "clicks")
     tg_start_sources = to_map(tg_start_rows, "start_source", "starts")
+    site_tg_start = sum(starts for source, starts in tg_start_sources.items() if source.startswith("site_"))
 
     page_view = funnel.get("page_view", 0)
     tg_click = funnel.get("tg_click", 0)
     tg_start = funnel.get("tg_start", 0)
     watchlist_add_events = int(watchlist_add_row.get("watchlist_add_events") or 0)
     watchlist_add_users = int(watchlist_add_row.get("watchlist_add_users") or 0)
+    site_watchlist_add_users = int(watchlist_add_row.get("site_watchlist_add_users") or 0)
     first_watchlist_add_users = int(watchlist_add_row.get("first_watchlist_add_users") or 0)
     waitlist_submit = funnel.get("waitlist_submit", 0)
     confirm_success = funnel.get("confirm_success", 0)
@@ -193,9 +203,11 @@ def main() -> None:
         "",
         f"- page_view: **{page_view}**",
         f"- tg_click: **{tg_click}** (`{pct(tg_click, page_view)}` from page_view)",
-        f"- tg_start: **{tg_start}** (`{pct(tg_start, tg_click)}` from tg_click)",
+        f"- tg_start (all entrypoints): **{tg_start}**",
+        f"- tg_start from site payloads: **{site_tg_start}** (`{pct(site_tg_start, tg_click)}` from tg_click)",
         f"- watchlist_add events: **{watchlist_add_events}**",
-        f"- watchlist_add users: **{watchlist_add_users}** (`{pct(watchlist_add_users, tg_start)}` from tg_start)",
+        f"- watchlist_add users: **{watchlist_add_users}** (`{pct(watchlist_add_users, tg_start)}` from all tg_start)",
+        f"- watchlist_add users from site-attributed starts: **{site_watchlist_add_users}** (`{pct(site_watchlist_add_users, site_tg_start)}` from site-attributed tg_start)",
         f"- first_watchlist_add users: **{first_watchlist_add_users}** (`{pct(first_watchlist_add_users, tg_start)}` from tg_start)",
         f"- waitlist_submit: **{waitlist_submit}** (`{pct(waitlist_submit, page_view)}` from page_view)",
         f"- confirm_success: **{confirm_success}** (`{pct(confirm_success, waitlist_submit)}` from waitlist_submit)",
@@ -206,6 +218,7 @@ def main() -> None:
         f"- users_with_watchlist_add proxy (`bot.watchlist`): **{watchlist_add_users_proxy}**",
         f"- start_to_watchlist_add proxy: **{pct(watchlist_add_users_proxy, started_users)}**",
         f"- event_to_proxy gap (`watchlist_add users` vs `bot.watchlist` proxy): **{watchlist_add_users - watchlist_add_users_proxy:+d}**",
+        f"- note: `tg_start` includes site, direct Telegram opens, and other bot entrypoints like `/upgrade`",
         "",
         "## Core Data Health",
         "",
