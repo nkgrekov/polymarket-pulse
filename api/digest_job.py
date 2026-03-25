@@ -43,6 +43,8 @@ def render_digest_email(
     stats_line: str,
     kicker_line: str,
     cta_label: str,
+    coverage_line: str,
+    next_step_line: str,
 ) -> str:
     return f"""
     <div style="margin:0;padding:24px;background:#0d0f0e;color:#e8ede9;font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace;">
@@ -52,6 +54,11 @@ def render_digest_email(
         <p style="margin:0 0 18px;font-size:14px;line-height:1.65;color:#8fa88f;">This digest is your backup view of what actually moved. For live action, Telegram is still the primary loop.</p>
         <p style="margin:0 0 10px;color:#6b7a6e;font-size:12px;line-height:1.6;">{stats_line}</p>
         <p style="margin:0 0 18px;color:#8fa88f;font-size:13px;line-height:1.6;">{kicker_line}</p>
+        <div style="margin:0 0 18px;padding:14px 16px;background:#101411;border:1px solid #1e2520;border-radius:12px;">
+          <div style="color:#6b7a6e;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Watchlist coverage</div>
+          <p style="margin:0 0 8px;color:#e8ede9;font-size:13px;line-height:1.6;">{coverage_line}</p>
+          <p style="margin:0;color:#8fa88f;font-size:12px;line-height:1.6;">{next_step_line}</p>
+        </div>
         <div style="font-size:14px;line-height:1.65;color:#e8ede9;">{items_html}</div>
         <p style="margin:24px 0 0;">
           <a href="{PULSE_BOT_URL}" style="display:inline-block;background:#00ff88;color:#0a0c0b;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 18px;">{cta_label}</a>
@@ -90,12 +97,12 @@ def main() -> None:
 
                 cur.execute(
                     """
-                    select
-                      ae.market_id,
-                      ae.alert_type,
-                      ae.abs_delta,
-                      ae.bucket,
-                      coalesce(m.question, ae.market_id) as market_label
+                select
+                  ae.market_id,
+                  ae.alert_type,
+                  ae.abs_delta,
+                  ae.bucket,
+                  coalesce(m.question, ae.market_id) as market_label
                     from bot.alert_events ae
                     left join public.markets m on m.market_id = ae.market_id
                     where ae.user_id = %s
@@ -108,6 +115,37 @@ def main() -> None:
                 rows = cur.fetchall()
                 if not rows:
                     continue
+
+                cur.execute(
+                    """
+                    with total_wl as (
+                      select count(*)::int as total_count
+                      from bot.watchlist
+                      where user_id = %s
+                    ), ready_wl as (
+                      select count(*)::int as ready_count
+                      from bot.watchlist_snapshot_latest
+                      where user_id = %s
+                    ), closed_wl as (
+                      select count(*)::int as closed_count
+                      from bot.watchlist w
+                      join public.markets m on m.market_id = w.market_id
+                      where w.user_id = %s
+                        and coalesce(m.status, 'unknown') = 'closed'
+                    ), settings as (
+                      select threshold
+                      from bot.user_settings
+                      where user_id = %s
+                    )
+                    select
+                      coalesce((select total_count from total_wl), 0),
+                      coalesce((select ready_count from ready_wl), 0),
+                      coalesce((select closed_count from closed_wl), 0),
+                      coalesce((select threshold from settings), 0.03)
+                    """,
+                    (user_id, user_id, user_id, user_id),
+                )
+                total_watchlist, ready_watchlist, closed_watchlist, threshold = cur.fetchone()
 
                 lines = []
                 unique_markets = set()
@@ -133,6 +171,29 @@ def main() -> None:
 
                 unsub_url = f"{APP_BASE_URL}/unsubscribe?token={confirm_token}" if confirm_token else APP_BASE_URL
                 stats_line = f"{len(rows)} alert candidate(s) across {len(unique_markets)} market(s) from the last 24 hours."
+                quiet_markets = max(int(total_watchlist) - len(unique_markets), 0)
+                coverage_line = (
+                    f"{ready_watchlist}/{total_watchlist} tracked market(s) have live last+prev coverage right now. "
+                    f"{len(unique_markets)} market(s) actually crossed your threshold in this digest window."
+                    if total_watchlist
+                    else f"{len(unique_markets)} market(s) crossed your threshold in this digest window."
+                )
+                if int(closed_watchlist) > 0:
+                    next_step_line = (
+                        f"{closed_watchlist} tracked market(s) are already closed. Best next step: open Pulse in Telegram and replace those first."
+                    )
+                elif int(ready_watchlist) == 0 and int(total_watchlist) > 0:
+                    next_step_line = (
+                        "Your list has no live ready markets right now. Best next step: open Pulse in Telegram and swap in one stronger live market."
+                    )
+                elif quiet_markets > 0:
+                    next_step_line = (
+                        f"{quiet_markets} tracked market(s) stayed quiet in this window. That is normal. Use Telegram if you want to review the list or lower the threshold from {float(threshold):.3f}."
+                    )
+                else:
+                    next_step_line = (
+                        "This is a healthy backup pass. Use Telegram if you want to inspect the live watchlist feed instead of the recap."
+                    )
                 kicker_line = (
                     f"Strongest move in this backup pass: {html.escape(str(strongest_label))} at Δ={max_delta:.3f}. Open Telegram if you want the live loop, not the recap."
                     if max_delta is not None and strongest_label
@@ -144,6 +205,8 @@ def main() -> None:
                     stats_line=stats_line,
                     kicker_line=kicker_line,
                     cta_label="Resume in Telegram",
+                    coverage_line=coverage_line,
+                    next_step_line=next_step_line,
                 )
                 subject = (
                     f"Polymarket Pulse digest: {strongest_label}"

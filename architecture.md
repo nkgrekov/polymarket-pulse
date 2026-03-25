@@ -4,6 +4,68 @@ This document describes the technical architecture.
 
 ---
 
+# Post-Add State-Aware Contract (2026-03-25)
+
+The `Pulse` watchlist add/replace flow now classifies the newly added market before deciding what follow-up text and inline actions to show.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• introduced a shared `market_live_state_summary(market_id, locale)` helper that derives a compact post-add state from `SQL_MARKET_LIVE_STATUS`
+• add/replace results now carry `live_state` with one of:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+• `watchlist_post_add_markup(...)` now branches on that state:
+  - `exists` and `ready` keep the normal “added” action surface
+  - quiet states switch to the review/recovery action surface
+• add/replace confirmation copy now contains:
+  - a state-specific status line
+  - a state-specific next-step line
+
+Operational implication:
+
+• the first watchlist add is now closer to a guided product contract instead of a generic CRUD confirmation
+• the user gets immediate reinforcement toward either:
+  - checking `Watchlist` for live deltas
+  - or replacing/reviewing a weak market before the first-value moment stalls
+• this is still fully inside the current `bot.*` runtime and does not alter the external command contract
+
+---
+
+# Digest Return Contract Tightening (2026-03-25)
+
+The email digest now includes explicit watchlist-coverage context so the backup channel can direct the user back into the live `Pulse` loop with a clearer next step.
+
+Updated artifact:
+
+• `api/digest_job.py`
+
+Contract changes:
+
+• each digest still centers on recent `bot.alert_events`, but now also computes compact watchlist context per subscriber:
+  - total tracked markets
+  - currently ready markets from `bot.watchlist_snapshot_latest`
+  - closed tracked markets
+  - current user threshold from `bot.user_settings`
+• the rendered email now contains a `Watchlist coverage` block before the alert list
+• that block emits a context-aware return instruction:
+  - replace closed markets first
+  - swap in a stronger live market if there is no ready coverage
+  - review list/threshold in Telegram if some tracked markets stayed quiet
+  - otherwise treat the digest as a healthy backup pass and return to Telegram for the live feed
+
+Operational implication:
+
+• the digest is now less of a passive recap and more of a retention surface that mirrors `Pulse` quiet-state logic
+• this remains a read-only enrichment of the existing email path; no new public routes, no source-of-truth changes, and no change to the primary Telegram-first product contract are introduced
+
+---
+
 # Active Execution Plan Link
 
 Operational 14-day delivery plan is versioned in:

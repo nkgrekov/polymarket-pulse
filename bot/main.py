@@ -1539,6 +1539,69 @@ def watchlist_result(text: str, *, outcome: str, **meta: Any) -> dict[str, Any]:
     return payload
 
 
+def market_live_state_summary(market_id: str, *, locale: str = "ru") -> dict[str, str]:
+    live_rows = run_db_query(SQL_MARKET_LIVE_STATUS, (market_id,), row_factory=dict_row)
+    live = live_rows[0] if live_rows else None
+    market_status = str((live or {}).get("market_status") or "unknown")
+    has_last = bool((live or {}).get("has_last_quotes"))
+    has_prev = bool((live or {}).get("has_prev_quotes"))
+    if market_status == "closed":
+        return {
+            "live_state": "closed",
+            "status_line": (
+                "Status now: market is already closed, so watchlist/inbox will likely stay silent."
+                if locale == "en"
+                else "Статус сейчас: рынок уже закрыт, поэтому watchlist/inbox, скорее всего, будут молчать."
+            ),
+            "next_line": (
+                "Best next step: replace it below right away so your first useful signal does not depend on a closed market."
+                if locale == "en"
+                else "Лучший следующий шаг: сразу замените его ниже, чтобы первая польза не зависела от закрытого рынка."
+            ),
+        }
+    if has_last and has_prev:
+        return {
+            "live_state": "ready",
+            "status_line": (
+                "Status now: live quotes exist in last+prev, so this market is ready for watchlist/inbox tracking."
+                if locale == "en"
+                else "Статус сейчас: есть live-котировки в last+prev, значит рынок уже готов для watchlist/inbox."
+            ),
+            "next_line": (
+                "Best next step: open Watchlist now. This one should already be able to show live deltas."
+                if locale == "en"
+                else "Лучший следующий шаг: откройте Вотчлист прямо сейчас. Этот рынок уже должен уметь показывать live-дельты."
+            ),
+        }
+    if has_last or has_prev:
+        return {
+            "live_state": "partial",
+            "status_line": (
+                "Status now: partial quotes only. The market is added, but inbox/watchlist may be quiet until both windows are live."
+                if locale == "en"
+                else "Статус сейчас: котировки только частично. Рынок добавлен, но inbox/watchlist могут молчать, пока оба окна не станут live."
+            ),
+            "next_line": (
+                "Best next step: check Watchlist once, then either wait for the next bucket or swap in a stronger live candidate below."
+                if locale == "en"
+                else "Лучший следующий шаг: один раз проверьте Вотчлист, а потом либо дождитесь следующего бакета, либо замените рынок на более живой кандидат ниже."
+            ),
+        }
+    return {
+        "live_state": "no_quotes",
+        "status_line": (
+            "Status now: no bid/ask quotes in last+prev yet. The market is added, but first live value may appear later."
+            if locale == "en"
+            else "Статус сейчас: пока нет bid/ask-котировок в last+prev. Рынок добавлен, но первая live-ценность может появиться позже."
+        ),
+        "next_line": (
+            "Best next step: do not rely on this market alone. Add or swap in a live candidate below so Watchlist can become useful faster."
+            if locale == "en"
+            else "Лучший следующий шаг: не полагайтесь только на этот рынок. Добавьте или замените его на live-кандидат ниже, чтобы Вотчлист стал полезным быстрее."
+        ),
+    }
+
+
 def merge_inline_markups(*markups: InlineKeyboardMarkup | None) -> InlineKeyboardMarkup | None:
     rows: list[list[InlineKeyboardButton]] = []
     seen: set[tuple[str, str | None, str | None]] = set()
@@ -1572,11 +1635,11 @@ async def watchlist_post_add_markup(
     if outcome not in {"added", "replaced", "exists"}:
         return None
 
-    base = watchlist_added_inline(locale)
     live_state = str(result.get("live_state") or "")
     if outcome == "exists" or live_state in {"ready", ""}:
-        return base
+        return watchlist_added_inline(locale)
 
+    base = watchlist_live_inline(locale, has_closed=live_state == "closed")
     user_ctx_eff = dict(user_ctx)
     if outcome == "added":
         user_ctx_eff["watchlist_count"] = int(user_ctx.get("watchlist_count") or 0) + 1
@@ -2102,54 +2165,21 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
         )
 
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
-    live_rows = run_db_query(SQL_MARKET_LIVE_STATUS, (market_id,), row_factory=dict_row)
-    live = live_rows[0] if live_rows else None
-    market_status = str((live or {}).get("market_status") or "unknown")
-    has_last = bool((live or {}).get("has_last_quotes"))
-    has_prev = bool((live or {}).get("has_prev_quotes"))
-    live_line = ""
-    if market_status == "closed":
-        live_state = "closed"
-        live_line = (
-            "Status now: market is already closed, so watchlist/inbox will likely stay silent."
-            if locale == "en"
-            else "Статус сейчас: рынок уже закрыт, поэтому watchlist/inbox, скорее всего, будут молчать."
-        )
-    elif has_last and has_prev:
-        live_state = "ready"
-        live_line = (
-            "Status now: live quotes exist in last+prev, so this market is ready for watchlist/inbox tracking."
-            if locale == "en"
-            else "Статус сейчас: есть live-котировки в last+prev, значит рынок уже готов для watchlist/inbox."
-        )
-    elif has_last or has_prev:
-        live_state = "partial"
-        live_line = (
-            "Status now: partial quotes only. The market is added, but inbox/watchlist may be quiet until both windows are live."
-            if locale == "en"
-            else "Статус сейчас: котировки только частично. Рынок добавлен, но inbox/watchlist могут молчать, пока оба окна не станут live."
-        )
-    else:
-        live_state = "no_quotes"
-        live_line = (
-            "Status now: no bid/ask quotes in last+prev yet. The market is added, but first live value may appear later."
-            if locale == "en"
-            else "Статус сейчас: пока нет bid/ask-котировок в last+prev. Рынок добавлен, но первая live-ценность может появиться позже."
-        )
+    live_summary = market_live_state_summary(market_id, locale=locale)
     if locale == "en":
         return watchlist_result(
             f"Added to watchlist: {market_id} — {market_rows[0]['question']}\n"
-            f"{live_line}\n"
-            "Next: open Watchlist for live changes or Inbox for alerts.",
+            f"{live_summary['status_line']}\n"
+            f"{live_summary['next_line']}",
             outcome="added",
-            live_state=live_state,
+            live_state=live_summary["live_state"],
         )
     return watchlist_result(
         f"Добавлено в watchlist: {market_id} — {market_rows[0]['question']}\n"
-        f"{live_line}\n"
-        "Дальше: откройте Watchlist для live-изменений или Inbox для алертов.",
+        f"{live_summary['status_line']}\n"
+        f"{live_summary['next_line']}",
         outcome="added",
-        live_state=live_state,
+        live_state=live_summary["live_state"],
     )
 
 
@@ -2182,20 +2212,25 @@ def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str
     target = target_rows[0]
     execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], target["market_id"]))
     execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    live_summary = market_live_state_summary(market_id, locale=locale)
     if locale == "en":
         return watchlist_result(
             f"Replaced watchlist market: {target['market_id']} -> {market_id}\n"
             f"Removed: {target['question']}\n"
             f"Added: {market_rows[0]['question']}\n"
-            "Next: open Watchlist or Inbox to check if the new market is more active.",
+            f"{live_summary['status_line']}\n"
+            f"{live_summary['next_line']}",
             outcome="replaced",
+            live_state=live_summary["live_state"],
         )
     return watchlist_result(
         f"Заменил рынок в watchlist: {target['market_id']} -> {market_id}\n"
         f"Убрали: {target['question']}\n"
         f"Добавили: {market_rows[0]['question']}\n"
-        "Дальше: откройте Watchlist или Inbox и проверьте, стал ли новый рынок активнее.",
+        f"{live_summary['status_line']}\n"
+        f"{live_summary['next_line']}",
         outcome="replaced",
+        live_state=live_summary["live_state"],
     )
 
 

@@ -4,6 +4,67 @@ This document tracks the current state of the project.
 
 ---
 
+# Post-Add First-Value Reinforcement (2026-03-25)
+
+Improved the `Pulse` watchlist add/replace path so the user gets a more honest and actionable next step immediately after adding a market.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• added a shared `market_live_state_summary(...)` helper for post-add messaging
+• successful add/replace responses now distinguish between:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+• for `ready` markets the user is pushed straight toward `Watchlist`
+• for quiet states the user now gets:
+  - an honest status line
+  - a concrete next-step line
+  - recovery/review markup instead of the generic “added” keyboard
+• replaced markets now also return the same state-aware guidance instead of a generic “check Watchlist or Inbox” follow-up
+
+Practical effect:
+
+• the first add is now closer to a real value moment:
+  - if the market is already live, the user knows to check `Watchlist` immediately
+  - if the market is weak, the user is told to swap/review it instead of waiting in confusion
+• this directly supports the current weekly KPI around `tg_start -> watchlist_add -> first useful signal`
+
+---
+
+# Digest Usefulness Pass 2 (2026-03-25)
+
+Improved the email digest so it behaves less like a raw alert dump and more like a backup retention surface that helps the user decide whether to return to `Pulse` right now.
+
+Files updated:
+
+• `api/digest_job.py`
+
+What changed:
+
+• the digest email now includes a dedicated `Watchlist coverage` block above the alert list
+• each email now explains:
+  - how many tracked markets have live last+prev coverage right now
+  - how many tracked markets actually crossed the user threshold in the digest window
+• the digest now gives a context-aware next step:
+  - replace closed markets first
+  - swap in a stronger live market if coverage is zero
+  - accept a quiet window as normal and review threshold/list in Telegram if needed
+  - or treat the email as a healthy backup pass when coverage is already good
+
+Practical effect:
+
+• the daily digest now better answers both:
+  - “what moved?”
+  - “what should I do next in Pulse?”
+• email remains a backup channel, but the return path into the live Telegram loop is now much clearer
+
+---
+
 # Active 14-Day Plan
 
 Current execution plan is tracked in:
