@@ -949,6 +949,26 @@ def execute_db_write(query: str, params: tuple[Any, ...]) -> None:
     raise last_error
 
 
+def execute_db_write_count(query: str, params: tuple[Any, ...]) -> int:
+    last_error = None
+    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+        try:
+            with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(query, params)
+                    affected = int(cur.rowcount or 0)
+                conn.commit()
+                return affected
+        except Exception as exc:
+            last_error = exc
+            if attempt == DB_RETRY_ATTEMPTS:
+                raise
+            log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            time.sleep(DB_RETRY_SLEEP_SECONDS)
+    raise last_error
+
+
 def normalize_start_payload(context: ContextTypes.DEFAULT_TYPE) -> str | None:
     args = getattr(context, "args", None) or []
     if not args:
@@ -1579,9 +1599,9 @@ def active_followup_text(locale: str, *, user_ctx: dict, view: str, shown_count:
     if view == "watchlist":
         if watchlist_count > shown_count and closed_count > 0:
             return (
-                f"Start here: the first row is your strongest live delta now. {closed_count} tracked market(s) are already closed, so use Review list if the rest feels too quiet."
+                f"Start here: the first row is your strongest live delta now. {closed_count} tracked market(s) are already closed and hidden from this live list, so use Review list if the rest feels too quiet."
                 if locale == "en"
-                else f"Начните с первой строки: это самая сильная live-дельта сейчас. {closed_count} рынка(ов) уже закрыты, так что откройте Проверить список, если остальное кажется слишком тихим."
+                else f"Начните с первой строки: это самая сильная live-дельта сейчас. {closed_count} рынка(ов) уже закрыты и не показываются в этом live-списке, так что откройте Проверить список, если остальное кажется слишком тихим."
             )
         if watchlist_count > shown_count:
             return (
@@ -2286,13 +2306,7 @@ def add_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "
 
 
 def cleanup_closed_watchlist_sync(user_id: str) -> int:
-    with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
-        with conn.cursor() as cur:
-            cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(SQL_WATCHLIST_REMOVE_CLOSED, (user_id,))
-            deleted = cur.rowcount or 0
-        conn.commit()
-    return int(deleted)
+    return execute_db_write_count(SQL_WATCHLIST_REMOVE_CLOSED, (user_id,))
 
 
 def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str = "ru") -> dict[str, str]:
@@ -3251,9 +3265,22 @@ async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYP
 
     market_rows = run_db_query(SQL_FIND_MARKET, (ref, ref), row_factory=dict_row)
     market_id = ref if not market_rows else str(market_rows[0]["market_id"])
-    execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], market_id))
+    removed = execute_db_write_count(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], market_id))
+    if removed:
+        await update.message.reply_text(
+            (
+                f"Removed from watchlist: {market_id}\nOpen /watchlist or /watchlist_list to verify the refreshed list."
+                if locale == "en"
+                else f"Удалено из watchlist: {market_id}\nОткройте /watchlist или /watchlist_list, чтобы проверить обновлённый список."
+            )
+        )
+        return
     await update.message.reply_text(
-        f"Removed from watchlist: {market_id}" if locale == "en" else f"Удалено из watchlist: {market_id}"
+        (
+            f"This market is not in your watchlist anymore: {market_id}\nIf it still looks stale in another screen, refresh /watchlist_list."
+            if locale == "en"
+            else f"Этого рынка уже нет в вашем watchlist: {market_id}\nЕсли он всё ещё кажется висящим на другом экране, обновите /watchlist_list."
+        )
     )
 
 
@@ -3448,16 +3475,29 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu:cleanup_closed":
         user_ctx = await resolve_user_context(update)
         removed = await asyncio.to_thread(cleanup_closed_watchlist_sync, user_ctx["user_id"])
-        await query.message.reply_text(
-            (
-                f"Removed closed markets from watchlist: {removed}\n"
-                "Now add a live market via “Add market”."
-                if locale == "en"
-                else f"Удалено закрытых рынков из watchlist: {removed}\n"
-                "Теперь добавьте live рынок через кнопку «Добавить рынок»."
-            ),
-            reply_markup=main_menu_inline(),
-        )
+        refreshed_user_ctx = await resolve_user_context(update)
+        if removed > 0:
+            await query.message.reply_text(
+                (
+                    f"Removed closed markets from watchlist: {removed}\n"
+                    "Refreshing the list below. Remaining markets are still active in source data, so use /watchlist_remove <market_id|slug> for anything you want gone manually."
+                    if locale == "en"
+                    else f"Удалено закрытых рынков из watchlist: {removed}\n"
+                    "Ниже покажу обновлённый список. Оставшиеся рынки всё ещё active в source data, так что для ручного удаления используйте /watchlist_remove <market_id|slug>."
+                )
+            )
+        else:
+            await query.message.reply_text(
+                (
+                    "No closed markets were found in your watchlist.\n"
+                    "If a market looks stale because its question date already passed, but it is still quoting, it will stay active until the source marks it closed. Use /watchlist_remove <market_id|slug> to remove it manually."
+                    if locale == "en"
+                    else "В вашем watchlist сейчас нет закрытых рынков.\n"
+                    "Если рынок выглядит устаревшим, потому что дата в вопросе уже прошла, но он всё ещё котируется, он останется active, пока source не пометит его closed. Для ручного удаления используйте /watchlist_remove <market_id|slug>."
+                ),
+                reply_markup=main_menu_inline(),
+            )
+        await send_watchlist_list_view(query.message, context, refreshed_user_ctx, locale=locale)
         return
     if data.startswith("wlpick:"):
         token = data.split(":", 1)[1]

@@ -4,6 +4,38 @@ This document tracks the current state of the project.
 
 ---
 
+# Watchlist Cleanup Truthfulness Fix (2026-03-25)
+
+Fixed a confusing `Pulse` watchlist-cleanup behavior where users could press `Remove closed`, see a success message, and still keep receiving alerts from another market that looked stale but was still active in source data.
+
+Files updated:
+
+• `bot/main.py`
+
+What changed:
+
+• added `execute_db_write_count(...)` so watchlist removals can report actual affected rows
+• `cmd_watchlist_remove` now distinguishes between:
+  - a real delete
+  - a market that is already not in the watchlist
+• `menu:cleanup_closed` now:
+  - refreshes user context after cleanup
+  - explains that only `public.markets.status = 'closed'` rows are removed automatically
+  - tells the user to use `/watchlist_remove <market_id|slug>` for still-active markets they want gone manually
+  - sends the refreshed review screen after cleanup instead of leaving the user with a stale earlier view
+• returning `watchlist` guidance now states more clearly that closed tracked markets can be hidden from the live rows
+
+Operational note:
+
+• investigated market `1633348` directly in production data
+• root cause of the confusion was not a fake alert:
+  - the market was still `status='active'` in `public.markets`
+  - it also had fresh bid/ask quotes and liquidity in `public.market_snapshots`
+• because of that, it was correctly eligible for alerting and was not eligible for `Remove closed`
+• the product bug was the misleading cleanup UX, not the alert loop itself
+
+---
+
 # CTA Surface Measurement Pass (2026-03-25)
 
 Added placement-level impression tracking so the weekly growth review can compare `seen -> tg_click` on the main site CTA surfaces without breaking the canonical `page_view` denominator.

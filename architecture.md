@@ -4,6 +4,37 @@ This document describes the technical architecture.
 
 ---
 
+# Watchlist Cleanup and Removal Truth Contract (2026-03-25)
+
+The `Pulse` watchlist cleanup flow now distinguishes between automatically removable `closed` markets and still-active markets that only look stale from the user’s point of view.
+
+Updated artifact:
+
+• `bot/main.py`
+
+Contract changes:
+
+• introduced `execute_db_write_count(...)` so watchlist removal handlers can report actual affected rows
+• `/watchlist_remove <market_id|slug>` now reports truthfully whether a market was actually removed from the current watchlist
+• `menu:cleanup_closed` now only claims success for rows actually deleted by:
+  - `public.markets.status = 'closed'`
+• after cleanup, the bot now refreshes the review surface instead of leaving the user on an earlier stale live screen
+• cleanup follow-up copy now makes the distinction explicit:
+  - automatically removable: source-marked `closed`
+  - manually removable: still `active` in source data, even if the question date already passed
+• `watchlist` live guidance now states more clearly that closed tracked markets may be hidden from the live rows and require `Review list` for cleanup
+
+Operational implication:
+
+• alert delivery remains driven by the current analytical/runtime contour:
+  - if a market is still `active` in `public.markets`
+  - and still has live quotes in `public.market_snapshots`
+  - it remains eligible for watchlist alerting
+• the cleanup UX no longer implies that `Remove closed` deletes any market that simply “looks dead” from the question wording
+• this is a truthfulness fix around the existing source-of-truth contract, not a change to alert eligibility logic
+
+---
+
 # CTA Surface Impression Contract (2026-03-25)
 
 The weekly acquisition loop now distinguishes between whole-page visits and CTA-surface visibility on the main Telegram decision blocks.
