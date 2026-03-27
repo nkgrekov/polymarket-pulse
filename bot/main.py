@@ -160,6 +160,37 @@ order by abs(delta_yes) desc nulls last
 limit %s;
 """
 
+SQL_TOP_MOVERS_HOT = """
+with base as (
+  select
+    market_id,
+    question,
+    window_end as last_bucket,
+    window_start as prev_bucket,
+    current_mid as yes_mid_now,
+    prev_mid as yes_mid_prev,
+    delta_mid as delta_yes,
+    coalesce(nullif(regexp_replace(question, ' - .*$', ''), ''), market_id) as root_key
+  from public.hot_top_movers_5m
+  where delta_abs > 0
+), ranked as (
+  select distinct on (root_key)
+    market_id,
+    question,
+    last_bucket,
+    prev_bucket,
+    yes_mid_now,
+    yes_mid_prev,
+    delta_yes
+  from base
+  order by root_key, abs(delta_yes) desc nulls last
+)
+select *
+from ranked
+order by abs(delta_yes) desc nulls last
+limit %s;
+"""
+
 SQL_TOP_MOVERS_1H = """
 with base as (
   select
@@ -2498,10 +2529,13 @@ async def fetch_inbox_async(user_id: str, limit: int = 10, timeout_sec: float = 
 
 
 async def fetch_top_movers_async(limit: int = 3, timeout_sec: float = 10.0) -> list[dict]:
-    return await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_TOP_MOVERS, (limit,), row_factory=dict_row)),
-        timeout=timeout_sec,
-    )
+    async def _fetch() -> list[dict]:
+        hot_rows = await asyncio.to_thread(lambda: run_db_query(SQL_TOP_MOVERS_HOT, (limit,), row_factory=dict_row))
+        if hot_rows:
+            return hot_rows
+        return await asyncio.to_thread(lambda: run_db_query(SQL_TOP_MOVERS, (limit,), row_factory=dict_row))
+
+    return await asyncio.wait_for(_fetch(), timeout=timeout_sec)
 
 async def fetch_top_movers_1h_async(limit: int = 3, timeout_sec: float = 10.0) -> list[dict]:
     return await asyncio.wait_for(

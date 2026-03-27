@@ -2950,3 +2950,36 @@ Architectural takeaway:
 
 - the main semantic drift is currently caused by live reversion vs bucket shock, not by missing live coverage
 - that is exactly the kind of difference we expect between an action-first surface and a shock-first surface
+
+## First Gate Calibration Accepted
+
+The first calibration step for `public.hot_top_movers_5m` is now accepted:
+
+- `HOT_MOVERS_MIN_ABS_DELTA`
+  - from `0.005`
+  - to `0.003`
+
+Why:
+
+- comparison overlap improved materially
+- the hot surface kept its action-first character
+- the result looked good enough to support a safe hot-first cutover with fallback
+
+## `/movers` Runtime Cutover Completed
+
+After the first gate calibration, `/movers` now uses a safe runtime split:
+
+- hot-first:
+  - `public.hot_top_movers_5m`
+- legacy fallback:
+  - `public.top_movers_latest`
+
+Implementation point:
+
+- `fetch_top_movers_async()` in `bot/main.py`
+
+Why this cutover is acceptable now:
+
+- comparison overlap improved materially after lowering `HOT_MOVERS_MIN_ABS_DELTA` to `0.003`
+- the hot surface now better matches the action-first product meaning of `/movers`
+- fallback keeps the command resilient if the hot mover publish phase temporarily yields no rows

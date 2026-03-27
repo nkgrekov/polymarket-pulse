@@ -269,7 +269,7 @@ def _publish_hot_top_movers_5m(pg_conn: str, rows: list[dict], *, quote_ts: date
 
     min_liquidity = float(os.environ.get("HOT_MOVERS_MIN_LIQUIDITY", "1000"))
     max_spread = float(os.environ.get("HOT_MOVERS_MAX_SPREAD", "0.25"))
-    min_abs_delta = float(os.environ.get("HOT_MOVERS_MIN_ABS_DELTA", "0.005"))
+    min_abs_delta = float(os.environ.get("HOT_MOVERS_MIN_ABS_DELTA", "0.003"))
 
     mover_rows = []
     mover_market_ids: list[str] = []

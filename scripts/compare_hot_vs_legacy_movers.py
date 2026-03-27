@@ -9,7 +9,7 @@ from psycopg.rows import dict_row
 
 DEFAULT_MIN_LIQUIDITY = float(os.environ.get("HOT_MOVERS_MIN_LIQUIDITY", "1000"))
 DEFAULT_MAX_SPREAD = float(os.environ.get("HOT_MOVERS_MAX_SPREAD", "0.25"))
-DEFAULT_MIN_ABS_DELTA = float(os.environ.get("HOT_MOVERS_MIN_ABS_DELTA", "0.005"))
+DEFAULT_MIN_ABS_DELTA = float(os.environ.get("HOT_MOVERS_MIN_ABS_DELTA", "0.003"))
 
 
 SQL_SUMMARY = """

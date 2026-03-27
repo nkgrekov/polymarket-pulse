@@ -97,14 +97,16 @@ We cut over `/movers` when both conditions hold:
 1. the hot surface matches the intended product meaning better than legacy
 2. the remaining differences are explainable as freshness/actionability improvements, not data-quality failures
 
-## Next Implementation Step
+## Runtime Result
 
-Do not switch `/movers` yet.
+That calibration step has now been accepted.
 
-Next:
+`/movers` now runs:
 
-1. improve or calibrate `public.hot_top_movers_5m` until the comparison report looks intentionally different, not suspiciously different
-2. then switch `/movers` to hot-first with legacy fallback
+1. hot-first on `public.hot_top_movers_5m`
+2. legacy fallback on `public.top_movers_latest`
+
+This preserves the action-first meaning while keeping the command resilient during the transition.
 
 ## Summary
 

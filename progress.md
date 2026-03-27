@@ -2794,3 +2794,18 @@ iOS client integration
 • this is a useful calibration result:
   - mismatch is no longer “mysterious”
   - the hot layer is mostly excluding reverted legacy movers because their current live 5m delta no longer clears the action threshold
+• first threshold calibration step improved the comparison signal:
+  - trial lowering `HOT_MOVERS_MIN_ABS_DELTA` from `0.005` to `0.003` materially improved overlap
+  - live trial run wrote `movers_5m=65`
+• decision:
+  - promote `0.003` as the new calibrated default for hot 5m movers
+  - accept hot-first `/movers` with legacy fallback
+• after calibration, `/movers` was switched to hot-first with legacy fallback:
+  - `bot/main.py`
+  - `fetch_top_movers_async()` now tries `public.hot_top_movers_5m` first
+  - falls back to `public.top_movers_latest` only if the hot query returns no rows
+• regenerated the canonical comparison report after accepting the new threshold:
+  - `docs/hot_vs_legacy_movers_latest.md`
+  - current snapshot shows `hot_count=50`, `legacy_count=50`, `overlap_count=34`
+• local bot smoke after the cutover passed:
+  - `fetch_top_movers_async(limit=3)` returned 3 rows from the hot-first path
