@@ -2770,3 +2770,13 @@ iOS client integration
   - `hot_movers_5m_count` is now non-zero on the live heartbeat
   - registry freshness remains comfortably inside the green threshold
   - quotes freshness remains comfortably inside the green threshold
+• added a dedicated comparison report before `/movers` cutover:
+  - script: `scripts/compare_hot_vs_legacy_movers.py`
+  - output: `docs/hot_vs_legacy_movers_latest.md`
+• current comparison result says **do not cut over `/movers` yet**:
+  - observed summary: `hot_count=30`, `legacy_count=50`, `overlap_count=12`
+  - many top legacy rows are already covered in `public.hot_market_quotes_latest`
+  - but they do not survive the hot 5m mover gates because the current live delta has already reverted
+• conclusion from this pass:
+  - homepage hot-first preview is still correct
+  - `/movers` needs one more product/data decision pass before we switch it

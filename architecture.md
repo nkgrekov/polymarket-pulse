@@ -2875,3 +2875,34 @@ Boundary still preserved:
   - Railway deployment `e964e520-2012-4738-82a0-2b50f56382d0` reached `SUCCESS`
   - live logs show `movers_5m=` on ingest ticks
   - `docs/hot_data_health_latest.md` now reports non-zero `hot_movers_5m_count`
+
+## `/movers` Comparison Decision: Hold
+
+We now have an explicit comparison pass between:
+
+- `public.hot_top_movers_5m`
+- `public.top_movers_latest`
+
+Artifacts:
+
+- `scripts/compare_hot_vs_legacy_movers.py`
+- `docs/hot_vs_legacy_movers_latest.md`
+
+Current decision:
+
+- do **not** cut over `/movers` yet
+
+Why:
+
+- observed overlap is still too weak for a safe runtime switch
+- many top legacy rows are present in `public.hot_market_quotes_latest`, so this is not mainly a coverage failure
+- the bigger difference is semantic:
+  - legacy bucket movers still show large recent bucket jumps
+  - the hot 5m surface often sees those markets after partial reversion, so their *current* actionable delta is smaller or filtered out
+
+This is a real product decision point, not just a technical mismatch.
+
+Before `/movers` cutover, we need to decide which surface should define “top movers”:
+
+- latest bucket shock (`public.top_movers_latest`)
+- or fresher current-action delta (`public.hot_top_movers_5m`)
