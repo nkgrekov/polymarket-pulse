@@ -4,6 +4,54 @@ This document tracks the current state of the project.
 
 ---
 
+# Realtime Data Layer Direction Locked (2026-03-27)
+
+Locked the next infrastructure direction for `Pulse`: user-facing analytics should move toward a faster internal live layer fed from Polymarket APIs, while historical snapshots remain in Postgres and GitHub Actions move into a backup/reconciliation role.
+
+Files updated:
+
+• `manifest.md`
+• `progress.md`
+• `architecture.md`
+
+What we decided:
+
+• current scheduled ingest cadence is too slow for the product layer:
+  - user-facing movers / watchlists / alerts need fresher data
+  - GitHub Actions should not remain the primary live ingestion engine
+• we are **not** replacing the database or switching the bot/site to direct external API calls on every request
+• instead we are introducing a safer split:
+  - **live ingest / hot layer** for bot + site relevance
+  - **historical snapshots** in Postgres for analytics and history
+  - **GitHub Actions** as backup / reconciliation path
+
+Guardrails:
+
+• do not break the current `bot.*` runtime while introducing the new layer
+• do not do a big-bang rewrite
+• do not remove legacy surfaces before the new hot path is proven
+• migrate user-facing reads step by step:
+  - homepage movers preview
+  - `/movers`
+  - `watchlist`
+  - alert candidates
+
+Phased plan now fixed in project memory:
+
+1. define the hot/live data contract
+2. stand up a primary live worker outside GitHub Actions
+3. keep historical write-through into Postgres
+4. switch product reads incrementally
+5. keep actions for repair/backfill/reconciliation only
+
+Practical implication:
+
+• the next infrastructure work should be modernization, not replacement
+• `Pulse` remains Telegram-first and signal-first
+• the data layer is being upgraded so the product can become more live without losing the analytical spine we already built
+
+---
+
 # Watchlist Cleanup Truthfulness Fix (2026-03-25)
 
 Fixed a confusing `Pulse` watchlist-cleanup behavior where users could press `Remove closed`, see a success message, and still keep receiving alerts from another market that looked stale but was still active in source data.

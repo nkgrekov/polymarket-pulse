@@ -69,6 +69,20 @@ Public:
 • Trending markets  
 • Liquidity spikes  
 
+Delivery doctrine:
+
+• user-facing analytics must feel live, not batch-delayed  
+• the primary signal loop should not depend on slow scheduled rebuilds  
+• live relevance comes first, historical storage comes second  
+• history still matters, but it should not bottleneck first-value UX
+
+Runtime principle:
+
+• user surfaces should read from a fast internal live layer fed by Polymarket APIs  
+• the same ingest path should still write historical data into our database  
+• we do not query Polymarket directly on every user request if that adds latency or instability  
+• we centralize live fetch once, then serve bot/site from our own hot derived surfaces
+
 Private API:
 
 • /api/movers  
@@ -95,6 +109,31 @@ Layer II succeeds when:
 
 • 100+ daily visitors to dashboard  
 • 10+ paying API users
+
+Operational success condition:
+
+• `Pulse` can show live market changes on a cadence closer to market reality than the current scheduled ingest path  
+• live movers, watchlists, and alerts stay useful even when historical bucket writes are delayed  
+• the live layer and the historical layer reinforce each other instead of blocking each other
+
+## Layer II Modernization Rule
+
+We will modernize the data layer carefully.
+
+That means:
+
+• no big-bang rewrite  
+• no direct-to-API product requests as the default runtime  
+• no replacement of the current database history layer  
+• no breaking change to the existing bot contract first
+
+Instead we will:
+
+• add a faster live ingest path  
+• add fast internal hot surfaces for user-facing analytics  
+• keep writing historical snapshots to the database  
+• migrate the bot and the site step by step onto the new hot layer  
+• keep GitHub Actions as backup / reconciliation, not as the primary live engine
 
 ---
 

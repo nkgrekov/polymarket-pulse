@@ -4,6 +4,90 @@ This document describes the technical architecture.
 
 ---
 
+# Realtime Data Layer Modernization Direction (2026-03-27)
+
+The next infrastructure direction for `Pulse` is now explicitly defined: user-facing analytics should move onto a faster internal live layer fed from Polymarket APIs, while Postgres remains the historical and analytical backbone.
+
+Updated artifacts:
+
+• `manifest.md`
+• `progress.md`
+• `architecture.md`
+
+Problem statement:
+
+• current ingest cadence is still too slow for product-facing signal delivery
+• GitHub Actions and slower scheduled writes are acceptable as backup/reconciliation, but too weak as the primary live runtime
+• bot/site first-value UX should not depend on 15m+ stale-ish refresh cycles when the source can move much faster
+
+Direction we are taking:
+
+• do **not** switch bot/site into direct external API calls per request
+• do **not** throw away Postgres as the source of historical truth
+• do **not** do a big-bang refactor of the existing runtime
+• instead introduce a split between:
+  - **live ingest / hot layer** for user-facing reads
+  - **historical write-through** into Postgres
+  - **backup / reconciliation jobs** in GitHub Actions
+
+Target shape:
+
+1. **Market registry layer**
+   - active markets
+   - slug / question / token ids / status
+   - refreshed frequently from Polymarket APIs
+
+2. **Quote / midpoint layer**
+   - best bid / ask
+   - midpoint
+   - liquidity
+   - spread
+   - freshness timestamp
+   - refreshed on a much shorter cadence than the current batch loop
+
+3. **Hot derived surfaces**
+   - live movers
+   - watchlist latest state
+   - alert candidates
+   - homepage preview rows
+   - these are the surfaces bot/site should read first
+
+4. **Historical storage**
+   - append/write-through snapshots in Postgres
+   - preserve bucketized history for analytics, digests, and future charts
+
+Migration rule:
+
+• keep the current `bot.*` runtime stable while the hot path is introduced
+• add new hot contracts first
+• move reads incrementally:
+  - homepage movers preview
+  - `/movers`
+  - `watchlist`
+  - alert candidate generation
+• only remove or de-prioritize old slower paths after the new layer is stable
+
+GitHub Actions role after modernization:
+
+• backfill
+• repair
+• reconciliation
+• sanity rebuilds
+
+Not the primary live engine.
+
+Operational implication:
+
+• this is a modernization plan, not a rewrite plan
+• the analytical spine (`market_snapshots`, `top_movers_*`, history, health checks) remains valuable
+• the product gets a faster live contract without losing the core Layer II data asset
+
+Next concrete step:
+
+• define the first hot data contract and worker boundary before any runtime migration begins
+
+---
+
 # Watchlist Cleanup and Removal Truth Contract (2026-03-25)
 
 The `Pulse` watchlist cleanup flow now distinguishes between automatically removable `closed` markets and still-active markets that only look stale from the user’s point of view.
