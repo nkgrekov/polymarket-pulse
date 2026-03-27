@@ -4,6 +4,257 @@ This document describes the technical architecture.
 
 ---
 
+# Hot Data Contract V1 Schema Scaffold (2026-03-27)
+
+The Hot Data Contract V1 schema scaffold is now defined as an additive layer beside the analytical core.
+
+Migration draft:
+
+• `db/migrations/013_hot_data_contract_v1_scaffold.sql`
+
+No runtime read path is switched by this migration.
+
+Legacy compatibility remains intact:
+
+• `public.market_snapshots`
+• `public.top_movers_*`
+• `public.watchlist_snapshot_latest`
+• `bot.watchlist_snapshot_latest`
+• `bot.alerts_inbox_latest`
+
+New V1 hot surfaces introduced:
+
+• `public.hot_market_registry_latest`
+  - table
+  - purpose: latest live market metadata for product-facing reads
+  - fields:
+    - `market_id`
+    - `slug`
+    - `question`
+    - `status`
+    - `end_date`
+    - `event_title`
+    - `category`
+    - `token_yes`
+    - `token_no`
+    - `updated_at`
+    - `source_ts`
+• `public.hot_market_quotes_latest`
+  - table
+  - purpose: latest live quote state per market
+  - fields:
+    - `market_id`
+    - `bid_yes`
+    - `ask_yes`
+    - `mid_yes`
+    - `liquidity`
+    - `spread`
+    - `quote_ts`
+    - `ingested_at`
+    - `freshness_seconds`
+    - `has_two_sided_quote`
+• `public.hot_top_movers_1m`
+  - table
+  - purpose: worker-owned latest 1m hot movers output
+  - fields:
+    - `market_id`
+    - `question`
+    - `slug`
+    - `prev_mid`
+    - `current_mid`
+    - `delta_mid`
+    - `delta_abs`
+    - `liquidity`
+    - `spread`
+    - `score`
+    - `window_start`
+    - `window_end`
+    - `quote_ts`
+    - `ingested_at`
+• `public.hot_top_movers_5m`
+  - table
+  - purpose: worker-owned latest 5m hot movers output and first likely read-cutover target
+  - fields:
+    - `market_id`
+    - `question`
+    - `slug`
+    - `prev_mid`
+    - `current_mid`
+    - `delta_mid`
+    - `delta_abs`
+    - `liquidity`
+    - `spread`
+    - `score`
+    - `window_start`
+    - `window_end`
+    - `quote_ts`
+    - `ingested_at`
+• `public.hot_watchlist_snapshot_latest`
+  - table
+  - purpose: per-user hot watchlist state
+  - fields:
+    - `app_user_id`
+    - `market_id`
+    - `question`
+    - `slug`
+    - `status`
+    - `mid_current`
+    - `mid_prev_5m`
+    - `delta_mid`
+    - `liquidity`
+    - `spread`
+    - `live_state`
+    - `quote_ts`
+    - `ingested_at`
+  - current allowed `live_state` values:
+    - `ready`
+    - `partial`
+    - `no_quotes`
+    - `closed`
+    - `date_passed_active`
+• `public.hot_alert_candidates_latest`
+  - table
+  - purpose: per-user pre-delivery candidate alert surface
+  - fields:
+    - `app_user_id`
+    - `market_id`
+    - `question`
+    - `delta_mid`
+    - `delta_abs`
+    - `threshold_value`
+    - `liquidity`
+    - `spread`
+    - `quote_ts`
+    - `ingested_at`
+    - `candidate_state`
+• `public.hot_ingest_health_latest`
+  - view
+  - purpose: read-only freshness and population health over the hot layer
+  - fields:
+    - `registry_age_seconds`
+    - `quotes_age_seconds`
+    - `active_market_count`
+    - `two_sided_quote_count`
+    - `hot_movers_1m_count`
+    - `hot_movers_5m_count`
+    - `updated_at`
+
+Why the scaffold uses latest-state tables:
+
+• it keeps the V1 contract explicit and queryable before any worker code ships
+• it lets the future hot worker own full refresh semantics with simple upsert/prune behavior
+• it does not force a cutover to views over legacy `market_snapshots`
+• it keeps the hot layer independent from bucketed historical timing
+• it now encodes basic domain guardrails directly in schema for price/spread/liquidity/threshold ranges
+
+What the migration deliberately does not do:
+
+• no rewrite of `ingest/main.py`
+• no rewrite of `ingest/worker.py`
+• no runtime reader changes in `api/main.py` or `bot/main.py`
+• no deletion or replacement of legacy movers/watchlist/alert surfaces
+• no change to Trader or any runtime read path
+
+Worker boundary after scaffold:
+
+• hot worker still needs to:
+  - fetch Gamma market metadata
+  - fetch CLOB quotes
+  - compute freshness/liquidity/spread gates
+  - calculate 1m and 5m mover windows plus `score`
+  - materialize watchlist state from `bot.watchlist`
+  - materialize alert candidates from user threshold settings
+  - publish/prune rows in the new hot tables
+  - keep writing historical snapshots through to `public.market_snapshots`
+• the database now provides stable sink contracts for that work without requiring any runtime read cutover first
+
+Worker publish lifecycle by surface:
+
+• `public.hot_market_registry_latest`
+  - latest-snapshot table
+  - expected lifecycle: upsert current covered markets, prune markets no longer in hot coverage
+• `public.hot_market_quotes_latest`
+  - latest-snapshot table
+  - expected lifecycle: overwrite latest quote state per covered market, prune stale/uncovered rows
+• `public.hot_top_movers_1m`
+  - latest-window scored output
+  - expected lifecycle: rebuild/prune each worker window, not append historical rows
+• `public.hot_top_movers_5m`
+  - latest-window scored output
+  - expected lifecycle: rebuild/prune each worker window, not append historical rows
+• `public.hot_watchlist_snapshot_latest`
+  - per-user latest-state output
+  - expected lifecycle: upsert tracked-market rows for active watchlists, prune rows that disappear because of membership or state changes
+• `public.hot_alert_candidates_latest`
+  - per-user latest-state output
+  - expected lifecycle: upsert current candidate rows, prune rows filtered out by quality, freshness, status, or watchlist changes
+• `public.hot_ingest_health_latest`
+  - derived view
+  - expected lifecycle: no direct writes; reflects freshness/population of the worker-owned hot tables
+
+Initial worker gate guidance after scaffold:
+
+• quote-domain guardrails are now encoded in schema:
+  - probability-like fields stay within `0..1`
+  - `spread` stays within `0..1`
+  - `liquidity` stays non-negative
+  - `threshold_value` stays within `0..1`
+• quality gating still belongs to the worker:
+  - freshness threshold
+  - two-sided quote requirement for primary hot reads
+  - minimum liquidity threshold
+  - maximum acceptable spread
+• state derivation still belongs to the worker:
+  - `live_state` for watchlist rows
+  - `candidate_state` for alert rows
+  - mover `score`
+
+Recommended V1 worker publish order:
+
+1. publish `public.hot_market_registry_latest`
+2. publish `public.hot_market_quotes_latest`
+3. publish `public.hot_top_movers_1m`
+4. publish `public.hot_top_movers_5m`
+5. publish `public.hot_watchlist_snapshot_latest`
+6. publish `public.hot_alert_candidates_latest`
+7. let `public.hot_ingest_health_latest` reflect the new state passively
+
+Reason for this order:
+
+• registry and quotes are the base contracts every downstream hot surface depends on
+• movers should be derived before watchlist and alert surfaces so user-specific rows can reuse the same fresh market state
+• health should remain derived-only so it never becomes a second source of truth
+
+Recommended V1 worker compare strategy before any cutover:
+
+• homepage preview candidate:
+  - compare `public.hot_top_movers_5m` against `public.top_movers_latest`
+  - check overlap, ordering drift, freshness difference, and missing high-liquidity rows
+• `/movers` candidate:
+  - compare bot-facing top rows from `public.hot_top_movers_5m` against `public.top_movers_latest`
+  - keep `public.top_movers_1h` as fallback during evaluation
+• watchlist candidate:
+  - compare per-user coverage and deltas in `public.hot_watchlist_snapshot_latest` against `bot.watchlist_snapshot_latest`
+  - focus on `live_state` truthfulness and quote freshness
+• alert candidate layer:
+  - compare `public.hot_alert_candidates_latest` against `bot.alerts_inbox_latest`
+  - focus on threshold parity, quiet-state truthfulness, and stale-row suppression
+
+Recommended rollback posture for first cutovers:
+
+• keep all legacy readers and legacy SQL surfaces unchanged while hot outputs are being compared
+• flip one product surface at a time
+• preserve one obvious switch-back path to the legacy query for each surface
+• do not mix a worker publish contract change and a runtime read cutover in the same step
+
+Cutover implication:
+
+• output comparison can happen surface-by-surface after the worker exists
+• the first intended consumer remains `public.hot_top_movers_5m`
+• rollback stays trivial because the legacy surfaces remain untouched
+
+---
+
 # Pulse/Site Runtime Read Paths (2026-03-27)
 
 Current user-facing runtime reads against the legacy Postgres live surfaces are concentrated in a small set of `Pulse`/site paths:
