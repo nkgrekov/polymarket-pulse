@@ -2708,3 +2708,12 @@ iOS client integration
 • still no runtime cutover after smoke:
   - `hot_top_movers_*` remain empty by design
   - homepage `/api/live-movers-preview` still reads legacy surfaces
+• added first hot-layer ops report:
+  - script: `scripts/hot_data_health_report.py`
+  - output: `docs/hot_data_health_latest.md`
+• report reads:
+  - `public.hot_ingest_health_latest`
+  - direct table counts from V1 hot tables
+• report is phase-aware:
+  - registry/quotes must be live now
+  - movers/watchlist/alert rows may still be empty until later worker phases

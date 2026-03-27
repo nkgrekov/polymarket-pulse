@@ -2749,3 +2749,24 @@ Smoke state after first live run:
 - `public.hot_ingest_health_latest` is now a working heartbeat over real rows
 
 This means the first hot layer already exists in production data storage, even though no product read has been cut over yet.
+
+## First Hot-Layer Ops Report Added
+
+The hot layer now has its own operator-facing report:
+
+- `scripts/hot_data_health_report.py`
+- output: `docs/hot_data_health_latest.md`
+
+Report contract:
+
+- reads `public.hot_ingest_health_latest`
+- augments it with direct counts from:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+  - `public.hot_watchlist_snapshot_latest`
+  - `public.hot_alert_candidates_latest`
+
+Interpretation rule:
+
+- registry and quotes must be healthy now
+- movers/watchlist/alert rows are allowed to stay empty until their worker publish phases are added
