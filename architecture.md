@@ -2931,3 +2931,22 @@ So the remaining work before cutover is not “make hot look identical to legacy
 It is:
 
 - make hot sufficiently trustworthy for the action-first meaning of `/movers`
+
+## `/movers` Calibration Insight
+
+The comparison tooling now exposes `exclusion_reason` for legacy rows that do not survive the hot 5m publish gates.
+
+Current dominant reason:
+
+- `below_abs_delta_gate`
+
+Meaning:
+
+- the market is still covered in `public.hot_market_quotes_latest`
+- quotes are often two-sided and liquid enough
+- but the *current* 5m live move has already compressed below the action threshold
+
+Architectural takeaway:
+
+- the main semantic drift is currently caused by live reversion vs bucket shock, not by missing live coverage
+- that is exactly the kind of difference we expect between an action-first surface and a shock-first surface

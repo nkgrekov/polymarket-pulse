@@ -2788,3 +2788,9 @@ iOS client integration
 • implication:
   - `public.hot_top_movers_5m` remains the long-term target
   - `public.top_movers_latest` remains comparison + fallback until the hot surface is calibrated enough for that meaning
+• upgraded the comparison tooling with explicit exclusion diagnostics:
+  - `docs/hot_vs_legacy_movers_latest.md` now shows `exclusion_reason`
+  - the dominant current reason is `below_abs_delta_gate`
+• this is a useful calibration result:
+  - mismatch is no longer “mysterious”
+  - the hot layer is mostly excluding reverted legacy movers because their current live 5m delta no longer clears the action threshold
