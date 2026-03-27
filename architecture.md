@@ -42,6 +42,10 @@ UI behavior:
 • homepage row always exposes a secondary `Track in Telegram` handoff
 • if `market_url` is unavailable, the site should not invent a brittle Polymarket path:
   - only Telegram tracking remains actionable
+• the stable market handoff path is:
+  - `https://polymarket.com/market/<slug>`
+  - not `https://polymarket.com/event/<slug>`
+  - Polymarket handles any deeper canonical redirect from there
 
 Hierarchy guardrail:
 

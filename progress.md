@@ -60,6 +60,9 @@ Practical effect:
 • this closes the biggest semantics gap in the clickable rows pass:
   - `Open on Polymarket` opens the market
   - `Track in Telegram` now actually attempts to track that exact market
+• follow-up production fix:
+  - Polymarket market rows must open `/market/<slug>`, not `/event/<slug>`
+  - some market slugs 404 under `/event/...` even though they resolve correctly under `/market/...`
 
 ---
 

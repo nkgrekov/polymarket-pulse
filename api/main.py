@@ -2302,7 +2302,7 @@ def _polymarket_market_url(slug: str | None) -> str | None:
     clean_slug = (slug or "").strip().strip("/")
     if not clean_slug:
         return None
-    return f"https://polymarket.com/event/{quote(clean_slug, safe='-_~')}"
+    return f"https://polymarket.com/market/{quote(clean_slug, safe='-_~')}"
 
 
 def _pulse_track_market_url(market_id: str | None) -> str:
