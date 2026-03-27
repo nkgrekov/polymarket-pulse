@@ -135,6 +135,23 @@ Instead we will:
 • migrate the bot and the site step by step onto the new hot layer  
 • keep GitHub Actions as backup / reconciliation, not as the primary live engine
 
+Hot Data Contract V1:
+
+• the first hot surfaces are:
+  - `hot_market_registry_latest`
+  - `hot_market_quotes_latest`
+  - `hot_top_movers_1m`
+  - `hot_top_movers_5m`
+  - `hot_watchlist_snapshot_latest`
+  - `hot_alert_candidates_latest`
+  - `hot_ingest_health_latest`
+• the first read cutovers should happen in this order:
+  - homepage live movers proof
+  - `/movers`
+  - watchlist latest state
+  - alert candidate generation
+• each cutover must remain additive and reversible until proven stable
+
 ---
 
 # Layer III — Trading Tools

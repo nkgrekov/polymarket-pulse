@@ -4,6 +4,163 @@ This document describes the technical architecture.
 
 ---
 
+# Pulse/Site Runtime Read Paths (2026-03-27)
+
+Current user-facing runtime reads against the legacy Postgres live surfaces are concentrated in a small set of `Pulse`/site paths:
+
+• site homepage proof surface:
+  - `api/main.py` `/api/live-movers-preview`
+  - `public.top_movers_latest` for current mover rows
+  - `public.market_snapshots` for sparkline history
+• bot discovery/read surfaces:
+  - `/movers` reads `public.top_movers_latest`
+  - `/movers` fallback reads `public.market_snapshots`
+  - `/movers` wider fallback reads `public.top_movers_1h`
+• bot retention/read surfaces:
+  - `/watchlist` reads `bot.watchlist_snapshot_latest`
+  - `/inbox` reads `bot.alerts_inbox_latest`
+  - push delivery also reads `bot.alerts_inbox_latest`
+• bot helper/recovery surfaces:
+  - watchlist review, picker, and post-add readiness checks read `public.market_snapshots`
+  - picker also reads `public.top_movers_latest` and `public.top_movers_1h`
+
+Migration implication:
+
+• the first hot layer should cover the surfaces that users feel directly as “live product truth”:
+  - homepage movers preview
+  - `/movers`
+  - `/watchlist`
+  - `/inbox`
+  - push alert candidates
+• helper/recovery reads can remain on the slower SQL path longer:
+  - watchlist review coverage
+  - picker balancing
+  - quote-presence diagnostics
+
+Minimal hot-contract orientation:
+
+• movers contract:
+  - `market_id`
+  - `question`
+  - `mid_now`
+  - `mid_prev`
+  - `delta`
+  - `last_ts`
+  - `prev_ts`
+  - optional spark series for site
+• watchlist latest contract:
+  - `user_id`
+  - `market_id`
+  - `question`
+  - `mid_now`
+  - `mid_prev`
+  - `delta`
+  - `last_ts`
+  - `prev_ts`
+• alert candidate contract:
+  - `user_id`
+  - `market_id`
+  - `question`
+  - `alert_type`
+  - `mid_now`
+  - `mid_prev`
+  - `delta`
+  - `abs_delta`
+  - `last_ts`
+  - `prev_ts`
+
+---
+
+# Current Ingest Contour Map (2026-03-27)
+
+This is the current ingestion contour as implemented in code today.
+
+Reviewed artifacts:
+
+• `.github/workflows/ingest.yml`
+• `ingest/main.py`
+• `ingest/worker.py`
+• `docs/railway-deploy.md`
+• `db/migrations/002_live_universe_views.sql`
+• `db/migrations/005_live_only_hardening.sql`
+• `db/migrations/007_market_universe_auto_balance.sql`
+
+Execution paths:
+
+1. GitHub Actions scheduled batch
+   - runs `python ingest/main.py`
+   - schedule: hourly via cron
+   - role today: real ingest path, even if product direction says it should become backup/reconciliation later
+
+2. Long-running ingest worker
+   - runs `python ingest/worker.py`
+   - internally loops `ingest.main.main()`
+   - cadence controlled by `INGEST_INTERVAL_SECONDS`
+
+Core ingest flow in `ingest/main.py`:
+
+1. fetch active event/market metadata from Gamma
+2. rebalance and cap fetched market set
+3. read forced coverage ids from:
+   - `public.user_watchlist`
+   - `bot.watchlist`
+   - `public.market_universe`
+   - `public.user_positions`
+4. enrich forced ids via Gamma `/markets/{id}` with DB fallback from `public.markets`
+5. fetch bid/ask quotes from CLOB `/prices`
+6. upsert `public.markets`
+7. upsert bucketed rows into `public.market_snapshots`
+8. rebuild `public.market_universe` through `public.refresh_market_universe(...)`
+
+Direct write targets:
+
+• `public.markets`
+• `public.market_snapshots`
+• `public.market_universe`
+
+Downstream live read surfaces fed by those writes:
+
+• `public.top_movers_latest`
+• `public.portfolio_snapshot_latest`
+• `public.watchlist_snapshot_latest`
+• `bot.watchlist_snapshot_latest`
+
+Cadence layers:
+
+• scheduler cadence:
+  - GitHub Actions: hourly at minute `17`
+  - worker service: default `900s`
+• storage cadence:
+  - snapshots are bucketed to 5-minute boundaries via `floor_to_5min(...)`
+• universe refresh cadence:
+  - tied to each successful ingest tick
+
+External source APIs:
+
+• Gamma events: `https://gamma-api.polymarket.com/events`
+• Gamma market detail: `https://gamma-api.polymarket.com/markets/{id}`
+• CLOB prices: `https://clob.polymarket.com/prices`
+
+Lowest-risk insertion points for a new hot/live worker:
+
+1. after forced-id resolution and before `fetch_best_bid_ask(...)`
+   - reuse existing market coverage rules
+   - substitute only the faster quote-refresh leg
+
+2. parallel to the current snapshot write block
+   - keep `public.market_snapshots` as historical write-through
+   - add a separate hot surface write without breaking existing analytical SQL
+
+3. parallel to the downstream read-surface family
+   - add new hot movers/watchlist outputs beside `public.top_movers_latest` and `bot.watchlist_snapshot_latest`
+   - migrate readers incrementally
+
+Boundary note:
+
+• `trade_worker/main.py` is a separate order-execution loop and is not part of the data ingest contour
+
+---
+
 # Realtime Data Layer Modernization Direction (2026-03-27)
 
 The next infrastructure direction for `Pulse` is now explicitly defined: user-facing analytics should move onto a faster internal live layer fed from Polymarket APIs, while Postgres remains the historical and analytical backbone.
@@ -2137,3 +2294,135 @@ Pulse bot:
 • `/start` now has two activation branches:
   - zero-watchlist users → onboarding picker / one-tap add
   - returning users with existing watchlist → resume flow with direct actions into `Watchlist`, `Inbox`, `Threshold`, `Top movers`, `Plan`
+
+---
+
+# Realtime Modernization Contract (2026-03-27)
+
+## Why The Next Step Exists
+
+The current analytical spine is still valuable:
+
+- `public.market_snapshots`
+- `public.market_universe`
+- `public.snapshot_health`
+- `public.top_movers_*`
+
+But current user-facing analytics are still too dependent on batch-shaped timing:
+
+- GitHub Actions is hourly backup
+- the ingest worker cadence is still slower than product-grade “live” UX
+- homepage proof, `/movers`, and watchlist/alert derivation still lean on bucketed history too early
+
+So the next safe move is not a rewrite.
+
+It is a new internal hot layer.
+
+## Runtime Decision
+
+We will not:
+
+- make bot/site call Polymarket directly on every request
+- replace Postgres as the historical backbone
+- rewrite `bot.watchlist` this week
+- delete legacy analytical surfaces first
+
+We will:
+
+- centralize live fetch in one worker
+- write a hot internal read layer for product surfaces
+- keep historical write-through into `public.market_snapshots`
+- migrate reads one surface at a time
+
+## Hot Data Contract V1
+
+Planned hot surfaces:
+
+- `public.hot_market_registry_latest`
+- `public.hot_market_quotes_latest`
+- `public.hot_top_movers_1m`
+- `public.hot_top_movers_5m`
+- `public.hot_watchlist_snapshot_latest`
+- `public.hot_alert_candidates_latest`
+- `public.hot_ingest_health_latest`
+
+Meaning:
+
+- `hot_market_registry_latest` = freshest active market metadata
+- `hot_market_quotes_latest` = freshest quote state per market
+- `hot_top_movers_*` = scored hot movers for 1m / 5m horizons
+- `hot_watchlist_snapshot_latest` = fast per-user watchlist state from hot data
+- `hot_alert_candidates_latest` = pre-threshold candidate alerts from hot data
+- `hot_ingest_health_latest` = hot-layer freshness / coverage heartbeat
+
+## Worker Boundary
+
+The live worker should own:
+
+- Gamma market/event pulls
+- CLOB quote pulls
+- hot registry writes
+- hot quote writes
+- hot movers computation
+- hot watchlist snapshot computation
+- hot alert candidate computation
+- historical write-through to `public.market_snapshots`
+
+The live worker should not own:
+
+- Telegram delivery
+- email delivery
+- user command handling
+
+## Planned Read Cutover Order
+
+We keep migration additive and reversible.
+
+Cutover order:
+
+1. homepage live movers proof (`/api/live-movers-preview`)
+2. bot `/movers`
+3. watchlist latest state
+4. alert candidate generation
+5. inbox derivation
+
+Rules:
+
+- keep old reads alive during comparison
+- do one surface at a time
+- keep rollback available
+- do not change the public bot command contract during cutover
+
+## Compatibility Boundary
+
+These surfaces remain valid during V1:
+
+- `public.market_snapshots`
+- `public.market_universe`
+- `public.snapshot_health`
+- `public.top_movers_*`
+- `bot.watchlist_snapshot_latest`
+- `bot.alerts_inbox_latest`
+
+But the architectural direction is now explicit:
+
+- historical analytics stay on the current analytical spine
+- live user-facing reads progressively move to the new hot layer
+
+## Parallelizable Workstreams
+
+Safe parallel work:
+
+- map read-path dependencies for homepage, `/movers`, watchlist, and inbox
+- scaffold hot tables/views without switching reads
+- build the live worker skeleton with heartbeat-only writes first
+- define mover scoring gates and thresholds
+- add clickable market links on the site
+- add hot-layer operational reports
+
+Unsafe to parallelize with a live cutover:
+
+- deleting old views
+- rewriting watchlist source of truth
+- switching multiple product surfaces at once
+- changing bot command contracts during the same rollout

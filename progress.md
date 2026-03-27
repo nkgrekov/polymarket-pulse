@@ -4,6 +4,113 @@ This document tracks the current state of the project.
 
 ---
 
+# Pulse/Site Read-Path Audit (2026-03-27)
+
+Audited the current user-facing read paths in `Pulse`/site for:
+
+• `public.top_movers_*`  
+• `public.market_snapshots`  
+• `bot.watchlist_snapshot_latest`  
+• `bot.alerts_inbox_latest`
+
+Current runtime readers:
+
+• site homepage live preview:
+  - `api/main.py` `/api/live-movers-preview`
+  - reads `public.top_movers_latest`
+  - reads `public.market_snapshots` for sparklines
+• bot `/movers`:
+  - `bot/main.py`
+  - reads `public.top_movers_latest`
+  - fallback reads `public.market_snapshots`
+  - wider fallback reads `public.top_movers_1h`
+• bot `/watchlist`:
+  - `bot/main.py`
+  - reads `bot.watchlist_snapshot_latest`
+  - fallback + diagnostics read `public.market_snapshots`
+• bot `/inbox`:
+  - `bot/main.py`
+  - reads `bot.alerts_inbox_latest`
+• bot push delivery:
+  - `bot/main.py`
+  - reads `bot.alerts_inbox_latest`
+• bot watchlist review + picker + post-add readiness:
+  - `bot/main.py`
+  - read `public.market_snapshots`
+  - picker also reads `public.top_movers_latest` + `public.top_movers_1h`
+
+Hot-layer migration priority from this audit:
+
+1. site homepage live movers preview  
+2. bot `/movers`  
+3. bot `/watchlist` + post-add live readiness  
+4. bot `/inbox` + push alert candidate delivery  
+5. watchlist review/picker/recovery helpers later
+
+Reason:
+
+• these first surfaces are the first-value live loop for discovery, proof, retention, and alert usefulness  
+• later helper surfaces are mainly coverage/status aids, not the primary live decision moment
+
+---
+
+# Ingest Contour Mapped (2026-03-27)
+
+Mapped the current ingest contour so the next hot/live worker can be placed without a broad refactor.
+
+Files reviewed:
+
+• `.github/workflows/ingest.yml`
+• `ingest/main.py`
+• `ingest/worker.py`
+• `docs/railway-deploy.md`
+• `db/migrations/002_live_universe_views.sql`
+• `db/migrations/005_live_only_hardening.sql`
+• `db/migrations/007_market_universe_auto_balance.sql`
+
+Current runtime map:
+
+• primary batch ingest implementation is `ingest/main.py`
+• scheduled GitHub Actions backup path runs `python ingest/main.py` hourly
+• long-running service path runs `python ingest/worker.py`, which loops the same batch ingest function on an env-driven interval
+• direct DB writes in the ingest path are:
+  - `public.markets`
+  - `public.market_snapshots`
+  - `public.market_universe` via `public.refresh_market_universe(...)`
+• product-facing read surfaces are downstream SQL views over those tables, mainly:
+  - `public.top_movers_latest`
+  - `public.portfolio_snapshot_latest`
+  - `public.watchlist_snapshot_latest`
+  - `bot.watchlist_snapshot_latest`
+
+Cadence sources verified:
+
+• GitHub Actions cron: hourly at minute `17`
+• worker loop default: `INGEST_INTERVAL_SECONDS=900`
+• storage bucket granularity in `ingest/main.py`: `floor_to_5min(...)`
+
+External APIs verified:
+
+• `https://gamma-api.polymarket.com/events`
+• `https://gamma-api.polymarket.com/markets/{id}`
+• `https://clob.polymarket.com/prices`
+
+Safest hot/live insertion points identified:
+
+1. split a faster quote-only worker beside `fetch_best_bid_ask(...)` + snapshot write path, while leaving market metadata + universe refresh on the slower loop
+2. add a hot worker after forced-id resolution (`manual_ids` / `market_universe` / `position_ids`) so it reuses the current coverage contract instead of inventing a new market-selection rule
+3. publish a new hot table/view family in parallel to `public.top_movers_latest` / `bot.watchlist_snapshot_latest`, then migrate reads incrementally without touching the historical write-through first
+
+Practical conclusion:
+
+• the repo already has the right boundary shape for a new live worker
+• the lowest-risk move is additive and should preserve:
+  - current batch ingest
+  - current Postgres history writes
+  - current SQL view contracts for bot/site
+
+---
+
 # Realtime Data Layer Direction Locked (2026-03-27)
 
 Locked the next infrastructure direction for `Pulse`: user-facing analytics should move toward a faster internal live layer fed from Polymarket APIs, while historical snapshots remain in Postgres and GitHub Actions move into a backup/reconciliation role.
@@ -2395,3 +2502,33 @@ iOS client integration
   - new users get the one-tap onboarding market flow
   - returning users get a lighter “resume” screen with direct actions into watchlist, inbox, threshold and movers
 • `Trader` `/ready` and `/order` now reuse the signer CTA surface for non-ready wallets, so the next execution step is actionable right from the lifecycle screens
+
+---
+
+# Recent Data Layer Update (2026-03-27)
+
+• locked `Realtime Data Layer V1` as the next safe modernization step:
+  - doc: `docs/realtime_data_layer_v1_2026-03-27.md`
+• this does **not** switch the runtime yet; it fixes the contract first
+• the new planned hot surfaces are:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+  - `public.hot_top_movers_1m`
+  - `public.hot_top_movers_5m`
+  - `public.hot_watchlist_snapshot_latest`
+  - `public.hot_alert_candidates_latest`
+  - `public.hot_ingest_health_latest`
+• primary ingest direction is now explicit:
+  - one centralized live worker talks to Gamma + CLOB
+  - the worker writes hot user-facing state
+  - the same path still writes historical snapshots into Postgres
+• GitHub Actions remain backup / reconciliation / repair, not the primary live engine
+• first planned cutover order is now fixed:
+  - homepage live movers proof
+  - `/movers`
+  - watchlist latest state
+  - alert candidate generation
+• important boundary kept intact:
+  - `bot.*` remains the live Pulse runtime this week
+  - no watchlist source-of-truth rewrite
+  - no legacy view deletion
