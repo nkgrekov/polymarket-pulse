@@ -4,6 +4,65 @@ This document tracks the current state of the project.
 
 ---
 
+# Clickable Market Rows Pass (2026-03-27)
+
+Made the homepage live mover rows action-oriented without changing the landing architecture, CTA hierarchy, or the current read path.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/api/live-movers-preview` now enriches homepage mover rows with additive handoff fields:
+  - `slug`
+  - `market_url` when a reliable Polymarket slug is present
+  - `track_url` for Telegram handoff
+• homepage live mover rows on both EN and RU templates now support action-oriented behavior:
+  - row body opens Polymarket when `market_url` is available
+  - secondary inline action opens Telegram tracking flow
+• row actions stay visually subordinate to the existing CTA stack:
+  - small chip-style actions only
+  - hero panel CTA hierarchy remains intact
+  - waitlist email form and POST logic remain untouched
+• site analytics now accept additive `market_click` events for Polymarket handoff measurement
+
+What intentionally did not change:
+
+• no data-layer migration work
+• no hot-layer read-path change
+• no bot contract change
+• no Trader changes
+• no hero metrics / hero right panel rewrite
+• no unrelated SEO rewrite
+
+Intent-page limitation confirmed:
+
+• current intent/SEO pages in `api/main.py` render generic feature preview cards, not market-specific rows
+• because there is no real market object on those surfaces today, no per-market Polymarket link was invented there
+• market-specific clickable actions were added only where the site already has real market data:
+  - homepage live movers preview
+
+Practical effect:
+
+• homepage movers are no longer passive proof-only rows
+• users now have a direct handoff path from live signal proof to:
+  - Polymarket market page
+  - Telegram tracking flow
+• `site_track_<market_id>` is now a real product handoff, not attribution-only noise:
+  - `/start` in `bot/main.py` now detects the payload
+  - tries to add that market to watchlist immediately
+  - keeps the existing add/recovery logic and attribution logging
+• this closes the biggest semantics gap in the clickable rows pass:
+  - `Open on Polymarket` opens the market
+  - `Track in Telegram` now actually attempts to track that exact market
+
+---
+
 # Hot Data Contract V1 Schema Scaffold Drafted (2026-03-27)
 
 Prepared the additive schema scaffold for Hot Data Contract V1 without switching any runtime reads.

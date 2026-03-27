@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import psycopg
 import requests
@@ -380,6 +380,7 @@ with hot as (
   select
     r.market_id,
     r.question,
+    r.slug,
     q.quote_ts as last_bucket,
     prev.ts_bucket as prev_bucket,
     q.mid_yes as yes_mid_now,
@@ -416,6 +417,7 @@ with hot as (
 select
   market_id,
   question,
+  slug,
   last_bucket,
   prev_bucket,
   yes_mid_now,
@@ -428,16 +430,18 @@ limit %s;
 
 SQL_LIVE_MOVERS_PREVIEW_LEGACY = """
 select
-  market_id,
-  question,
-  last_bucket,
-  prev_bucket,
-  yes_mid_now,
-  yes_mid_prev,
-  delta_yes
-from public.top_movers_latest
-where yes_mid_now is not null
-  and yes_mid_prev is not null
+  tm.market_id,
+  coalesce(tm.question, m.question) as question,
+  m.slug,
+  tm.last_bucket,
+  tm.prev_bucket,
+  tm.yes_mid_now,
+  tm.yes_mid_prev,
+  tm.delta_yes
+from public.top_movers_latest tm
+join public.markets m on m.market_id = tm.market_id
+where tm.yes_mid_now is not null
+  and tm.yes_mid_prev is not null
 order by abs(delta_yes) desc nulls last
 limit %s;
 """
@@ -2290,6 +2294,23 @@ def _compact_series(values: list[float], max_points: int) -> list[float]:
     return [values[round(i * step)] for i in range(max_points)]
 
 
+def _safe_market_token(value: str | None, *, max_len: int = 24) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isalnum() or ch in {"_", "-"})[:max_len]
+
+
+def _polymarket_market_url(slug: str | None) -> str | None:
+    clean_slug = (slug or "").strip().strip("/")
+    if not clean_slug:
+        return None
+    return f"https://polymarket.com/event/{quote(clean_slug, safe='-_~')}"
+
+
+def _pulse_track_market_url(market_id: str | None) -> str:
+    token = _safe_market_token(market_id)
+    payload = f"site_track_{token}" if token else "site_track"
+    return f"https://t.me/polymarket_pulse_bot?start={payload}"
+
+
 def fetch_live_movers_preview(
     limit: int = 3,
     spark_snapshots: int = 16,
@@ -2350,12 +2371,15 @@ def fetch_live_movers_preview(
         payload = {
             "market_id": market_id,
             "question": row.get("question") or "",
+            "slug": row.get("slug") or "",
             "last_bucket": _to_iso(row.get("last_bucket")),
             "prev_bucket": _to_iso(row.get("prev_bucket")),
             "yes_mid_now": float(row.get("yes_mid_now") or 0.0),
             "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
             "delta_yes": float(row.get("delta_yes") or 0.0),
             "spark": spark,
+            "market_url": _polymarket_market_url(row.get("slug")),
+            "track_url": _pulse_track_market_url(market_id),
         }
 
         if distinct_points >= min_distinct_points:
@@ -2539,7 +2563,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     merged_details = enrich_details(request, data.details, fallback_lang=req_lang)
     detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
-    allowed = {"tg_click", "page_view", "waitlist_intent", "checkout_intent"}
+    allowed = {"tg_click", "page_view", "waitlist_intent", "checkout_intent", "market_click"}
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
         raise HTTPException(status_code=400, detail="unsupported event_type")

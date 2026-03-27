@@ -4,6 +4,78 @@ This document describes the technical architecture.
 
 ---
 
+# Landing Clickable Market Rows Contract (2026-03-27)
+
+The site homepage live movers preview now exposes a lightweight action handoff contract on top of the existing homepage read surface.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+
+Surface affected:
+
+• homepage live movers proof surface
+  - `api/main.py` `/api/live-movers-preview`
+  - `api/web/index.en.html`
+  - `api/web/index.ru.html`
+
+Additive contract extension:
+
+• live mover preview rows now carry:
+  - `market_id`
+  - `question`
+  - `slug`
+  - `last_bucket`
+  - `prev_bucket`
+  - `yes_mid_now`
+  - `yes_mid_prev`
+  - `delta_yes`
+  - `spark`
+  - `market_url`
+  - `track_url`
+
+UI behavior:
+
+• homepage row body opens Polymarket when a reliable slug-based `market_url` exists
+• homepage row always exposes a secondary `Track in Telegram` handoff
+• if `market_url` is unavailable, the site should not invent a brittle Polymarket path:
+  - only Telegram tracking remains actionable
+
+Hierarchy guardrail:
+
+• these are tertiary row-level actions only
+• no change to:
+  - hero panel CTA position
+  - proof bridge CTA position
+  - waitlist form logic
+  - page section order
+
+Instrumentation note:
+
+• `tg_click` continues to capture Telegram handoff
+• additive `market_click` now captures Polymarket handoff
+• `site_track_<market_id>` is no longer attribution-only:
+  - `cmd_start()` now resolves this payload as a watchlist-add handoff
+  - the selected market is added immediately when possible
+  - fallback behavior stays inside the existing watchlist add / recovery contract
+
+Intent-page limitation:
+
+• current intent/SEO pages rendered from `api/main.py` contain generic feature preview cards, not market-specific rows
+• therefore no new per-market Polymarket links were added to those surfaces
+• the clickable market-row contract currently applies only to homepage live movers, where real market objects already exist
+
+Why this remains low-risk:
+
+• homepage still reads the same preview source and sparkline history
+• no ingest or migration boundary changed
+• no legacy surfaces were removed
+• rollback remains trivial because the change is presentation-layer additive
+
+---
+
 # Hot Data Contract V1 Schema Scaffold (2026-03-27)
 
 The Hot Data Contract V1 schema scaffold is now defined as an additive layer beside the analytical core.

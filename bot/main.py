@@ -1008,6 +1008,17 @@ def normalize_start_payload(context: ContextTypes.DEFAULT_TYPE) -> str | None:
     return payload or None
 
 
+def market_id_from_site_track_payload(start_payload: str | None) -> str | None:
+    payload = (start_payload or "").strip()
+    prefix = "site_track_"
+    if not payload.startswith(prefix):
+        return None
+    market_id = payload[len(prefix):].strip()
+    if not market_id or not market_id.isdigit():
+        return None
+    return market_id
+
+
 def log_telegram_start_sync(update: Update, user_ctx: dict, *, locale: str, start_payload: str | None) -> None:
     tg_user = update.effective_user
     tg_chat = update.effective_chat
@@ -2811,6 +2822,43 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=quick_reply_keyboard(locale),
     )
+    track_market_id = market_id_from_site_track_payload(start_payload)
+    if track_market_id:
+        track_result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, track_market_id, locale=locale)
+        if track_result.get("outcome") in {"added", "replaced"}:
+            try:
+                await asyncio.to_thread(
+                    log_watchlist_add_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    market_id=track_market_id,
+                    result=track_result,
+                    source="site_track_start",
+                )
+            except Exception:
+                log.exception("site track watchlist add attribution insert failed")
+        track_intro = (
+            "Picked from the site. We tried to start tracking this market right away:\n\n"
+            if locale == "en"
+            else "Вы выбрали рынок с сайта. Мы сразу попытались включить его в отслеживание:\n\n"
+        )
+        reply_markup = await watchlist_post_add_markup(update.message, context, user_ctx, track_result, locale=locale)
+        await update.message.reply_text(f"{track_intro}{track_result['text']}", reply_markup=reply_markup)
+        await update.message.reply_text(
+            "Quick menu:" if locale == "en" else "Быстрое меню:",
+            reply_markup=main_menu_inline(),
+        )
+        log.info(
+            "cmd=/start site_track_handoff chat_id=%s tg_user=%s app_user=%s market_id=%s payload=%s",
+            update.effective_chat.id,
+            update.effective_user.id,
+            user_ctx["user_id"],
+            track_market_id,
+            start_payload or "",
+        )
+        return
+
     watchlist_count = int(user_ctx.get("watchlist_count") or 0)
     if watchlist_count == 0:
         await update.message.reply_text(

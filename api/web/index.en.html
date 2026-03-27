@@ -344,7 +344,68 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       background: #131714;
-      padding: 12px;
+      overflow: hidden;
+      transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .row:hover,
+    .row:focus-within {
+      border-color: rgba(0, 255, 136, 0.34);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
+    }
+
+    .row-main {
+      display: block;
+      padding: 12px 12px 10px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .row-main:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(0, 255, 136, 0.34);
+    }
+
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .row-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      padding: 0 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+    }
+
+    .row-link:hover,
+    .row-link:focus-visible {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.38);
+      background: rgba(0, 255, 136, 0.08);
+      outline: none;
+    }
+
+    .row-link.primary {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.26);
+    }
+
+    .row-link.placeholder {
+      color: var(--muted-soft);
+      pointer-events: none;
     }
 
     .line-1 {
@@ -1269,33 +1330,51 @@
           <p id="live-movers-title" class="card-title">Top movers · Live now</p>
           <div id="live-movers-rows" class="rows">
             <div class="row">
-              <div class="line-1">
-                <span class="market">Trump wins 2028 election</span>
-                <span class="time">11m ago</span>
+              <div class="row-main">
+                <div class="line-1">
+                  <span class="market">Trump wins 2028 election</span>
+                  <span class="time">11m ago</span>
+                </div>
+                <div class="line-2">
+                  <span class="move">34% → 41%</span>
+                  <span class="delta-up">↑7pp</span>
+                </div>
               </div>
-              <div class="line-2">
-                <span class="move">34% → 41%</span>
-                <span class="delta-up">↑7pp</span>
-              </div>
-            </div>
-            <div class="row">
-              <div class="line-1">
-                <span class="market">US recession in 2026</span>
-                <span class="time">39m ago</span>
-              </div>
-              <div class="line-2">
-                <span class="move">48% → 44%</span>
-                <span class="delta-down">↓4pp</span>
+              <div class="row-actions">
+                <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Track in Telegram</span>
               </div>
             </div>
             <div class="row">
-              <div class="line-1">
-                <span class="market">Fed cuts by July</span>
-                <span class="time">1h ago</span>
+              <div class="row-main">
+                <div class="line-1">
+                  <span class="market">US recession in 2026</span>
+                  <span class="time">39m ago</span>
+                </div>
+                <div class="line-2">
+                  <span class="move">48% → 44%</span>
+                  <span class="delta-down">↓4pp</span>
+                </div>
               </div>
-              <div class="line-2">
-                <span class="move">29% → 36%</span>
-                <span class="delta-up">↑7pp</span>
+              <div class="row-actions">
+                <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Track in Telegram</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main">
+                <div class="line-1">
+                  <span class="market">Fed cuts by July</span>
+                  <span class="time">1h ago</span>
+                </div>
+                <div class="line-2">
+                  <span class="move">29% → 36%</span>
+                  <span class="delta-up">↑7pp</span>
+                </div>
+              </div>
+              <div class="row-actions">
+                <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Track in Telegram</span>
               </div>
             </div>
           </div>
@@ -1559,17 +1638,52 @@
         const up = Number(r.delta_yes || 0) >= 0;
         const deltaCls = up ? 'delta-up' : 'delta-down';
         const spark = sparkline(r.spark || [], !up);
+        const marketUrl = esc(r.market_url || '');
+        const trackUrl = esc(r.track_url || 'https://t.me/polymarket_pulse_bot?start=site_track');
+        const marketId = esc(r.market_id || '');
+        const question = esc(r.question || 'this market');
+        const rowTag = marketUrl ? 'a' : 'div';
+        const rowMainAttrs = marketUrl
+          ? `class="row-main" href="${marketUrl}" target="_blank" rel="noopener noreferrer" data-market-action="open_polymarket" data-market-id="${marketId}" data-market-question="${question}"`
+          : `class="row-main"`;
+        const primaryAction = marketUrl
+          ? `
+              <a
+                class="row-link primary"
+                href="${marketUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-market-action="open_polymarket"
+                data-market-id="${marketId}"
+                data-market-question="${question}"
+              >Open on Polymarket</a>
+            `
+          : '';
         return `
           <div class="row">
-            <div class="line-1">
-              <span class="market">${esc(r.question)}</span>
-              <span class="time">${timeAgo(r.last_bucket)}</span>
+            <${rowTag} ${rowMainAttrs}>
+              <div class="line-1">
+                <span class="market">${question}</span>
+                <span class="time">${timeAgo(r.last_bucket)}</span>
+              </div>
+              <div class="line-2">
+                <span class="move">${pct(r.yes_mid_prev)}% → ${pct(r.yes_mid_now)}%</span>
+                <span class="${deltaCls}">${pp(r.delta_yes)}</span>
+              </div>
+              ${spark}
+            </${rowTag}>
+            <div class="row-actions">
+              ${primaryAction}
+              <a
+                class="row-link"
+                href="${trackUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-market-action="track_telegram"
+                data-market-id="${marketId}"
+                data-market-question="${question}"
+              >Track in Telegram</a>
             </div>
-            <div class="line-2">
-              <span class="move">${pct(r.yes_mid_prev)}% → ${pct(r.yes_mid_now)}%</span>
-              <span class="${deltaCls}">${pp(r.delta_yes)}</span>
-            </div>
-            ${spark}
           </div>
         `;
       }).join('');
@@ -1577,6 +1691,28 @@
         liveTitle.textContent = 'Top movers · Live DB feed';
       }
     }
+
+    liveRows?.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('[data-market-action]') : null;
+      if (!target) return;
+      const action = target.getAttribute('data-market-action') || '';
+      const marketId = target.getAttribute('data-market-id') || '';
+      const question = target.getAttribute('data-market-question') || '';
+      const details = {
+        ...getAttribution(),
+        placement: 'live_movers_preview',
+        action,
+        market_id: marketId,
+        question
+      };
+      if (action === 'track_telegram') {
+        trackEvent('tg_click', details);
+        return;
+      }
+      if (action === 'open_polymarket') {
+        trackEvent('market_click', details);
+      }
+    });
 
     async function loadLiveMovers() {
       try {
