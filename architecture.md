@@ -2770,3 +2770,44 @@ Interpretation rule:
 
 - registry and quotes must be healthy now
 - movers/watchlist/alert rows are allowed to stay empty until their worker publish phases are added
+
+## Railway Runtime Split For Ingest
+
+We now have an explicit runtime selector in the ingest path:
+
+- `ingest/bootstrap.py`
+- `ingest/Procfile` → `python bootstrap.py`
+
+Runtime branches:
+
+- `INGEST_RUNTIME=batch`
+  - runs `ingest/worker.py`
+  - keeps the historical batch/write-through path
+- `INGEST_RUNTIME=live`
+  - runs `ingest/live_worker.py`
+  - keeps the new hot-layer heartbeat path
+
+Why this shape is good:
+
+- same source directory
+- no duplicate deploy tree
+- no forced rewrite of the current ingest service
+- Railway can run both services in parallel with different env contracts
+
+Current operational choice on the active Railway plan:
+
+- because the plan hit the resource limit for provisioning a separate service,
+  the existing `ingest` service should run `INGEST_RUNTIME=live`
+- GitHub Actions keeps the historical/batch backup role
+- this runtime has now been verified in production:
+  - Railway deployment `8b13b91c-b02d-4047-9bf1-e989ae581af5` reached `SUCCESS`
+  - logs show `live ingest worker started` plus successful `live ingest tick` writes
+  - `docs/hot_data_health_latest.md` is now green for the V1-now surfaces
+    (`public.hot_market_registry_latest` and `public.hot_market_quotes_latest`)
+
+So the architecture stays the same in principle:
+
+- live runtime on Railway
+- batch/reconciliation in Actions
+
+Only the service-count implementation detail changed.

@@ -1,4 +1,4 @@
-# Hot Data Health Report (2026-03-27T10:56:18.481510+00:00)
+# Hot Data Health Report (2026-03-27T11:06:15.250426+00:00)
 
 Source: `public.hot_ingest_health_latest` + direct counts from V1 hot tables
 
@@ -14,11 +14,11 @@ Source: `public.hot_ingest_health_latest` + direct counts from V1 hot tables
 
 ## Health Checks
 
-- `CHECK` Registry freshness: 370s (threshold `180s`)
-- `CHECK` Quotes freshness: 370s (threshold `120s`)
-- `OK` Registry rows present: 402 rows
-- `OK` Quote rows present: 402 rows
-- `OK` Two-sided quote coverage: 293/402
+- `OK` Registry freshness: 42s (threshold `180s`)
+- `OK` Quotes freshness: 42s (threshold `120s`)
+- `OK` Registry rows present: 411 rows
+- `OK` Quote rows present: 411 rows
+- `OK` Two-sided quote coverage: 277/411
 
 ## Phase Notes
 
@@ -27,15 +27,15 @@ Source: `public.hot_ingest_health_latest` + direct counts from V1 hot tables
 
 ## Snapshot
 
-- active_market_count: **393**
-- registry_rows: **402**
-- quote_rows: **402**
-- two_sided_quote_rows: **293**
+- active_market_count: **402**
+- registry_rows: **411**
+- quote_rows: **411**
+- two_sided_quote_rows: **277**
 - hot_movers_1m_count: **0**
 - hot_movers_5m_count: **0**
 - hot_watchlist_snapshot_latest rows: **0**
 - hot_alert_candidates_latest rows: **0**
-- updated_at: **2026-03-27 10:50:09.173519+00:00**
+- updated_at: **2026-03-27 11:05:33.325011+00:00**
 
 ## Review Notes
 

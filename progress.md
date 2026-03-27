@@ -2717,3 +2717,23 @@ iOS client integration
 • report is phase-aware:
   - registry/quotes must be live now
   - movers/watchlist/alert rows may still be empty until later worker phases
+• added env-driven ingest bootstrap for Railway:
+  - `ingest/bootstrap.py`
+  - `ingest/Procfile` now runs `python bootstrap.py`
+• runtime split is now explicit without duplicating the service tree:
+  - `INGEST_RUNTIME=batch` -> historical worker (`worker.py`)
+  - `INGEST_RUNTIME=live` -> hot worker (`live_worker.py`)
+• Railway plan reality changed the deployment shape:
+  - creating a separate `live-ingest` service hit the current resource limit
+  - so the existing Railway `ingest` service is now the target hot-layer runtime
+  - GitHub Actions remains the batch/history backup path
+• deploy contract updated in `docs/railway-deploy.md` accordingly:
+  - `ingest` now runs `INGEST_RUNTIME=live`
+  - batch runtime remains available in the same source tree, but not as the primary Railway service
+• verified the live Railway runtime end-to-end:
+  - deployment `8b13b91c-b02d-4047-9bf1-e989ae581af5` reached `SUCCESS`
+  - logs show `live ingest worker started` and repeated `live ingest tick` writes
+  - regenerated `docs/hot_data_health_latest.md`
+  - latest captured health is green for the V1-now surfaces:
+    - registry freshness `42s`
+    - quotes freshness `42s`

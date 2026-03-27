@@ -96,18 +96,31 @@ Required variables:
 Start command:
 
 ```bash
-python ingest/worker.py
+python ingest/bootstrap.py
 ```
 
 Required variables:
 
 - `PG_CONN`
-- `FETCH_LIMIT` (default `200`)
-- `AUTO_WL_LIMIT` (default `200`)
-- `BOT_WL_LIMIT` (default `500`)
+- `INGEST_RUNTIME=live`
+- `LIVE_FETCH_LIMIT` (default `240`)
+- `LIVE_UNIVERSE_LIMIT` (default `200`)
+- `LIVE_BOT_WL_LIMIT` (default `500`)
 - `WATCHLIST_USER` (default `nikita`, legacy fallback)
-- `INGEST_INTERVAL_SECONDS` (recommended `900`)
-- `UNIVERSE_REFRESH_TIMEOUT_MS` (recommended `15000`)
+- `LIVE_INGEST_INTERVAL_SECONDS` (recommended `60`)
+- `LIVE_INGEST_FAIL_SLEEP_SECONDS` (recommended `15`)
+
+Monorepo deploy command:
+
+```bash
+railway up -s ingest --path-as-root ingest
+```
+
+Operational note:
+
+- on the current Railway plan, `ingest` should run the hot/live worker
+- GitHub Actions becomes the batch backup / reconciliation path
+- `INGEST_RUNTIME=batch` remains available in the same source tree, but is no longer the recommended Railway runtime on the current plan
 
 ## Daily digest job
 
@@ -126,5 +139,6 @@ Schedule recommendation:
 1. Bot: `/start`, `/plan`, `/watchlist_list`, `/movers`, `/inbox`
 2. Site: submit email form, receive confirmation email
 3. Confirm link marks `app.email_subscribers.confirmed_at`
-4. Ingest: verify periodic logs every `INGEST_INTERVAL_SECONDS` and fresh `market_snapshots.ts_bucket`
-5. Run `python api/digest_job.py` and verify `bot.sent_alerts_log` channel=`email`
+4. Ingest: verify periodic live-worker logs every `LIVE_INGEST_INTERVAL_SECONDS`
+5. Live ingest: verify `public.hot_ingest_health_latest` stays fresh and `docs/hot_data_health_latest.md` shows healthy registry/quote freshness
+6. Run `python api/digest_job.py` and verify `bot.sent_alerts_log` channel=`email`
