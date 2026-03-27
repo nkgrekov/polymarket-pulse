@@ -2751,3 +2751,22 @@ iOS client integration
   - the current hot midpoint is appended so the preview can show fresher “now” without waiting for the next batch bucket
 • local smoke for the new preview path passed:
   - `fetch_live_movers_preview(limit=3)` returned live rows from the hot-first path
+• completed the first hot mover publish phase in the live worker:
+  - `ingest/live_main.py` now publishes `public.hot_top_movers_5m`
+  - publish stays additive-only; no `/movers` cutover yet
+• current hot 5m mover gates:
+  - min liquidity: `1000`
+  - max spread: `0.25`
+  - min abs delta: `0.005`
+  - two-sided YES quote required
+  - status must remain `active`
+• first smoke after publish succeeded:
+  - `movers_5m=19`
+  - top rows now overlap the expected legacy mover set instead of being dominated by zero-delta high-liquidity markets
+• deployed the mover publish phase to the live Railway ingest runtime:
+  - deployment `e964e520-2012-4738-82a0-2b50f56382d0` reached `SUCCESS`
+  - logs now show `movers_5m=` on live ticks
+• regenerated `docs/hot_data_health_latest.md` after deploy:
+  - `hot_movers_5m_count` is now non-zero on the live heartbeat
+  - registry freshness remains comfortably inside the green threshold
+  - quotes freshness remains comfortably inside the green threshold

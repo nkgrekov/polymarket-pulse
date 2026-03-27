@@ -109,6 +109,9 @@ Required variables:
 - `WATCHLIST_USER` (default `nikita`, legacy fallback)
 - `LIVE_INGEST_INTERVAL_SECONDS` (recommended `60`)
 - `LIVE_INGEST_FAIL_SLEEP_SECONDS` (recommended `15`)
+- `HOT_MOVERS_MIN_LIQUIDITY` (default `1000`)
+- `HOT_MOVERS_MAX_SPREAD` (default `0.25`)
+- `HOT_MOVERS_MIN_ABS_DELTA` (default `0.005`)
 
 Monorepo deploy command:
 

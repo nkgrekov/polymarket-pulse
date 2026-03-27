@@ -2842,3 +2842,36 @@ Why this is the correct first cut:
 - it benefits immediately from fresher “now” data
 - it does not yet force mover-window publication or bot runtime changes
 - legacy fallback keeps the hero resilient while the hot worker matures
+
+## Second Hot Publish Phase Completed: `hot_top_movers_5m`
+
+The live worker now publishes the first scored mover surface:
+
+- `public.hot_top_movers_5m`
+
+Current worker gate policy for this table:
+
+- two-sided YES quote required
+- market status must still be `active`
+- liquidity >= `1000`
+- spread <= `0.25`
+- abs(delta) >= `0.005`
+
+Current scoring rule:
+
+- `score = abs(delta_mid) * 100 + ln(1 + liquidity)`
+
+Why this matters:
+
+- it turns the hot layer into a product-usable mover surface, not just a registry/quote heartbeat
+- it keeps the selection resistant to zero-delta high-liquidity noise
+- it gives us the right next migration target for `/movers`
+
+Boundary still preserved:
+
+- `/movers` has not been cut over yet
+- legacy `public.top_movers_latest` remains the active runtime reader there until we compare overlap/order/freshness against `public.hot_top_movers_5m`
+- this publish phase is now verified in production:
+  - Railway deployment `e964e520-2012-4738-82a0-2b50f56382d0` reached `SUCCESS`
+  - live logs show `movers_5m=` on ingest ticks
+  - `docs/hot_data_health_latest.md` now reports non-zero `hot_movers_5m_count`

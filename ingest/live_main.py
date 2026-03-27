@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+import math
 
 import psycopg2
 from psycopg2.extras import execute_batch
@@ -33,6 +34,10 @@ def _compute_spread(bid: float | None, ask: float | None) -> float | None:
     if bid is None or ask is None:
         return None
     return max(float(ask) - float(bid), 0.0)
+
+
+def _score_delta(delta_mid: float, liquidity: float) -> float:
+    return abs(float(delta_mid)) * 100.0 + math.log1p(max(float(liquidity), 0.0))
 
 
 def _fetch_market_detail(market_id: str) -> dict | None:
@@ -216,6 +221,145 @@ def _upsert_registry_and_quotes(pg_conn: str, rows: list[dict]) -> tuple[int, in
     return len(registry_rows), len(quote_rows)
 
 
+def _load_prev_5m_mids(pg_conn: str, market_ids: list[str], *, quote_ts: datetime) -> dict[str, tuple[datetime, float]]:
+    if not market_ids:
+        return {}
+
+    cutoff = quote_ts.replace(second=0, microsecond=0)
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                with latest_prev as (
+                  select distinct on (market_id)
+                    market_id,
+                    ts_bucket,
+                    mid_yes_prev
+                  from (
+                    select
+                      ms.market_id,
+                      ms.ts_bucket,
+                      max(coalesce(((ms.yes_bid + ms.yes_ask) / 2.0), ms.yes_bid, ms.yes_ask))::double precision as mid_yes_prev
+                    from public.market_snapshots ms
+                    where ms.market_id = any(%s)
+                      and (ms.yes_bid is not null or ms.yes_ask is not null)
+                      and ms.ts_bucket <= (%s::timestamptz - interval '4 minutes')
+                    group by ms.market_id, ms.ts_bucket
+                  ) per_bucket
+                  order by market_id, ts_bucket desc
+                )
+                select market_id, ts_bucket, mid_yes_prev
+                from latest_prev
+                where mid_yes_prev is not null
+                """,
+                (market_ids, cutoff),
+            )
+            out: dict[str, tuple[datetime, float]] = {}
+            for market_id, ts_bucket, mid_yes_prev in cur.fetchall():
+                out[str(market_id)] = (ts_bucket, float(mid_yes_prev))
+            return out
+    finally:
+        conn.close()
+
+
+def _publish_hot_top_movers_5m(pg_conn: str, rows: list[dict], *, quote_ts: datetime) -> int:
+    market_ids = [str(row["market_id"]) for row in rows if row.get("market_id")]
+    prev_by_market = _load_prev_5m_mids(pg_conn, market_ids, quote_ts=quote_ts)
+
+    min_liquidity = float(os.environ.get("HOT_MOVERS_MIN_LIQUIDITY", "1000"))
+    max_spread = float(os.environ.get("HOT_MOVERS_MAX_SPREAD", "0.25"))
+    min_abs_delta = float(os.environ.get("HOT_MOVERS_MIN_ABS_DELTA", "0.005"))
+
+    mover_rows = []
+    mover_market_ids: list[str] = []
+    for row in rows:
+        market_id = str(row.get("market_id") or "")
+        if not market_id:
+            continue
+        if (row.get("status") or "active") != "active":
+            continue
+        if not row.get("has_two_sided_quote"):
+            continue
+        current_mid = row.get("mid_yes")
+        if current_mid is None:
+            continue
+        liquidity = float(row.get("liquidity") or 0.0)
+        spread = row.get("spread")
+        spread_f = float(spread) if spread is not None else None
+        if liquidity < min_liquidity:
+            continue
+        if spread_f is not None and spread_f > max_spread:
+            continue
+        prev = prev_by_market.get(market_id)
+        if not prev:
+            continue
+        window_start, prev_mid = prev
+        delta_mid = float(current_mid) - float(prev_mid)
+        if abs(float(delta_mid)) < min_abs_delta:
+            continue
+        mover_rows.append(
+            (
+                market_id,
+                row.get("question") or "n/a",
+                row.get("slug") or market_id,
+                float(prev_mid),
+                float(current_mid),
+                float(delta_mid),
+                abs(float(delta_mid)),
+                liquidity,
+                spread_f,
+                _score_delta(delta_mid, liquidity),
+                window_start,
+                quote_ts,
+                quote_ts,
+                quote_ts,
+            )
+        )
+        mover_market_ids.append(market_id)
+
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            if mover_rows:
+                execute_batch(
+                    cur,
+                    """
+                    insert into public.hot_top_movers_5m
+                      (market_id, question, slug, prev_mid, current_mid, delta_mid, delta_abs, liquidity, spread, score, window_start, window_end, quote_ts, ingested_at)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict (market_id) do update
+                    set question = excluded.question,
+                        slug = excluded.slug,
+                        prev_mid = excluded.prev_mid,
+                        current_mid = excluded.current_mid,
+                        delta_mid = excluded.delta_mid,
+                        delta_abs = excluded.delta_abs,
+                        liquidity = excluded.liquidity,
+                        spread = excluded.spread,
+                        score = excluded.score,
+                        window_start = excluded.window_start,
+                        window_end = excluded.window_end,
+                        quote_ts = excluded.quote_ts,
+                        ingested_at = excluded.ingested_at;
+                    """,
+                    mover_rows,
+                    page_size=200,
+                )
+            if mover_market_ids:
+                cur.execute(
+                    "delete from public.hot_top_movers_5m where not (market_id = any(%s))",
+                    (mover_market_ids,),
+                )
+            else:
+                cur.execute("delete from public.hot_top_movers_5m")
+        conn.commit()
+    finally:
+        conn.close()
+
+    return len(mover_rows)
+
+
 def main() -> None:
     load_env()
     pg_conn = os.environ.get("PG_CONN", "")
@@ -229,10 +373,11 @@ def main() -> None:
         return
 
     registry_count, quote_count = _upsert_registry_and_quotes(pg_conn, rows)
+    movers_5m_count = _publish_hot_top_movers_5m(pg_conn, rows, quote_ts=started_at)
     two_sided_count = sum(1 for row in rows if row.get("has_two_sided_quote"))
     print(
         "OK: live hot ingest wrote "
-        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} "
+        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} movers_5m={movers_5m_count} "
         f"started_at={started_at.isoformat()}"
     )
 
