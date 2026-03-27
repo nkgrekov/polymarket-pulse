@@ -209,6 +209,24 @@ Initial worker gate guidance after scaffold:
   - `candidate_state` for alert rows
   - mover `score`
 
+Pinned V1 state vocabulary after scaffold:
+
+• watchlist `live_state`:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+  - `date_passed_active`
+• alert `candidate_state`:
+  - `ready`
+  - `below_threshold`
+  - `stale_quotes`
+  - `no_quotes`
+  - `closed`
+  - `date_passed_active`
+  - `filtered_spread`
+  - `filtered_liquidity`
+
 Recommended V1 worker publish order:
 
 1. publish `public.hot_market_registry_latest`
@@ -246,6 +264,15 @@ Recommended rollback posture for first cutovers:
 • flip one product surface at a time
 • preserve one obvious switch-back path to the legacy query for each surface
 • do not mix a worker publish contract change and a runtime read cutover in the same step
+
+Why this draft is ready-to-apply from a schema perspective:
+
+• all objects are additive to the existing runtime
+• migration stays transactional
+• legacy tables/views remain untouched
+• hot tables are explicit latest-state sinks instead of ambiguous history tables
+• core V1 state vocabulary is pinned in schema for watchlist and alert derivations
+• first cutover still remains a separate future step, not part of this migration
 
 Cutover implication:
 
@@ -2677,3 +2704,48 @@ Unsafe to parallelize with a live cutover:
 - rewriting watchlist source of truth
 - switching multiple product surfaces at once
 - changing bot command contracts during the same rollout
+
+## First Worker Skeleton Added
+
+The first live-worker scaffold now exists beside the historical ingest path:
+
+- `ingest/live_main.py`
+- `ingest/live_worker.py`
+
+Current behavior:
+
+- reuses the current market coverage contract from the existing ingest path
+- pulls the live market set through the same forced-id logic
+- writes only the first hot tables:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+- prunes stale rows in those two tables
+
+Current non-goals:
+
+- no runtime cutover yet
+- no `hot_top_movers_*` writes yet
+- no `hot_watchlist_snapshot_latest` writes yet
+- no `hot_alert_candidates_latest` writes yet
+
+This is intentional.
+
+The first worker step is meant to prove:
+
+- a centralized hot ingest loop can run independently of the historical batch path
+- hot registry/quote freshness can be observed safely
+- the homepage preview cutover can happen later on a real hot base instead of a paper contract
+
+Smoke state after first live run:
+
+- migration `013_hot_data_contract_v1_scaffold.sql` is applied in the live DB
+- `ingest/live_main.py` successfully wrote:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+- observed first live counts:
+  - registry rows: `402`
+  - quote rows: `402`
+  - two-sided quotes: `293`
+- `public.hot_ingest_health_latest` is now a working heartbeat over real rows
+
+This means the first hot layer already exists in production data storage, even though no product read has been cut over yet.

@@ -98,6 +98,18 @@ Initial worker gate shape now clarified:
   - table stays pre-delivery
   - worker still owns candidate classification before any bot/inbox cutover
 
+Candidate-state vocabulary is now locked for V1 scaffold:
+
+• `hot_alert_candidates_latest.candidate_state`
+  - `ready`
+  - `below_threshold`
+  - `stale_quotes`
+  - `no_quotes`
+  - `closed`
+  - `date_passed_active`
+  - `filtered_spread`
+  - `filtered_liquidity`
+
 Initial V1 worker publish contract now clarified:
 
 • recommended write order:
@@ -122,6 +134,15 @@ Initial compare and rollback shape now clarified:
   - `hot_alert_candidates_latest` vs `bot.alerts_inbox_latest`
 • rollback rule:
   - keep legacy readers untouched and flip one runtime surface at a time only after side-by-side output checks
+
+Migration draft is now closer to ready-to-apply shape:
+
+• additive only
+• wrapped in a single transaction
+• idempotent object creation where practical (`if not exists`, `create or replace`)
+• no legacy object drops
+• no runtime reader rewiring
+• V1 state vocabulary is pinned in schema instead of left implicit
 
 Why this is the safe next step:
 
@@ -2659,3 +2680,31 @@ iOS client integration
   - `bot.*` remains the live Pulse runtime this week
   - no watchlist source-of-truth rewrite
   - no legacy view deletion
+
+• added first live-worker skeleton beside the historical ingest path:
+  - `ingest/live_main.py`
+  - `ingest/live_worker.py`
+• current skeleton scope is intentionally narrow:
+  - reuses current market coverage contract (`watchlist` + `market_universe` + `positions`)
+  - writes only:
+    - `public.hot_market_registry_latest`
+    - `public.hot_market_quotes_latest`
+  - prunes stale rows inside those hot tables
+• current skeleton does **not** cut over any runtime reads yet:
+  - no homepage preview switch
+  - no `/movers` switch
+  - no watchlist/inbox switch
+• current default live cadence is env-driven:
+  - `LIVE_INGEST_INTERVAL_SECONDS` default `60`
+  - `LIVE_INGEST_FAIL_SLEEP_SECONDS` default `15`
+• this is the first real “hot heartbeat” layer that can support the first read cutover later
+• migration `013_hot_data_contract_v1_scaffold.sql` was applied to the live database
+• smoke check for the new worker passed against the real DB:
+  - `ingest/live_main.py`
+  - wrote `public.hot_market_registry_latest=402`
+  - wrote `public.hot_market_quotes_latest=402`
+  - `has_two_sided_quote=293`
+  - `public.hot_ingest_health_latest` returned fresh non-null ages (`~28s` at capture time)
+• still no runtime cutover after smoke:
+  - `hot_top_movers_*` remain empty by design
+  - homepage `/api/live-movers-preview` still reads legacy surfaces

@@ -201,6 +201,18 @@ create table if not exists public.hot_alert_candidates_latest (
   check (spread is null or (spread >= 0 and spread <= 1)),
   check (delta_abs >= 0),
   check (threshold_value >= 0 and threshold_value <= 1),
+  check (
+    candidate_state in (
+      'ready',
+      'below_threshold',
+      'stale_quotes',
+      'no_quotes',
+      'closed',
+      'date_passed_active',
+      'filtered_spread',
+      'filtered_liquidity'
+    )
+  ),
   check (char_length(trim(candidate_state)) > 0)
 );
 
@@ -208,7 +220,7 @@ comment on table public.hot_alert_candidates_latest is
 'Hot Data Contract V1: latest pre-delivery alert candidates. Worker is expected to upsert/prune per-user latest candidate rows; thresholding/delivery runtime is unchanged until a later cutover.';
 
 comment on column public.hot_alert_candidates_latest.candidate_state is
-'Worker-owned candidate classification for the latest hot alert pass, intended to distinguish publishable rows from filtered rows before downstream delivery cutover.';
+'Worker-owned candidate classification for the latest hot alert pass. V1 vocabulary: ready, below_threshold, stale_quotes, no_quotes, closed, date_passed_active, filtered_spread, filtered_liquidity.';
 
 create index if not exists idx_hot_alert_candidates_latest_user_delta
   on public.hot_alert_candidates_latest (app_user_id, delta_abs desc, quote_ts desc);
