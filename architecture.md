@@ -2811,3 +2811,34 @@ So the architecture stays the same in principle:
 - batch/reconciliation in Actions
 
 Only the service-count implementation detail changed.
+
+## First Runtime Cutover Completed: Homepage Preview
+
+The first additive read migration is now in place:
+
+- `/api/live-movers-preview` in `api/main.py` reads the hot layer first
+- it prefers:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+- it falls back to the legacy preview query only if the hot query yields no usable rows
+
+Current homepage-preview gate policy:
+
+- freshness <= `120s`
+- liquidity >= `1000`
+- spread <= `0.25`
+- two-sided YES quote required
+- market status must still be `active`
+
+Comparison anchor during this phase:
+
+- current value (`yes_mid_now`) comes from the hot quote table
+- previous value (`yes_mid_prev`) still comes from the latest historical point at least ~5 minutes back in `public.market_snapshots`
+- sparklines still use historical bucket points, with the current hot midpoint appended when it is newer than the last historical point
+
+Why this is the correct first cut:
+
+- homepage proof is the safest high-value reader to modernize first
+- it benefits immediately from fresher “now” data
+- it does not yet force mover-window publication or bot runtime changes
+- legacy fallback keeps the hero resilient while the hot worker matures

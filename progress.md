@@ -2737,3 +2737,17 @@ iOS client integration
   - latest captured health is green for the V1-now surfaces:
     - registry freshness `42s`
     - quotes freshness `42s`
+• completed the first safe runtime cutover:
+  - homepage `/api/live-movers-preview` now reads hot current state first
+  - source order is:
+    1. `public.hot_market_registry_latest` + `public.hot_market_quotes_latest`
+    2. legacy fallback only if the hot query yields no usable rows
+• hot preview gates are now explicit at the site edge:
+  - max freshness: `120s`
+  - min liquidity: `1000`
+  - max spread: `0.25`
+• sparkline behavior stays safe during the transition:
+  - historical points still come from `public.market_snapshots`
+  - the current hot midpoint is appended so the preview can show fresher “now” without waiting for the next batch bucket
+• local smoke for the new preview path passed:
+  - `fetch_live_movers_preview(limit=3)` returned live rows from the hot-first path

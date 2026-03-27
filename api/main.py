@@ -370,7 +370,63 @@ class TraderSignerSubmitRequest(BaseModel):
     signed_payload: str
 
 
-SQL_LIVE_MOVERS_PREVIEW = """
+HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
+HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
+HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
+
+
+SQL_HOT_LIVE_MOVERS_PREVIEW = """
+with hot as (
+  select
+    r.market_id,
+    r.question,
+    q.quote_ts as last_bucket,
+    prev.ts_bucket as prev_bucket,
+    q.mid_yes as yes_mid_now,
+    prev.mid_yes_prev as yes_mid_prev,
+    (q.mid_yes - prev.mid_yes_prev)::double precision as delta_yes,
+    coalesce(q.liquidity, 0)::double precision as liquidity,
+    q.spread::double precision as spread
+  from public.hot_market_registry_latest r
+  join public.hot_market_quotes_latest q using (market_id)
+  join lateral (
+    with per_bucket as (
+      select
+        ms.ts_bucket,
+        max(coalesce(((ms.yes_bid + ms.yes_ask) / 2.0), ms.yes_bid, ms.yes_ask))::double precision as mid_yes_prev
+      from public.market_snapshots ms
+      where ms.market_id = r.market_id
+        and (ms.yes_bid is not null or ms.yes_ask is not null)
+      group by ms.ts_bucket
+    )
+    select ts_bucket, mid_yes_prev
+    from per_bucket
+    where mid_yes_prev is not null
+      and ts_bucket <= q.quote_ts - interval '4 minutes'
+    order by ts_bucket desc
+    limit 1
+  ) prev on true
+  where coalesce(r.status, 'active') = 'active'
+    and q.has_two_sided_quote
+    and q.mid_yes is not null
+    and q.freshness_seconds <= %s
+    and coalesce(q.liquidity, 0) >= %s
+    and coalesce(q.spread, 0) <= %s
+)
+select
+  market_id,
+  question,
+  last_bucket,
+  prev_bucket,
+  yes_mid_now,
+  yes_mid_prev,
+  delta_yes
+from hot
+order by abs(delta_yes) desc nulls last, liquidity desc nulls last
+limit %s;
+"""
+
+SQL_LIVE_MOVERS_PREVIEW_LEGACY = """
 select
   market_id,
   question,
@@ -2247,8 +2303,21 @@ def fetch_live_movers_preview(
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute("set statement_timeout = '8000ms'")
             candidate_limit = min(36, max(limit, limit * 12))
-            cur.execute(SQL_LIVE_MOVERS_PREVIEW, (candidate_limit,))
+            cur.execute(
+                SQL_HOT_LIVE_MOVERS_PREVIEW,
+                (
+                    HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+                    HOT_PREVIEW_MIN_LIQUIDITY,
+                    HOT_PREVIEW_MAX_SPREAD,
+                    candidate_limit,
+                ),
+            )
             movers = cur.fetchall()
+            source = "hot"
+            if not movers:
+                cur.execute(SQL_LIVE_MOVERS_PREVIEW_LEGACY, (candidate_limit,))
+                movers = cur.fetchall()
+                source = "legacy"
             if not movers:
                 return []
 
@@ -2267,7 +2336,13 @@ def fetch_live_movers_preview(
     fallback_rows: list[dict] = []
     for row in movers:
         market_id = str(row.get("market_id") or "")
-        spark = _compact_series(series_by_market.get(market_id, []), max_points=max_points)
+        spark_source = list(series_by_market.get(market_id, []))
+        hot_now = row.get("yes_mid_now")
+        if source == "hot" and hot_now is not None:
+            hot_now_f = float(hot_now)
+            if not spark_source or abs(float(spark_source[-1]) - hot_now_f) > 1e-9:
+                spark_source.append(hot_now_f)
+        spark = _compact_series(spark_source, max_points=max_points)
         if len(spark) < 2:
             spark = []
         distinct_points = len({round(v, 6) for v in spark})
