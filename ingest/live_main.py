@@ -40,6 +40,15 @@ def _score_delta(delta_mid: float, liquidity: float) -> float:
     return abs(float(delta_mid)) * 100.0 + math.log1p(max(float(liquidity), 0.0))
 
 
+def _normalize_delta(delta_mid: float | None, *, epsilon: float = 1e-6) -> float | None:
+    if delta_mid is None:
+        return None
+    value = float(delta_mid)
+    if abs(value) < epsilon:
+        return 0.0
+    return value
+
+
 def _fetch_market_detail(market_id: str) -> dict | None:
     try:
         r = SESSION.get(GAMMA_MARKET_BY_ID.format(market_id), timeout=30)
@@ -263,6 +272,130 @@ def _load_prev_5m_mids(pg_conn: str, market_ids: list[str], *, quote_ts: datetim
         conn.close()
 
 
+def _load_bot_watchlist_memberships(pg_conn: str, *, limit: int) -> list[tuple[str, str]]:
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select w.user_id::text, w.market_id
+                from bot.watchlist w
+                order by w.created_at desc
+                limit %s
+                """,
+                (limit,),
+            )
+            return [(str(user_id), str(market_id)) for user_id, market_id in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def _publish_hot_watchlist_snapshot_latest(pg_conn: str, rows: list[dict], *, quote_ts: datetime) -> int:
+    watchlist_limit = int(os.environ.get("LIVE_BOT_WL_LIMIT", "500"))
+    memberships = _load_bot_watchlist_memberships(pg_conn, limit=watchlist_limit)
+    if not memberships:
+        conn = psycopg2.connect(pg_conn)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("delete from public.hot_watchlist_snapshot_latest")
+            conn.commit()
+        finally:
+            conn.close()
+        return 0
+
+    market_ids = list(dict.fromkeys([market_id for _, market_id in memberships]))
+    prev_by_market = _load_prev_5m_mids(pg_conn, market_ids, quote_ts=quote_ts)
+    row_by_market = {str(row.get("market_id")): row for row in rows if row.get("market_id")}
+
+    snapshot_rows = []
+    for app_user_id, market_id in memberships:
+        row = row_by_market.get(market_id)
+        if not row:
+            continue
+        status = str(row.get("status") or "active")
+        current_mid = row.get("mid_yes")
+        prev_entry = prev_by_market.get(market_id)
+        prev_mid = float(prev_entry[1]) if prev_entry else None
+        delta_mid = (float(current_mid) - float(prev_mid)) if current_mid is not None and prev_mid is not None else None
+        delta_mid = _normalize_delta(delta_mid)
+        has_current = current_mid is not None and bool(row.get("has_two_sided_quote"))
+        if status == "closed":
+            live_state = "closed"
+        elif has_current and prev_mid is not None:
+            live_state = "ready"
+        elif has_current:
+            live_state = "partial"
+        else:
+            live_state = "no_quotes"
+        snapshot_rows.append(
+            (
+                app_user_id,
+                market_id,
+                row.get("question") or "n/a",
+                row.get("slug") or market_id,
+                status,
+                float(current_mid) if current_mid is not None else None,
+                prev_mid,
+                float(delta_mid) if delta_mid is not None else None,
+                float(row.get("liquidity") or 0.0),
+                float(row.get("spread")) if row.get("spread") is not None else None,
+                live_state,
+                quote_ts if has_current else None,
+                quote_ts,
+            )
+        )
+
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            if snapshot_rows:
+                execute_batch(
+                    cur,
+                    """
+                    insert into public.hot_watchlist_snapshot_latest
+                      (app_user_id, market_id, question, slug, status, mid_current, mid_prev_5m, delta_mid, liquidity, spread, live_state, quote_ts, ingested_at)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict (app_user_id, market_id) do update
+                    set question = excluded.question,
+                        slug = excluded.slug,
+                        status = excluded.status,
+                        mid_current = excluded.mid_current,
+                        mid_prev_5m = excluded.mid_prev_5m,
+                        delta_mid = excluded.delta_mid,
+                        liquidity = excluded.liquidity,
+                        spread = excluded.spread,
+                        live_state = excluded.live_state,
+                        quote_ts = excluded.quote_ts,
+                        ingested_at = excluded.ingested_at;
+                    """,
+                    snapshot_rows,
+                    page_size=200,
+                )
+                membership_keys = [(row[0], row[1]) for row in snapshot_rows]
+                cur.execute(
+                    """
+                    delete from public.hot_watchlist_snapshot_latest h
+                    where not exists (
+                      select 1
+                      from unnest(%s::text[], %s::text[]) as keep(app_user_id, market_id)
+                      where keep.app_user_id::uuid = h.app_user_id
+                        and keep.market_id = h.market_id
+                    )
+                    """,
+                    (
+                        [user_id for user_id, _ in membership_keys],
+                        [market_id for _, market_id in membership_keys],
+                    ),
+                )
+            else:
+                cur.execute("delete from public.hot_watchlist_snapshot_latest")
+        conn.commit()
+    finally:
+        conn.close()
+
+    return len(snapshot_rows)
+
+
 def _publish_hot_top_movers_5m(pg_conn: str, rows: list[dict], *, quote_ts: datetime) -> int:
     market_ids = [str(row["market_id"]) for row in rows if row.get("market_id")]
     prev_by_market = _load_prev_5m_mids(pg_conn, market_ids, quote_ts=quote_ts)
@@ -374,10 +507,11 @@ def main() -> None:
 
     registry_count, quote_count = _upsert_registry_and_quotes(pg_conn, rows)
     movers_5m_count = _publish_hot_top_movers_5m(pg_conn, rows, quote_ts=started_at)
+    watchlist_snapshot_count = _publish_hot_watchlist_snapshot_latest(pg_conn, rows, quote_ts=started_at)
     two_sided_count = sum(1 for row in rows if row.get("has_two_sided_quote"))
     print(
         "OK: live hot ingest wrote "
-        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} movers_5m={movers_5m_count} "
+        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} movers_5m={movers_5m_count} watchlist_hot={watchlist_snapshot_count} "
         f"started_at={started_at.isoformat()}"
     )
 

@@ -47,6 +47,35 @@ UI behavior:
   - not `https://polymarket.com/event/<slug>`
   - Polymarket handles any deeper canonical redirect from there
 
+## Hot Watchlist Snapshot Migration (2026-03-27)
+
+The next additive hot-layer step is now the `watchlist` live snapshot.
+
+Worker-side:
+
+• `ingest/live_main.py` now publishes `public.hot_watchlist_snapshot_latest`
+• source inputs remain:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+  - legacy `public.market_snapshots` only for the previous 5m anchor
+• state vocabulary currently used:
+  - `ready`
+  - `partial`
+  - `no_quotes`
+  - `closed`
+
+Bot-side:
+
+• `fetch_watchlist_snapshot_async()` in `bot/main.py` is now hot-first
+• fallback remains:
+  - `bot.watchlist_snapshot_latest`
+
+Boundary:
+
+• only the primary live `watchlist` snapshot read is migrated
+• diagnostics, wider fallback windows, and inbox delivery logic remain on the existing path
+• rollback remains trivial because the legacy query is still present and used automatically when the hot surface yields no rows
+
 Hierarchy guardrail:
 
 • these are tertiary row-level actions only

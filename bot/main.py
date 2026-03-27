@@ -299,6 +299,24 @@ order by abs(delta_mid) desc nulls last
 limit %s;
 """
 
+SQL_WATCHLIST_SNAPSHOT_HOT = """
+select
+  market_id,
+  question,
+  quote_ts as last_bucket,
+  (quote_ts - interval '5 minutes') as prev_bucket,
+  mid_current as yes_mid_now,
+  mid_prev_5m as yes_mid_prev,
+  delta_mid as delta_yes
+from public.hot_watchlist_snapshot_latest
+where app_user_id = %s::uuid
+  and live_state = 'ready'
+  and delta_mid is not null
+  and abs(delta_mid) > 0
+order by abs(delta_mid) desc nulls last, quote_ts desc nulls last
+limit %s;
+"""
+
 SQL_WATCHLIST_SNAPSHOT_WINDOW = """
 with lb as (
   select last_bucket from public.global_bucket_latest
@@ -2563,10 +2581,15 @@ async def fetch_top_movers_window_async(minutes: int, limit: int = 3, timeout_se
 
 
 async def fetch_watchlist_snapshot_async(user_id: str, limit: int = 10, timeout_sec: float = 10.0) -> list[dict]:
-    return await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_WATCHLIST_SNAPSHOT, (user_id, limit), row_factory=dict_row)),
-        timeout=timeout_sec,
-    )
+    async def _fetch() -> list[dict]:
+        hot_rows = await asyncio.to_thread(
+            lambda: run_db_query(SQL_WATCHLIST_SNAPSHOT_HOT, (user_id, limit), row_factory=dict_row)
+        )
+        if hot_rows:
+            return hot_rows
+        return await asyncio.to_thread(lambda: run_db_query(SQL_WATCHLIST_SNAPSHOT, (user_id, limit), row_factory=dict_row))
+
+    return await asyncio.wait_for(_fetch(), timeout=timeout_sec)
 
 
 async def fetch_watchlist_snapshot_window_async(

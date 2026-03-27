@@ -63,6 +63,12 @@ Practical effect:
 • follow-up production fix:
   - Polymarket market rows must open `/market/<slug>`, not `/event/<slug>`
   - some market slugs 404 under `/event/...` even though they resolve correctly under `/market/...`
+• started the next hot-layer migration step for `watchlist`:
+  - `ingest/live_main.py` now publishes `public.hot_watchlist_snapshot_latest`
+  - `bot/main.py` now reads `watchlist` snapshot hot-first with legacy fallback
+• migration boundary stays safe:
+  - only the primary live snapshot read is switched
+  - fallback windows, diagnostics, and inbox remain on the existing legacy/runtime path for now
 
 ---
 
