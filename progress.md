@@ -2780,3 +2780,11 @@ iOS client integration
 • conclusion from this pass:
   - homepage hot-first preview is still correct
   - `/movers` needs one more product/data decision pass before we switch it
+• fixed the product meaning of `/movers` in:
+  - `docs/movers_surface_decision_2026-03-27.md`
+• explicit decision:
+  - `/movers` should mean **current actionable movers**
+  - not just the largest completed bucket shocks
+• implication:
+  - `public.hot_top_movers_5m` remains the long-term target
+  - `public.top_movers_latest` remains comparison + fallback until the hot surface is calibrated enough for that meaning

@@ -2906,3 +2906,28 @@ Before `/movers` cutover, we need to decide which surface should define “top m
 
 - latest bucket shock (`public.top_movers_latest`)
 - or fresher current-action delta (`public.hot_top_movers_5m`)
+
+## `/movers` Product Meaning Fixed
+
+Decision artifact:
+
+- `docs/movers_surface_decision_2026-03-27.md`
+
+Decision:
+
+- `/movers` is an action-first surface
+- it should represent current live relevance, not just the largest completed bucket shock
+
+Architectural consequence:
+
+- `public.hot_top_movers_5m` is still the correct long-term target for `/movers`
+- `public.top_movers_latest` remains:
+  - comparison surface
+  - migration fallback
+  - possible future explicit "shock" surface if needed
+
+So the remaining work before cutover is not “make hot look identical to legacy”.
+
+It is:
+
+- make hot sufficiently trustworthy for the action-first meaning of `/movers`
