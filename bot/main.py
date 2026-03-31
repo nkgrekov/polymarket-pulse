@@ -2063,6 +2063,35 @@ def watchlist_list_inline(locale: str, *, has_closed: bool = False) -> InlineKey
     return InlineKeyboardMarkup(rows)
 
 
+def watchlist_review_remove_inline(
+    chat_id: int,
+    rows: list[dict[str, Any]],
+    bot_data: dict,
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup | None:
+    remove_targets = []
+    for row in rows:
+        market_status = str(row.get("market_status") or "unknown")
+        date_passed_active = bool(row.get("date_passed_active"))
+        if market_status == "closed" or date_passed_active:
+            remove_targets.append(row)
+    if not remove_targets:
+        return None
+
+    remove_map = bot_data.setdefault("watchlist_remove_map", {})
+    buttons: list[list[InlineKeyboardButton]] = []
+    for row in remove_targets[:3]:
+        market_id = str(row["market_id"])
+        token = _picker_token(chat_id, market_id)
+        remove_map[f"{chat_id}:{token}"] = market_id
+        question = (row.get("question") or market_id).strip()
+        label_prefix = "Remove" if locale == "en" else "Удалить"
+        label = f"{label_prefix} {question[:26]}"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"wlremove:{token}")])
+    return InlineKeyboardMarkup(buttons)
+
+
 def watchlist_review_needs_recovery(
     *,
     ready_count: int,
@@ -3440,6 +3469,13 @@ async def send_watchlist_list_view(
         recovery_line = ""
 
     reply_markup = watchlist_list_inline(locale, has_closed=has_closed)
+    remove_markup = watchlist_review_remove_inline(
+        message.chat_id,
+        rows,
+        context.application.bot_data,
+        locale=locale,
+    )
+    reply_markup = merge_inline_markups(reply_markup, remove_markup)
     if watchlist_review_needs_recovery(
         ready_count=ready_count,
         partial_count=partial_count,
@@ -3792,6 +3828,39 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 log.exception("watchlist picker attribution insert failed")
         reply_markup = await watchlist_post_add_markup(query.message, context, user_ctx, result, locale=locale)
         await query.message.reply_text(result["text"], reply_markup=reply_markup)
+        return
+    if data.startswith("wlremove:"):
+        token = data.split(":", 1)[1]
+        chat_key = f"{query.message.chat_id}:{token}"
+        remove_map = context.application.bot_data.get("watchlist_remove_map", {})
+        market_id = remove_map.get(chat_key)
+        if not market_id:
+            await query.message.reply_text(
+                "Removal item is expired. Open Review list and retry."
+                if locale == "en"
+                else "Элемент удаления устарел. Откройте Проверить список и повторите."
+            )
+            return
+        user_ctx = await resolve_user_context(update)
+        removed = await asyncio.to_thread(execute_db_write_count, SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], market_id))
+        refreshed_user_ctx = await resolve_user_context(update)
+        if removed:
+            await query.message.reply_text(
+                (
+                    f"Removed from watchlist: {market_id}\nRefreshing Review list below."
+                    if locale == "en"
+                    else f"Удалено из watchlist: {market_id}\nНиже обновлю Проверить список."
+                )
+            )
+        else:
+            await query.message.reply_text(
+                (
+                    f"This market is not in your watchlist anymore: {market_id}\nRefreshing Review list below."
+                    if locale == "en"
+                    else f"Этого рынка уже нет в вашем watchlist: {market_id}\nНиже обновлю Проверить список."
+                )
+            )
+        await send_watchlist_list_view(query.message, context, refreshed_user_ctx, locale=locale)
         return
     if data.startswith("wlreplace:"):
         token = data.split(":", 1)[1]

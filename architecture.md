@@ -39,6 +39,34 @@ Why this matters:
 • it explains why a “dead-looking” market may still send or show live movement
 • it reduces false expectations around the `Remove closed` action without changing cleanup semantics
 
+# Review List Inline Remove (2026-03-31)
+
+`Review list` now includes an additive inline remove path for the clearest cleanup targets.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+UI behavior:
+
+• `send_watchlist_list_view()` now builds a second inline action group for up to 3 rows that are:
+  - `closed`
+  - or `date_passed_active`
+• buttons are backed by a tokenized `watchlist_remove_map`
+• callback path:
+  - `wlremove:<token>`
+
+Behavioral boundary:
+
+• removal still uses the same underlying `SQL_WATCHLIST_REMOVE`
+• no cleanup semantics changed
+• rows are refreshed immediately by re-running `send_watchlist_list_view()` after the delete attempt
+
+Why this matters:
+
+• the most obvious “remove this one” cases no longer require manual `/watchlist_remove <market_id|slug>`
+• this reduces friction exactly where stale market confusion is highest
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Quiet inbox states now expose the strongest below-threshold candidate from the hot layer.

@@ -34,6 +34,30 @@ Practical effect:
   - from stale-looking markets whose question date already passed but source still keeps them active
 • this should reduce confusion around “I pressed Remove closed, but this one stayed”
 
+# Review List Inline Remove (2026-03-31)
+
+Added direct inline removal for problematic rows in `Review list`.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `send_watchlist_list_view()` now adds inline `Remove ...` buttons for up to 3 rows that are:
+  - `closed`
+  - or marked `date_passed_active`
+• new callback flow:
+  - `wlremove:<token>`
+• inline removal refreshes `Review list` immediately after deletion
+
+Practical effect:
+
+• users no longer need to copy `market_id` into `/watchlist_remove` for the most obvious cleanup cases
+• the stale/dead market cleanup loop is now much closer to one tap
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Made quiet inbox states more informative when signals exist but remain below threshold.
