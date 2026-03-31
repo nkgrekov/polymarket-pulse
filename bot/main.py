@@ -439,9 +439,11 @@ with lb as (
     w.market_id,
     m.question,
     w.created_at,
-    coalesce(m.status, 'unknown') as market_status
+    coalesce(m.status, 'unknown') as market_status,
+    h.end_date
   from bot.watchlist w
   join public.markets m on m.market_id = w.market_id
+  left join public.hot_market_registry_latest h on h.market_id = w.market_id
   where w.user_id = %s::uuid
 ), live_last as (
   select distinct ms.market_id
@@ -461,6 +463,12 @@ select
   b.question,
   b.created_at,
   b.market_status,
+  b.end_date,
+  (
+    b.market_status <> 'closed'
+    and b.end_date is not null
+    and b.end_date < now()
+  ) as date_passed_active,
   (ll.market_id is not null) as has_last_quotes,
   (lp.market_id is not null) as has_prev_quotes
 from base b
@@ -3352,10 +3360,12 @@ async def send_watchlist_list_view(
     partial_count = 0
     no_quotes_count = 0
     closed_count = 0
+    stale_count = 0
     for idx, row in enumerate(rows, start=1):
         market_status = str(row.get("market_status") or "unknown")
         has_last = bool(row.get("has_last_quotes"))
         has_prev = bool(row.get("has_prev_quotes"))
+        date_passed_active = bool(row.get("date_passed_active"))
         if market_status == "closed":
             state = "closed" if locale == "en" else "closed"
             has_closed = True
@@ -3369,23 +3379,46 @@ async def send_watchlist_list_view(
         else:
             state = "no_quotes" if locale == "en" else "no_quotes"
             no_quotes_count += 1
-        lines.append(f"{idx}. [{state}] {row['market_id']} — {row['question']}")
+        suffix = ""
+        if date_passed_active:
+            stale_count += 1
+            suffix = (
+                " · date_passed_active"
+                if locale == "en"
+                else " · дата_прошла_active"
+            )
+        lines.append(f"{idx}. [{state}{suffix}] {row['market_id']} — {row['question']}")
 
     summary = (
-        f"Coverage now: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
+        f"Coverage now: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}"
         if locale == "en"
-        else f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}\n\n"
+        else f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}"
     )
+    if stale_count > 0:
+        summary += (
+            f" · date_passed_active {stale_count}\n\n"
+            if locale == "en"
+            else f" · дата_прошла_active {stale_count}\n\n"
+        )
+    else:
+        summary += "\n\n"
     guide = (
-        "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup."
+        "\n\nState guide: ready = quoting in both live windows, partial = only one window is live, no_quotes = tracked but not quoting yet, closed = archived candidate for cleanup, date_passed_active = question date already passed but source still marks the market active."
         if locale == "en"
-        else "\n\nСтатусы: ready = котируется в обоих live-окнах, partial = live только одно окно, no_quotes = рынок уже отслеживается, но ещё не котируется, closed = кандидат на очистку."
+        else "\n\nСтатусы: ready = котируется в обоих live-окнах, partial = live только одно окно, no_quotes = рынок уже отслеживается, но ещё не котируется, closed = кандидат на очистку, дата_прошла_active = дата в вопросе уже прошла, но source всё ещё держит рынок active."
     )
     next_line = (
         "\nNext: open /watchlist for live changes, /inbox for thresholded alerts, or /watchlist_remove <market_id|slug> to clean quiet markets."
         if locale == "en"
         else "\nДальше: откройте /watchlist для live-изменений, /inbox для пороговых алертов или /watchlist_remove <market_id|slug>, чтобы чистить тихие рынки."
     )
+    manual_remove_line = ""
+    if stale_count > 0:
+        manual_remove_line = (
+            "\nRows marked date_passed_active are not auto-removed because source data still marks them active. Remove them manually with /watchlist_remove <market_id|slug> if you no longer want them."
+            if locale == "en"
+            else "\nСтроки с меткой дата_прошла_active не удаляются автоматически, потому что source data всё ещё считает их active. Если такой рынок вам больше не нужен, удалите его вручную через /watchlist_remove <market_id|slug>."
+        )
     if watchlist_review_needs_recovery(
         ready_count=ready_count,
         partial_count=partial_count,
@@ -3424,6 +3457,7 @@ async def send_watchlist_list_view(
         + "\n".join(lines)
         + guide
         + recovery_line
+        + manual_remove_line
         + next_line,
         reply_markup=reply_markup,
     )

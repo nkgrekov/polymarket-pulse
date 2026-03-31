@@ -4,6 +4,41 @@ This document describes the technical architecture.
 
 ---
 
+# Review List Stale Marker (2026-03-31)
+
+`Review list` now distinguishes source-closed markets from markets that only look stale to the user.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+Read-path change:
+
+• `SQL_WATCHLIST_LIST` now exposes:
+  - `end_date`
+  - additive `date_passed_active`
+• `end_date` is taken from `public.hot_market_registry_latest`, so the marker depends on the live registry contract instead of legacy `public.markets`
+• `date_passed_active` is true when:
+  - source status is not `closed`
+  - `end_date` exists
+  - `end_date < now()`
+
+UI behavior:
+
+• `send_watchlist_list_view()` now appends a stale marker directly to rows:
+  - `date_passed_active`
+• the coverage summary includes a separate stale count
+• the guide explicitly explains that these markets:
+  - are still active in source data
+  - are not affected by `Remove closed`
+  - require `/watchlist_remove <market_id|slug>` for manual cleanup
+
+Why this matters:
+
+• it matches the real user mental model better than source status alone
+• it explains why a “dead-looking” market may still send or show live movement
+• it reduces false expectations around the `Remove closed` action without changing cleanup semantics
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Quiet inbox states now expose the strongest below-threshold candidate from the hot layer.

@@ -4,6 +4,36 @@ This document tracks the current state of the project.
 
 ---
 
+# Review List Stale Marker (2026-03-31)
+
+Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `SQL_WATCHLIST_LIST` now carries:
+  - `end_date`
+  - additive `date_passed_active` marker
+• `send_watchlist_list_view()` now surfaces this marker directly in the list:
+  - `[ready · date_passed_active] ...`
+  - `[partial · date_passed_active] ...`
+• coverage summary now includes `date_passed_active`
+• the guide now explains that these rows are not auto-cleaned because source data still marks them `active`
+• `Review list` now gives explicit manual cleanup guidance:
+  - use `/watchlist_remove <market_id|slug>`
+
+Practical effect:
+
+• users can distinguish:
+  - truly `closed` markets removable by `Remove closed`
+  - from stale-looking markets whose question date already passed but source still keeps them active
+• this should reduce confusion around “I pressed Remove closed, but this one stayed”
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Made quiet inbox states more informative when signals exist but remain below threshold.
