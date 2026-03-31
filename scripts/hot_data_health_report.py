@@ -130,7 +130,7 @@ def main() -> None:
         phase_line("V1 now", "registry + quotes are expected to be live."),
         phase_line("V1 now", "hot 5m movers are expected to be live once the mover publish phase is deployed."),
         phase_line("V1 now", "hot watchlist snapshots and hot alert candidates are expected to be live now."),
-        phase_line("V1 later", "hot 1m movers may still be empty until that worker write is added."),
+        phase_line("V1 now", "hot 1m movers are expected to be live now."),
         "",
         "## Snapshot",
         "",
@@ -148,7 +148,7 @@ def main() -> None:
         "",
         "- Treat this as the first operational heartbeat for the new hot layer.",
         "- `hot_top_movers_5m` should now be non-empty during healthy market conditions; `hot_watchlist_snapshot_latest` and `hot_alert_candidates_latest` should also stay non-empty when users track markets.",
-        "- `hot_top_movers_1m` may still be empty until its publish phase lands.",
+        "- `hot_top_movers_1m` should now be non-empty during healthy market conditions as the live worker publishes it from the previous hot quote anchor.",
         "- Do not cut over homepage or bot reads until this report stays healthy over repeated ticks.",
         "",
     ]

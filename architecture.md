@@ -4,6 +4,38 @@ This document describes the technical architecture.
 
 ---
 
+# Hot 1m Movers Publish (2026-03-31)
+
+The live worker now publishes a true tape-style 1 minute mover surface.
+
+Updated artifacts:
+
+• `ingest/live_main.py`
+
+Worker-side:
+
+• `public.hot_top_movers_1m` now reads its previous anchor from the prior `public.hot_market_quotes_latest` state
+• this means the 1m surface is derived from the previous live tick, not from 5m historical buckets
+• current 1m gates:
+  - `status = active`
+  - two-sided quote required
+  - minimum liquidity `1000`
+  - maximum spread `0.25`
+  - `HOT_MOVERS_1M_MIN_ABS_DELTA` default `0.002`
+
+Boundary:
+
+• no new read surface is cut over in this step
+• homepage preview stays on hot preview logic already shipped
+• `/movers` continues to use `hot_top_movers_5m` as its primary hot semantic layer
+
+Why this matters:
+
+• the hot layer now has both:
+  - `1m` tape-style movers for very fresh movement
+  - `5m` action-style movers for product-facing decision surfaces
+• this keeps future calibration explicit instead of overloading one mover table with two different jobs
+
 # Hot vs Legacy Delivery Comparison (2026-03-31)
 
 The first delivery comparison pass is now explicit and repeatable.

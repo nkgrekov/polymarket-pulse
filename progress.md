@@ -4,6 +4,47 @@ This document tracks the current state of the project.
 
 ---
 
+# Hot 1m Movers Published (2026-03-31)
+
+Added the first true tape-style mover surface to the live worker without switching any new runtime reads.
+
+Files updated:
+
+• `ingest/live_main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `ingest/live_main.py` now publishes `public.hot_top_movers_1m`
+• the 1m surface uses the previous live quote snapshot from `public.hot_market_quotes_latest` as its anchor
+• this keeps the 1m mover surface genuinely live instead of trying to fake a minute view from 5m historical buckets
+• current 1m gates:
+  - `status = active`
+  - two-sided quote required
+  - liquidity `>= 1000`
+  - spread `<= 0.25`
+  - `HOT_MOVERS_1M_MIN_ABS_DELTA` default `0.002`
+
+Smoke result:
+
+• local live tick wrote:
+  - `registry=423`
+  - `quotes=423`
+  - `two_sided=315`
+  - `movers_1m=22`
+  - `movers_5m=39`
+  - `watchlist_hot=9`
+  - `alerts_hot=9`
+
+Practical effect:
+
+• the hot layer now has both:
+  - a tape-style `1m` mover surface
+  - an action-style `5m` mover surface
+• no bot or site read-path changed in this step
+• this is additive publish-only work, which keeps the migration low-risk
+
 # Hot vs Legacy Delivery Comparison (2026-03-31)
 
 Captured the first explicit comparison pass for delivery semantics after the inbox hot-first migration.
