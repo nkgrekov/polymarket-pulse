@@ -4,6 +4,43 @@ This document tracks the current state of the project.
 
 ---
 
+# Inbox Near-Miss Hint (2026-03-31)
+
+Made quiet inbox states more informative when signals exist but remain below threshold.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added hot-only `below_threshold` lookup for `/inbox`
+• when `candidates_total > 0` and `over_threshold = 0`, the bot now shows the strongest near-miss:
+  - question
+  - current absolute delta
+  - current threshold
+• this keeps the inbox honest:
+  - the user sees that movement exists
+  - but the bot still refuses to spam because it stays below threshold
+
+Smoke result:
+
+• real quiet-user diagnostics returned:
+  - `candidates_total = 2`
+  - `over_threshold = 0`
+• strongest near-miss resolved to:
+  - `Will the price of Bitcoin be between $70,000 and $72,000 on April 3?`
+  - `Δ 0.010`
+  - `threshold 0.030`
+
+Practical effect:
+
+• quiet inbox now feels less like “nothing is happening”
+• threshold tuning becomes much easier because the user sees the closest candidate immediately
+• no alert delivery logic changed
+
 # Homepage 1m Freshness Cue (2026-03-31)
 
 Added a minimal `1m` tape cue to homepage live movers without changing the preview ranking or CTA hierarchy.

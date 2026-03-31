@@ -712,6 +712,20 @@ select
 from d;
 """
 
+SQL_INBOX_NEAR_MISS_HOT = """
+select
+  market_id,
+  question,
+  delta_abs,
+  threshold_value,
+  quote_ts
+from public.hot_alert_candidates_latest
+where app_user_id = %s::uuid
+  and candidate_state = 'below_threshold'
+order by delta_abs desc, quote_ts desc
+limit 1;
+"""
+
 SQL_MARKET_BRIEF = """
 select market_id, question
 from public.markets
@@ -2225,6 +2239,11 @@ async def send_inbox_view(
         except Exception:
             log.exception("inbox diagnostics failed")
             diag = {}
+        try:
+            near_miss = await fetch_inbox_near_miss_async(user_ctx["user_id"], timeout_sec=10.0)
+        except Exception:
+            log.exception("inbox near-miss failed")
+            near_miss = {}
         total = int(diag.get("candidates_total") or 0)
         over = int(diag.get("over_threshold") or 0)
         threshold = _fmt_num(user_ctx.get("threshold"), 3)
@@ -2236,6 +2255,13 @@ async def send_inbox_view(
                 else f"Сигналы есть ({total}), но ниже вашего threshold {threshold}.\n"
                 "Попробуйте /threshold 0.02 или откройте /movers."
             )
+            if near_miss:
+                near_miss_line = (
+                    f"\nClosest now: {near_miss.get('question') or near_miss.get('market_id')} | Δ {_fmt_num(near_miss.get('delta_abs'), 3)} vs threshold {threshold}"
+                    if locale == "en"
+                    else f"\nБлижайший кандидат сейчас: {near_miss.get('question') or near_miss.get('market_id')} | Δ {_fmt_num(near_miss.get('delta_abs'), 3)} против threshold {threshold}"
+                )
+                reason += near_miss_line
         elif total == 0:
             reason = (
                 "No live deltas for your watchlist/positions in the current window.\n"
@@ -2723,6 +2749,14 @@ async def fetch_inbox_diagnostics_async(user_id: str, threshold: Any, timeout_se
         )
 
     rows = await asyncio.wait_for(_fetch(), timeout=timeout_sec)
+    return rows[0] if rows else {}
+
+
+async def fetch_inbox_near_miss_async(user_id: str, timeout_sec: float = 10.0) -> dict:
+    rows = await asyncio.wait_for(
+        asyncio.to_thread(lambda: run_db_query(SQL_INBOX_NEAR_MISS_HOT, (user_id,), row_factory=dict_row)),
+        timeout=timeout_sec,
+    )
     return rows[0] if rows else {}
 
 

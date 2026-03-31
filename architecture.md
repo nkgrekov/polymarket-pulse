@@ -4,6 +4,40 @@ This document describes the technical architecture.
 
 ---
 
+# Inbox Near-Miss Hint (2026-03-31)
+
+Quiet inbox states now expose the strongest below-threshold candidate from the hot layer.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+Bot-side:
+
+• `fetch_inbox_near_miss_async()` now reads the top `below_threshold` row from `public.hot_alert_candidates_latest`
+• `send_inbox_view()` uses this only when:
+  - `candidates_total > 0`
+  - `over_threshold = 0`
+• the reply now includes:
+  - question
+  - current absolute delta
+  - current threshold
+
+Boundary:
+
+• this is read-only UX enrichment
+• no delivery logic changed
+• no additional alert is sent
+• no ranking or threshold semantics changed
+
+Why this matters:
+
+• users can now distinguish:
+  - “nothing is moving”
+  - from
+  - “something is moving, but still below your threshold”
+• this makes quiet inbox states feel trustworthy instead of opaque
+
 # Homepage Preview 1m Freshness Cue (2026-03-31)
 
 The homepage live movers preview now consumes a minimal additive signal from `public.hot_top_movers_1m`.
