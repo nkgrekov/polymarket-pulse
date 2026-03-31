@@ -386,10 +386,12 @@ with hot as (
     q.mid_yes as yes_mid_now,
     prev.mid_yes_prev as yes_mid_prev,
     (q.mid_yes - prev.mid_yes_prev)::double precision as delta_yes,
+    m1.delta_mid::double precision as delta_1m,
     coalesce(q.liquidity, 0)::double precision as liquidity,
     q.spread::double precision as spread
   from public.hot_market_registry_latest r
   join public.hot_market_quotes_latest q using (market_id)
+  left join public.hot_top_movers_1m m1 using (market_id)
   join lateral (
     with per_bucket as (
       select
@@ -422,7 +424,8 @@ select
   prev_bucket,
   yes_mid_now,
   yes_mid_prev,
-  delta_yes
+  delta_yes,
+  delta_1m
 from hot
 order by abs(delta_yes) desc nulls last, liquidity desc nulls last
 limit %s;
@@ -2377,6 +2380,7 @@ def fetch_live_movers_preview(
             "yes_mid_now": float(row.get("yes_mid_now") or 0.0),
             "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
             "delta_yes": float(row.get("delta_yes") or 0.0),
+            "delta_1m": float(row.get("delta_1m") or 0.0),
             "spark": spark,
             "market_url": _polymarket_market_url(row.get("slug")),
             "track_url": _pulse_track_market_url(market_id),

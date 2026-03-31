@@ -4,6 +4,45 @@ This document describes the technical architecture.
 
 ---
 
+# Homepage Preview 1m Freshness Cue (2026-03-31)
+
+The homepage live movers preview now consumes a minimal additive signal from `public.hot_top_movers_1m`.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+
+API-side:
+
+• `fetch_live_movers_preview()` now includes:
+  - `delta_1m`
+• this comes from a left join to `public.hot_top_movers_1m`
+• the preview ranking itself is unchanged:
+  - `delta_yes` and the existing hot preview gates still determine which rows appear
+
+UI-side:
+
+• homepage mover rows render a compact `1m` chip only when `delta_1m` is non-zero
+• the chip is secondary:
+  - it sits beside the existing move line
+  - it does not replace the main 5m-style move context
+• if `delta_1m` is absent or zero, the UI stays exactly as before
+
+Boundary:
+
+• no new preview endpoint
+• no ranking change
+• no new click path
+• no hero structural change
+
+Why this is safe:
+
+• the homepage remains anchored on the already accepted hot preview semantics
+• `1m` is only a freshness accent
+• this lets the site feel more “live now” without prematurely promoting the 1m tape into a primary product surface
+
 # Hot 1m Movers Publish (2026-03-31)
 
 The live worker now publishes a true tape-style 1 minute mover surface.

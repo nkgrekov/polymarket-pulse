@@ -420,6 +420,30 @@
       font-size: 14px;
     }
 
+    .line-2-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .tape-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      padding: 0 8px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: rgba(19, 23, 20, 0.72);
+    }
+
     .spark {
       margin-top: 8px;
       width: 100%;
@@ -1502,11 +1526,16 @@
       liveRows.innerHTML = rows.map((r) => {
         const up = Number(r.delta_yes || 0) >= 0;
         const deltaCls = up ? 'delta-up' : 'delta-down';
+        const tapeUp = Number(r.delta_1m || 0) >= 0;
+        const tapeDelta = Number(r.delta_1m || 0);
         const spark = sparkline(r.spark || [], !up);
         const marketUrl = esc(r.market_url || '');
         const trackUrl = esc(r.track_url || 'https://t.me/polymarket_pulse_bot?start=site_track');
         const marketId = esc(r.market_id || '');
         const question = esc(r.question || 'этот рынок');
+        const tapeChip = Math.abs(tapeDelta) > 0
+          ? `<span class="tape-chip ${tapeUp ? 'delta-up' : 'delta-down'}">1m ${pp(tapeDelta)}</span>`
+          : '';
         const rowTag = marketUrl ? 'a' : 'div';
         const rowMainAttrs = marketUrl
           ? `class="row-main" href="${marketUrl}" target="_blank" rel="noopener noreferrer" data-market-action="open_polymarket" data-market-id="${marketId}" data-market-question="${question}"`
@@ -1532,7 +1561,10 @@
                 <span class="time">${timeAgo(r.last_bucket)}</span>
               </div>
               <div class="line-2">
-                <span class="move">${pct(r.yes_mid_prev)}% → ${pct(r.yes_mid_now)}%</span>
+                <span class="line-2-left">
+                  <span class="move">${pct(r.yes_mid_prev)}% → ${pct(r.yes_mid_now)}%</span>
+                  ${tapeChip}
+                </span>
                 <span class="${deltaCls}">${pp(r.delta_yes)}</span>
               </div>
               ${spark}

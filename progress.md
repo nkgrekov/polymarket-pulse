@@ -4,6 +4,42 @@ This document tracks the current state of the project.
 
 ---
 
+# Homepage 1m Freshness Cue (2026-03-31)
+
+Added a minimal `1m` tape cue to homepage live movers without changing the preview ranking or CTA hierarchy.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/api/live-movers-preview` now includes additive `delta_1m` when a row is present in `public.hot_top_movers_1m`
+• homepage live mover rows now render a compact monospace `1m` chip only when `delta_1m != 0`
+• the main mover ordering remains unchanged:
+  - preview still ranks by the existing hot preview logic
+  - `delta_yes` remains the primary movement number
+• `1m` is used only as a freshness cue, not as a new ranked surface
+
+Smoke result:
+
+• local API smoke returned live rows with both:
+  - `delta_yes`
+  - `delta_1m`
+• example output:
+  - `1800064 ... delta_yes=-0.045 delta_1m=-0.075`
+  - `1777503 ... delta_yes=0.03 delta_1m=0.05`
+
+Practical effect:
+
+• homepage preview now hints when a mover is also moving in the latest minute
+• this strengthens the “live right now” feeling without turning the preview into a different product surface
+• no read-path ranking, no hero CTA structure, and no waitlist logic changed
+
 # Hot 1m Movers Published (2026-03-31)
 
 Added the first true tape-style mover surface to the live worker without switching any new runtime reads.
