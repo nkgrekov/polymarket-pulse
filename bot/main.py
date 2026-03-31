@@ -892,6 +892,30 @@ order by i.abs_delta desc nulls last
 limit %s;
 """
 
+SQL_PUSH_PARITY_SUMMARY = """
+with hot_ready as (
+  select
+    app_user_id::text as user_id,
+    market_id
+  from public.hot_alert_candidates_latest
+  where candidate_state = 'ready'
+), legacy_watchlist as (
+  select
+    user_id::text as user_id,
+    market_id
+  from bot.alerts_inbox_latest
+  where alert_type = 'watchlist'
+)
+select
+  (select count(*)::bigint from hot_ready) as hot_ready_count,
+  (select count(*)::bigint from legacy_watchlist) as legacy_watchlist_count,
+  (
+    select count(*)::bigint
+    from hot_ready h
+    join legacy_watchlist l using (user_id, market_id)
+  ) as overlap_count;
+"""
+
 SQL_SENT_ALERT_EXISTS = """
 select 1
 from bot.sent_alerts_log
@@ -2905,6 +2929,19 @@ def log_trade_interest_sync(update: Update, user_ctx: dict, *, market_id: str | 
 
 
 async def dispatch_push_alerts(application: Application) -> None:
+    parity = await asyncio.wait_for(
+        asyncio.to_thread(lambda: run_db_query(SQL_PUSH_PARITY_SUMMARY, (), row_factory=dict_row)),
+        timeout=10.0,
+    )
+    if parity:
+        row = parity[0]
+        log.info(
+            "push_loop parity hot_ready=%s legacy_watchlist=%s overlap=%s",
+            int(row.get("hot_ready_count") or 0),
+            int(row.get("legacy_watchlist_count") or 0),
+            int(row.get("overlap_count") or 0),
+        )
+
     rows = await asyncio.wait_for(
         asyncio.to_thread(lambda: run_db_query(SQL_PUSH_CANDIDATES, (PUSH_FETCH_LIMIT,), row_factory=dict_row)),
         timeout=15.0,

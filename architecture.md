@@ -67,6 +67,33 @@ Why this matters:
 • the most obvious “remove this one” cases no longer require manual `/watchlist_remove <market_id|slug>`
 • this reduces friction exactly where stale market confusion is highest
 
+# Push Loop Parity Logging (2026-03-31)
+
+The legacy delivery loop now emits an additive hot-vs-legacy parity summary on every iteration.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+Runtime behavior:
+
+• `dispatch_push_alerts()` now queries a compact parity aggregate before reading `SQL_PUSH_CANDIDATES`
+• logged fields:
+  - `hot_ready_count`
+  - `legacy_watchlist_count`
+  - `overlap_count`
+
+Boundary:
+
+• push delivery still reads `bot.alerts_inbox_latest`
+• no delivery ranking, dedupe, or sent-log behavior changed
+• this is observability only
+
+Why this matters:
+
+• the first non-quiet hot-vs-legacy window can now be captured from normal prod logs
+• this reduces the need for manual comparison runs before the next delivery decision
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Quiet inbox states now expose the strongest below-threshold candidate from the hot layer.

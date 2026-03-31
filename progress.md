@@ -58,6 +58,32 @@ Practical effect:
 • users no longer need to copy `market_id` into `/watchlist_remove` for the most obvious cleanup cases
 • the stale/dead market cleanup loop is now much closer to one tap
 
+# Push Loop Parity Logging (2026-03-31)
+
+Added delivery parity visibility directly into the bot push loop.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `dispatch_push_alerts()` now logs a compact parity summary on every push iteration:
+  - `hot_ready_count`
+  - `legacy_watchlist_count`
+  - `overlap_count`
+• this uses a new additive SQL summary over:
+  - `public.hot_alert_candidates_latest`
+  - `bot.alerts_inbox_latest`
+
+Practical effect:
+
+• we no longer need to wait blind for the first non-quiet window
+• the first meaningful hot-vs-legacy divergence will show up directly in prod bot logs
+• delivery semantics are still unchanged
+
 # Inbox Near-Miss Hint (2026-03-31)
 
 Made quiet inbox states more informative when signals exist but remain below threshold.
