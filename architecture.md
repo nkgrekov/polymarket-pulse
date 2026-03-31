@@ -4,6 +4,42 @@ This document describes the technical architecture.
 
 ---
 
+# Hot vs Legacy Delivery Comparison (2026-03-31)
+
+The first delivery comparison pass is now explicit and repeatable.
+
+Updated artifacts:
+
+• `scripts/compare_hot_vs_legacy_delivery.py`
+• `docs/hot_vs_legacy_delivery_latest.md`
+
+Compared surfaces:
+
+• `public.hot_alert_candidates_latest`
+• `bot.alerts_inbox_latest`
+• `bot.sent_alerts_log`
+
+Current observed state:
+
+• latest hot snapshot contains candidates, but no `ready` rows
+• latest legacy inbox window is also empty
+• recent sent-alert history still shows older delivered watchlist events
+
+Architectural implication:
+
+• the latest quiet inbox state is currently consistent across hot and legacy read surfaces
+• this is useful parity, but it is not sufficient evidence for a push-delivery cutover yet
+• the comparison report is therefore the decision gate for the next step:
+  - wait for a non-zero `hot_ready_count`
+  - compare overlap or drift against legacy inbox rows
+  - only then evaluate hot-first delivery with fallback
+
+Why this matters:
+
+• the read-path migration can be validated independently from the delivery loop
+• quiet-state truthfulness is improving before delivery risk is introduced
+• `bot.sent_alerts_log` must be interpreted as historical tail, not as proof that the current hot window should still deliver alerts
+
 # Hot Inbox Migration (2026-03-31)
 
 The next additive `Pulse` cutover now sits at the inbox read surface.

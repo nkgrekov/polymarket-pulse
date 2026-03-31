@@ -4,6 +4,53 @@ This document tracks the current state of the project.
 
 ---
 
+# Hot vs Legacy Delivery Comparison (2026-03-31)
+
+Captured the first explicit comparison pass for delivery semantics after the inbox hot-first migration.
+
+Files updated:
+
+• `scripts/compare_hot_vs_legacy_delivery.py`
+• `docs/hot_vs_legacy_delivery_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What the report compares:
+
+• `public.hot_alert_candidates_latest`
+• `bot.alerts_inbox_latest`
+• `bot.sent_alerts_log`
+
+Current snapshot result:
+
+• `hot_all_count = 9`
+• `hot_ready_count = 0`
+• `legacy_watchlist_count = 0`
+• `legacy_all_count = 0`
+• `sent_recent_count (24h) = 3`
+
+Interpretation:
+
+• the current live window is quiet on both hot and legacy inbox surfaces
+• this confirms there is no obvious false divergence in the latest window
+• but it is not yet enough evidence for a delivery cutover by itself
+• `sent_alerts_log` still shows historical tail from earlier buckets, which is expected even when both current inbox surfaces are empty
+
+What the current hot layer is saying:
+
+• `hot_alert_candidates_latest` is not empty
+• but the latest rows are currently:
+  - `closed`
+  - `below_threshold`
+• that means the hot layer is already helping explain *why* inbox is quiet, even when there is nothing ready to send
+
+Decision:
+
+• do not move push delivery to hot-first yet
+• keep using comparison passes until we capture at least one window with:
+  - non-zero `hot_ready_count`
+  - and a meaningful overlap or difference against current legacy delivery candidates
+
 # Hot Inbox Migration Started (2026-03-31)
 
 Moved the `Pulse` inbox toward the hot layer without touching the legacy push delivery loop.
