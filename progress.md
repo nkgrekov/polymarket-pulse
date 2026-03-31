@@ -4,6 +4,71 @@ This document tracks the current state of the project.
 
 ---
 
+# Hot Inbox Migration Started (2026-03-31)
+
+Moved the `Pulse` inbox toward the hot layer without touching the legacy push delivery loop.
+
+Files updated:
+
+• `ingest/live_main.py`
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `ingest/live_main.py` now publishes `public.hot_alert_candidates_latest`
+• worker classification is derived from hot watchlist state plus per-user threshold:
+  - `ready`
+  - `below_threshold`
+  - `stale_quotes`
+  - `no_quotes`
+  - `closed`
+  - `filtered_liquidity`
+  - `filtered_spread`
+• current worker gates for hot alert candidates are:
+  - threshold from `bot.user_settings` with default `0.03`
+  - minimum liquidity `1000`
+  - maximum spread `0.25`
+• `bot/main.py` now reads `/inbox` hot-first:
+  - watchlist alerts come from `public.hot_alert_candidates_latest` + `public.hot_watchlist_snapshot_latest`
+  - portfolio alerts still come from legacy `bot.portfolio_alerts_latest`
+  - full legacy fallback remains `bot.alerts_inbox_latest`
+• inbox diagnostics are also hot-first now:
+  - `below_threshold` watchlist candidates are visible to quiet-state messaging
+  - portfolio diagnostics still use the legacy snapshot path
+
+What intentionally did not change:
+
+• push delivery still reads `bot.alerts_inbox_latest`
+• `SQL_PUSH_CANDIDATES` is unchanged
+• `sent_alerts_log` semantics are unchanged
+• no Trader changes
+• no legacy deletion
+
+Smoke results:
+
+• local live tick wrote:
+  - `registry=393`
+  - `quotes=393`
+  - `two_sided=346`
+  - `movers_5m=60`
+  - `watchlist_hot=9`
+  - `alerts_hot=9`
+• hot diagnostics for a real user with quiet inbox returned:
+  - `candidates_total=2`
+  - `over_threshold=0`
+• this confirms the next-step copy can now distinguish:
+  - “no live deltas at all”
+  - from
+  - “signals exist but are below threshold”
+
+Practical effect:
+
+• `/inbox` now has a hot read path with safe fallback
+• quiet inbox states are more truthful because they can see hot watchlist candidates before they cross threshold
+• alert delivery itself is still insulated on the legacy path until we validate hot candidate behavior over repeated ticks
+
 # Clickable Market Rows Pass (2026-03-27)
 
 Made the homepage live mover rows action-oriented without changing the landing architecture, CTA hierarchy, or the current read path.

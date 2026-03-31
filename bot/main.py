@@ -129,6 +129,63 @@ order by abs_delta desc nulls last
 limit %s;
 """
 
+SQL_INBOX_HOT = """
+select
+  alert_type,
+  user_id,
+  market_id,
+  question,
+  side,
+  mid_now,
+  mid_prev,
+  delta_mid,
+  pnl,
+  last_bucket,
+  prev_bucket,
+  abs_delta
+from (
+  select
+    'portfolio'::text as alert_type,
+    p.user_id,
+    p.market_id,
+    p.question,
+    p.side,
+    p.mid_now,
+    p.mid_prev,
+    p.delta_mid,
+    p.pnl,
+    p.last_bucket,
+    p.prev_bucket,
+    p.abs_delta
+  from bot.portfolio_alerts_latest p
+  where p.user_id = %s::uuid
+
+  union all
+
+  select
+    'watchlist'::text as alert_type,
+    c.app_user_id as user_id,
+    c.market_id,
+    c.question,
+    null::text as side,
+    w.mid_current as mid_now,
+    w.mid_prev_5m as mid_prev,
+    c.delta_mid,
+    null::numeric as pnl,
+    coalesce(w.quote_ts, c.quote_ts) as last_bucket,
+    (coalesce(w.quote_ts, c.quote_ts) - interval '5 minutes') as prev_bucket,
+    c.delta_abs as abs_delta
+  from public.hot_alert_candidates_latest c
+  join public.hot_watchlist_snapshot_latest w
+    on w.app_user_id = c.app_user_id
+   and w.market_id = c.market_id
+  where c.app_user_id = %s::uuid
+    and c.candidate_state = 'ready'
+) inbox
+order by abs_delta desc nulls last
+limit %s;
+"""
+
 SQL_TOP_MOVERS = """
 with base as (
   select
@@ -628,6 +685,30 @@ with d as (
 select
   count(*) as candidates_total,
   count(*) filter (where abs_delta >= %s) as over_threshold
+from d;
+"""
+
+SQL_INBOX_DIAGNOSTICS_HOT = """
+with hot_watchlist as (
+  select
+    delta_abs as abs_delta,
+    candidate_state
+  from public.hot_alert_candidates_latest
+  where app_user_id = %s::uuid
+), portfolio as (
+  select
+    abs(delta_mid) as abs_delta,
+    case when abs(delta_mid) >= %s then 'ready'::text else 'below_threshold'::text end as candidate_state
+  from bot.portfolio_snapshot_latest
+  where user_id = %s::uuid
+), d as (
+  select * from hot_watchlist
+  union all
+  select * from portfolio
+)
+select
+  count(*) filter (where candidate_state in ('ready', 'below_threshold')) as candidates_total,
+  count(*) filter (where candidate_state = 'ready') as over_threshold
 from d;
 """
 
@@ -2551,10 +2632,13 @@ async def resolve_user_context(update: Update) -> dict:
 
 
 async def fetch_inbox_async(user_id: str, limit: int = 10, timeout_sec: float = 10.0) -> list[dict]:
-    return await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_INBOX, (user_id, limit), row_factory=dict_row)),
-        timeout=timeout_sec,
-    )
+    async def _fetch() -> list[dict]:
+        hot_rows = await asyncio.to_thread(lambda: run_db_query(SQL_INBOX_HOT, (user_id, user_id, limit), row_factory=dict_row))
+        if hot_rows:
+            return hot_rows
+        return await asyncio.to_thread(lambda: run_db_query(SQL_INBOX, (user_id, limit), row_factory=dict_row))
+
+    return await asyncio.wait_for(_fetch(), timeout=timeout_sec)
 
 
 async def fetch_top_movers_async(limit: int = 3, timeout_sec: float = 10.0) -> list[dict]:
@@ -2628,10 +2712,17 @@ async def fetch_watchlist_picker_candidates_async(
 
 async def fetch_inbox_diagnostics_async(user_id: str, threshold: Any, timeout_sec: float = 10.0) -> dict:
     thr = Decimal(str(threshold or 0.03))
-    rows = await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_INBOX_DIAGNOSTICS, (user_id, user_id, thr), row_factory=dict_row)),
-        timeout=timeout_sec,
-    )
+    async def _fetch() -> list[dict]:
+        hot_rows = await asyncio.to_thread(
+            lambda: run_db_query(SQL_INBOX_DIAGNOSTICS_HOT, (user_id, thr, user_id), row_factory=dict_row)
+        )
+        if hot_rows:
+            return hot_rows
+        return await asyncio.to_thread(
+            lambda: run_db_query(SQL_INBOX_DIAGNOSTICS, (user_id, user_id, thr), row_factory=dict_row)
+        )
+
+    rows = await asyncio.wait_for(_fetch(), timeout=timeout_sec)
     return rows[0] if rows else {}
 
 

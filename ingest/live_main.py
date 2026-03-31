@@ -396,6 +396,151 @@ def _publish_hot_watchlist_snapshot_latest(pg_conn: str, rows: list[dict], *, qu
     return len(snapshot_rows)
 
 
+def _load_hot_watchlist_candidate_source(pg_conn: str) -> list[dict]:
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                select
+                  h.app_user_id::text,
+                  h.market_id,
+                  h.question,
+                  h.status,
+                  h.mid_current,
+                  h.mid_prev_5m,
+                  h.delta_mid,
+                  h.liquidity,
+                  h.spread,
+                  h.live_state,
+                  h.quote_ts,
+                  coalesce(s.threshold, 0.03) as threshold_value
+                from public.hot_watchlist_snapshot_latest h
+                left join bot.user_settings s on s.user_id = h.app_user_id
+                order by h.app_user_id, h.market_id
+                """
+            )
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def _publish_hot_alert_candidates_latest(pg_conn: str, *, quote_ts: datetime) -> int:
+    source_rows = _load_hot_watchlist_candidate_source(pg_conn)
+    if not source_rows:
+        conn = psycopg2.connect(pg_conn)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("delete from public.hot_alert_candidates_latest")
+            conn.commit()
+        finally:
+            conn.close()
+        return 0
+
+    min_liquidity = float(os.environ.get("HOT_ALERT_MIN_LIQUIDITY", "1000"))
+    max_spread = float(os.environ.get("HOT_ALERT_MAX_SPREAD", "0.25"))
+
+    candidate_rows = []
+    keep_keys: list[tuple[str, str]] = []
+    for row in source_rows:
+        app_user_id = str(row.get("app_user_id") or "")
+        market_id = str(row.get("market_id") or "")
+        if not app_user_id or not market_id:
+            continue
+        keep_keys.append((app_user_id, market_id))
+
+        status = str(row.get("status") or "active")
+        live_state = str(row.get("live_state") or "no_quotes")
+        threshold_value = float(row.get("threshold_value") or 0.03)
+        liquidity = float(row.get("liquidity") or 0.0)
+        spread = row.get("spread")
+        spread_f = float(spread) if spread is not None else None
+        delta_mid = _normalize_delta(row.get("delta_mid"))
+        delta_abs = abs(float(delta_mid or 0.0))
+        candidate_quote_ts = row.get("quote_ts") or quote_ts
+
+        if live_state == "date_passed_active":
+            candidate_state = "date_passed_active"
+        elif status == "closed" or live_state == "closed":
+            candidate_state = "closed"
+        elif live_state == "no_quotes":
+            candidate_state = "no_quotes"
+        elif live_state == "partial":
+            candidate_state = "stale_quotes"
+        elif liquidity < min_liquidity:
+            candidate_state = "filtered_liquidity"
+        elif spread_f is not None and spread_f > max_spread:
+            candidate_state = "filtered_spread"
+        elif delta_abs >= threshold_value:
+            candidate_state = "ready"
+        else:
+            candidate_state = "below_threshold"
+
+        candidate_rows.append(
+            (
+                app_user_id,
+                market_id,
+                row.get("question") or "n/a",
+                float(delta_mid or 0.0),
+                float(delta_abs),
+                threshold_value,
+                liquidity,
+                spread_f,
+                candidate_quote_ts,
+                quote_ts,
+                candidate_state,
+            )
+        )
+
+    conn = psycopg2.connect(pg_conn)
+    try:
+        with conn.cursor() as cur:
+            if candidate_rows:
+                execute_batch(
+                    cur,
+                    """
+                    insert into public.hot_alert_candidates_latest
+                      (app_user_id, market_id, question, delta_mid, delta_abs, threshold_value, liquidity, spread, quote_ts, ingested_at, candidate_state)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict (app_user_id, market_id) do update
+                    set question = excluded.question,
+                        delta_mid = excluded.delta_mid,
+                        delta_abs = excluded.delta_abs,
+                        threshold_value = excluded.threshold_value,
+                        liquidity = excluded.liquidity,
+                        spread = excluded.spread,
+                        quote_ts = excluded.quote_ts,
+                        ingested_at = excluded.ingested_at,
+                        candidate_state = excluded.candidate_state;
+                    """,
+                    candidate_rows,
+                    page_size=200,
+                )
+                cur.execute(
+                    """
+                    delete from public.hot_alert_candidates_latest h
+                    where not exists (
+                      select 1
+                      from unnest(%s::text[], %s::text[]) as keep(app_user_id, market_id)
+                      where keep.app_user_id::uuid = h.app_user_id
+                        and keep.market_id = h.market_id
+                    )
+                    """,
+                    (
+                        [user_id for user_id, _ in keep_keys],
+                        [market_id for _, market_id in keep_keys],
+                    ),
+                )
+            else:
+                cur.execute("delete from public.hot_alert_candidates_latest")
+        conn.commit()
+    finally:
+        conn.close()
+
+    return len(candidate_rows)
+
+
 def _publish_hot_top_movers_5m(pg_conn: str, rows: list[dict], *, quote_ts: datetime) -> int:
     market_ids = [str(row["market_id"]) for row in rows if row.get("market_id")]
     prev_by_market = _load_prev_5m_mids(pg_conn, market_ids, quote_ts=quote_ts)
@@ -508,10 +653,11 @@ def main() -> None:
     registry_count, quote_count = _upsert_registry_and_quotes(pg_conn, rows)
     movers_5m_count = _publish_hot_top_movers_5m(pg_conn, rows, quote_ts=started_at)
     watchlist_snapshot_count = _publish_hot_watchlist_snapshot_latest(pg_conn, rows, quote_ts=started_at)
+    alert_candidate_count = _publish_hot_alert_candidates_latest(pg_conn, quote_ts=started_at)
     two_sided_count = sum(1 for row in rows if row.get("has_two_sided_quote"))
     print(
         "OK: live hot ingest wrote "
-        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} movers_5m={movers_5m_count} watchlist_hot={watchlist_snapshot_count} "
+        f"registry={registry_count} quotes={quote_count} two_sided={two_sided_count} movers_5m={movers_5m_count} watchlist_hot={watchlist_snapshot_count} alerts_hot={alert_candidate_count} "
         f"started_at={started_at.isoformat()}"
     )
 

@@ -1,4 +1,4 @@
-# Hot Data Health Report (2026-03-27T11:24:03.019096+00:00)
+# Hot Data Health Report (2026-03-31T07:06:56.495883+00:00)
 
 Source: `public.hot_ingest_health_latest` + direct counts from V1 hot tables
 
@@ -14,32 +14,34 @@ Source: `public.hot_ingest_health_latest` + direct counts from V1 hot tables
 
 ## Health Checks
 
-- `OK` Registry freshness: 26s (threshold `180s`)
-- `OK` Quotes freshness: 26s (threshold `120s`)
-- `OK` Registry rows present: 411 rows
-- `OK` Quote rows present: 411 rows
-- `OK` Two-sided quote coverage: 275/411
+- `OK` Registry freshness: 60s (threshold `180s`)
+- `OK` Quotes freshness: 60s (threshold `120s`)
+- `OK` Registry rows present: 403 rows
+- `OK` Quote rows present: 403 rows
+- `OK` Two-sided quote coverage: 333/403
 
 ## Phase Notes
 
 - `V1 now` registry + quotes are expected to be live.
 - `V1 now` hot 5m movers are expected to be live once the mover publish phase is deployed.
-- `V1 later` hot 1m movers, watchlist snapshots, and alert candidates may still be empty until those worker writes are added.
+- `V1 now` hot watchlist snapshots and hot alert candidates are expected to be live now.
+- `V1 later` hot 1m movers may still be empty until that worker write is added.
 
 ## Snapshot
 
-- active_market_count: **402**
-- registry_rows: **411**
-- quote_rows: **411**
-- two_sided_quote_rows: **275**
+- active_market_count: **394**
+- registry_rows: **403**
+- quote_rows: **403**
+- two_sided_quote_rows: **333**
 - hot_movers_1m_count: **0**
-- hot_movers_5m_count: **14**
-- hot_watchlist_snapshot_latest rows: **0**
-- hot_alert_candidates_latest rows: **0**
-- updated_at: **2026-03-27 11:23:38.320059+00:00**
+- hot_movers_5m_count: **64**
+- hot_watchlist_snapshot_latest rows: **9**
+- hot_alert_candidates_latest rows: **9**
+- updated_at: **2026-03-31 07:05:56.735637+00:00**
 
 ## Review Notes
 
 - Treat this as the first operational heartbeat for the new hot layer.
-- `hot_top_movers_5m` should now be non-empty during healthy market conditions; `hot_top_movers_1m`, watchlist, and alert tables may still be empty until their publish phases land.
+- `hot_top_movers_5m` should now be non-empty during healthy market conditions; `hot_watchlist_snapshot_latest` and `hot_alert_candidates_latest` should also stay non-empty when users track markets.
+- `hot_top_movers_1m` may still be empty until its publish phase lands.
 - Do not cut over homepage or bot reads until this report stays healthy over repeated ticks.

@@ -4,6 +4,64 @@ This document describes the technical architecture.
 
 ---
 
+# Hot Inbox Migration (2026-03-31)
+
+The next additive `Pulse` cutover now sits at the inbox read surface.
+
+Updated artifacts:
+
+• `ingest/live_main.py`
+• `bot/main.py`
+
+Worker-side:
+
+• `ingest/live_main.py` now publishes `public.hot_alert_candidates_latest`
+• source input for candidate classification is:
+  - `public.hot_watchlist_snapshot_latest`
+  - per-user threshold from `bot.user_settings`
+• current candidate-state mapping:
+  - `ready`
+  - `below_threshold`
+  - `stale_quotes`
+  - `no_quotes`
+  - `closed`
+  - `filtered_liquidity`
+  - `filtered_spread`
+• current hot alert gates:
+  - threshold default `0.03`
+  - minimum liquidity `1000`
+  - maximum spread `0.25`
+
+Bot-side:
+
+• `fetch_inbox_async()` is now hot-first
+• watchlist rows come from:
+  - `public.hot_alert_candidates_latest`
+  - joined to `public.hot_watchlist_snapshot_latest`
+• portfolio rows remain legacy for now:
+  - `bot.portfolio_alerts_latest`
+• full fallback remains:
+  - `bot.alerts_inbox_latest`
+
+Diagnostics:
+
+• `fetch_inbox_diagnostics_async()` is now hot-first for watchlist candidates
+• `below_threshold` hot rows are visible to quiet-state messaging
+• portfolio diagnostics still reuse the legacy snapshot path
+
+Boundary:
+
+• only inbox read semantics are migrated
+• push delivery is intentionally unchanged and still reads `bot.alerts_inbox_latest`
+• `SQL_PUSH_CANDIDATES`, delivery dedupe, and sent-log semantics remain legacy
+• rollback remains trivial because the legacy inbox query is still present and used automatically when the hot read yields no rows
+
+Why this is safe:
+
+• the worker now materializes watchlist candidate truth separately from delivery
+• `/inbox` gains a fresher read path without coupling product UX to the alert sending loop
+• quiet-state guidance gets better before we touch any delivery guarantees
+
 # Landing Clickable Market Rows Contract (2026-03-27)
 
 The site homepage live movers preview now exposes a lightweight action handoff contract on top of the existing homepage read surface.
