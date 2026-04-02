@@ -31,6 +31,39 @@ Practical effect:
 • we now have a reproducible grant/rls snapshot instead of relying on the Supabase UI alone
 • the next security step can be an additive revoke migration instead of ad-hoc dashboard edits
 
+# Supabase Grant Hardening Phase 1 (2026-04-02)
+
+Prepared the first narrow revoke migration for the highest-risk `public` relations.
+
+Files updated:
+
+• `db/migrations/014_public_surface_grant_hardening_phase1.sql`
+• `progress.md`
+• `architecture.md`
+
+What this migration targets:
+
+• legacy public watchlist / alert relations
+• hot user-specific watchlist / alert tables
+• legacy user-linked tables such as:
+  - `public.user_positions`
+  - `public.sent_alerts_log`
+  - `public.sent_alerts_log_legacy`
+
+What it does not touch:
+
+• `service_role`
+• `postgres`
+• public analytical views like `top_movers_latest`
+• schema names
+• runtime read paths
+
+Why this is the right first step:
+
+• it closes the most dangerous user-specific public objects first
+• it stays additive and reversible
+• it avoids mixing permission hardening with schema refactors
+
 # Review List Stale Marker (2026-03-31)
 
 Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.

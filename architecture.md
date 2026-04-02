@@ -38,6 +38,37 @@ Why this matters:
   - from Supabase advisor wording
 • the next migration can be additive and reversible instead of dashboard-driven
 
+# Supabase Grant Hardening Phase 1 (2026-04-02)
+
+The first permission-hardening step is now defined as a narrow revoke migration over the highest-risk `public` relations.
+
+Updated artifacts:
+
+• `db/migrations/014_public_surface_grant_hardening_phase1.sql`
+
+Scope:
+
+• revoke `anon` / `authenticated` on:
+  - legacy public watchlist relations
+  - legacy public alert relations
+  - hot user-specific watchlist/alert tables
+  - legacy user-linked tables (`user_positions`, sent-alert logs)
+
+Boundary:
+
+• do not touch:
+  - `service_role`
+  - `postgres`
+  - public analytical views such as `top_movers_latest`
+  - runtime schemas
+  - application code paths
+
+Why this is safe:
+
+• current repo runtime uses direct server-side DB access, not client-side Supabase reads
+• no client-side Supabase usage is visible in the codebase
+• this makes grant hardening the cleanest first production security move
+
 # Review List Stale Marker (2026-03-31)
 
 `Review list` now distinguishes source-closed markets from markets that only look stale to the user.
