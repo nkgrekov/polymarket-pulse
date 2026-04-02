@@ -4,6 +4,40 @@ This document describes the technical architecture.
 
 ---
 
+# Supabase Security Audit (2026-04-02)
+
+The current Supabase security warnings map to a real public-surface exposure problem, not just advisor noise.
+
+Updated artifacts:
+
+• `scripts/ops/supabase_public_security_audit.py`
+• `docs/supabase_public_security_latest.md`
+• `docs/supabase_security_remediation_plan_2026-04-02.md`
+
+Confirmed findings:
+
+• GitHub Actions ingest failure `23830942316` was caused by:
+  - statement timeout during batch upsert into `public.markets`
+• Supabase Security Advisor warnings are materially relevant because:
+  - many `public` relations still expose broad grants to `anon` / `authenticated`
+  - legacy `public` tables still have RLS disabled
+  - several flagged views are in the same public exposure path
+
+Architectural implication:
+
+• the next DB hardening step should be grant-focused first:
+  - revoke `anon` / `authenticated` on legacy user-specific public objects
+  - keep `service_role` and `postgres`
+• do not combine permission hardening with a runtime schema rewrite
+• `public.watchlist_markets` should be treated as legacy drift until proven otherwise
+
+Why this matters:
+
+• we can now separate:
+  - real exposure risk
+  - from Supabase advisor wording
+• the next migration can be additive and reversible instead of dashboard-driven
+
 # Review List Stale Marker (2026-03-31)
 
 `Review list` now distinguishes source-closed markets from markets that only look stale to the user.

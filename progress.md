@@ -4,6 +4,33 @@ This document tracks the current state of the project.
 
 ---
 
+# Supabase Security Audit (2026-04-02)
+
+Turned the Supabase security warnings into a reproducible audit plus remediation plan.
+
+Files updated:
+
+• `scripts/ops/supabase_public_security_audit.py`
+• `docs/supabase_public_security_latest.md`
+• `docs/supabase_security_remediation_plan_2026-04-02.md`
+• `progress.md`
+• `architecture.md`
+
+What we confirmed:
+
+• the failing GitHub ingest run was not caused by Node 20 deprecation
+• real failure cause was:
+  - statement timeout during batch upsert into `public.markets`
+• Supabase warnings are not just cosmetic:
+  - many `public` objects are granted to `anon` / `authenticated`
+  - legacy `public` tables still have RLS disabled
+• `public.watchlist_markets` is especially suspicious because it exists live in DB but is not clearly managed in current repo migrations
+
+Practical effect:
+
+• we now have a reproducible grant/rls snapshot instead of relying on the Supabase UI alone
+• the next security step can be an additive revoke migration instead of ad-hoc dashboard edits
+
 # Review List Stale Marker (2026-03-31)
 
 Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.
