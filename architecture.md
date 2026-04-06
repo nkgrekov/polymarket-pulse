@@ -111,6 +111,49 @@ Verification state:
   - disabled RLS on legacy public tables
   - advisor semantics around views that still live in `public`
 
+# Delivery Parity History (2026-04-06)
+
+The delivery decision gate is now backed by persistent parity history instead of ephemeral logs only.
+
+Updated artifacts:
+
+• `db/migrations/016_delivery_parity_log.sql`
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+
+Runtime behavior:
+
+• `dispatch_push_alerts()` still delivers from legacy `bot.alerts_inbox_latest`
+• before reading push candidates it now:
+  - computes hot-vs-legacy parity
+  - logs the compact summary
+  - writes the summary into `bot.delivery_parity_log`
+• stored fields:
+  - `hot_ready_count`
+  - `legacy_watchlist_count`
+  - `overlap_count`
+  - `hot_only_count`
+  - `legacy_only_count`
+  - `top_hot_market_id`
+  - `top_legacy_market_id`
+  - `top_hot_abs_delta`
+  - `top_legacy_abs_delta`
+
+Decision value:
+
+• this turns the next delivery cutover into a historical evidence problem rather than a “catch the right log line” problem
+• the key cutover signals are now:
+  - repeated `hot_only_samples > 0`
+  - low or explainable `legacy_only_samples`
+  - meaningful `both_non_quiet_samples` with overlap
+
+Boundary:
+
+• no delivery semantics changed
+• no sent-log semantics changed
+• no user-facing bot command changed
+
 # Review List Stale Marker (2026-03-31)
 
 `Review list` now distinguishes source-closed markets from markets that only look stale to the user.

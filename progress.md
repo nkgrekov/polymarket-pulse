@@ -114,6 +114,51 @@ Verification:
   - bot polling stayed on `200 OK`
   - live ingest ticks kept writing hot surfaces
 
+# Delivery Parity History (2026-04-06)
+
+Upgraded the delivery decision path from transient log lines to persistent parity history plus a reusable report.
+
+Files updated:
+
+• `db/migrations/016_delivery_parity_log.sql`
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• new append-only table:
+  - `bot.delivery_parity_log`
+• `dispatch_push_alerts()` now persists each parity sample before reading legacy push candidates
+• parity now stores:
+  - `hot_ready_count`
+  - `legacy_watchlist_count`
+  - `overlap_count`
+  - `hot_only_count`
+  - `legacy_only_count`
+  - top market ids / top abs deltas for hot vs legacy
+• new ops report:
+  - `scripts/ops/delivery_parity_report.py`
+  - writes `docs/delivery_parity_latest.md`
+
+Verification:
+
+• migration `016` applied in production
+• first sample inserted successfully
+• current 24h snapshot now shows:
+  - `samples_total = 1`
+  - quiet window at sample time
+
+Why this matters:
+
+• the next hot-first delivery decision no longer depends on spotting a single prod log line
+• we can now judge cutover readiness from accumulated windows, especially:
+  - `hot_only_samples`
+  - `legacy_only_samples`
+  - `both_non_quiet_samples`
+
 # Review List Stale Marker (2026-03-31)
 
 Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.

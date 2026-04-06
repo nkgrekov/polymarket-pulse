@@ -896,15 +896,27 @@ SQL_PUSH_PARITY_SUMMARY = """
 with hot_ready as (
   select
     app_user_id::text as user_id,
-    market_id
+    market_id,
+    delta_abs as abs_delta
   from public.hot_alert_candidates_latest
   where candidate_state = 'ready'
 ), legacy_watchlist as (
   select
     user_id::text as user_id,
-    market_id
+    market_id,
+    abs_delta
   from bot.alerts_inbox_latest
   where alert_type = 'watchlist'
+), hot_top as (
+  select market_id, abs_delta
+  from hot_ready
+  order by abs_delta desc nulls last, market_id
+  limit 1
+), legacy_top as (
+  select market_id, abs_delta
+  from legacy_watchlist
+  order by abs_delta desc nulls last, market_id
+  limit 1
 )
 select
   (select count(*)::bigint from hot_ready) as hot_ready_count,
@@ -913,7 +925,39 @@ select
     select count(*)::bigint
     from hot_ready h
     join legacy_watchlist l using (user_id, market_id)
-  ) as overlap_count;
+  ) as overlap_count,
+  (
+    select count(*)::bigint
+    from hot_ready h
+    left join legacy_watchlist l using (user_id, market_id)
+    where l.market_id is null
+  ) as hot_only_count,
+  (
+    select count(*)::bigint
+    from legacy_watchlist l
+    left join hot_ready h using (user_id, market_id)
+    where h.market_id is null
+  ) as legacy_only_count,
+  (select market_id from hot_top) as top_hot_market_id,
+  (select market_id from legacy_top) as top_legacy_market_id,
+  (select abs_delta from hot_top) as top_hot_abs_delta,
+  (select abs_delta from legacy_top) as top_legacy_abs_delta;
+"""
+
+SQL_PUSH_PARITY_LOG_INSERT = """
+insert into bot.delivery_parity_log (
+  hot_ready_count,
+  legacy_watchlist_count,
+  overlap_count,
+  hot_only_count,
+  legacy_only_count,
+  top_hot_market_id,
+  top_legacy_market_id,
+  top_hot_abs_delta,
+  top_legacy_abs_delta,
+  payload
+)
+values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb);
 """
 
 SQL_SENT_ALERT_EXISTS = """
@@ -2935,11 +2979,42 @@ async def dispatch_push_alerts(application: Application) -> None:
     )
     if parity:
         row = parity[0]
+        hot_ready_count = int(row.get("hot_ready_count") or 0)
+        legacy_watchlist_count = int(row.get("legacy_watchlist_count") or 0)
+        overlap_count = int(row.get("overlap_count") or 0)
+        hot_only_count = int(row.get("hot_only_count") or 0)
+        legacy_only_count = int(row.get("legacy_only_count") or 0)
         log.info(
-            "push_loop parity hot_ready=%s legacy_watchlist=%s overlap=%s",
-            int(row.get("hot_ready_count") or 0),
-            int(row.get("legacy_watchlist_count") or 0),
-            int(row.get("overlap_count") or 0),
+            "push_loop parity hot_ready=%s legacy_watchlist=%s overlap=%s hot_only=%s legacy_only=%s",
+            hot_ready_count,
+            legacy_watchlist_count,
+            overlap_count,
+            hot_only_count,
+            legacy_only_count,
+        )
+        await asyncio.to_thread(
+            lambda: execute_db_write(
+                SQL_PUSH_PARITY_LOG_INSERT,
+                (
+                    hot_ready_count,
+                    legacy_watchlist_count,
+                    overlap_count,
+                    hot_only_count,
+                    legacy_only_count,
+                    row.get("top_hot_market_id"),
+                    row.get("top_legacy_market_id"),
+                    row.get("top_hot_abs_delta"),
+                    row.get("top_legacy_abs_delta"),
+                    Jsonb(
+                        {
+                            "top_hot_market_id": row.get("top_hot_market_id"),
+                            "top_legacy_market_id": row.get("top_legacy_market_id"),
+                            "top_hot_abs_delta": str(row.get("top_hot_abs_delta")) if row.get("top_hot_abs_delta") is not None else None,
+                            "top_legacy_abs_delta": str(row.get("top_legacy_abs_delta")) if row.get("top_legacy_abs_delta") is not None else None,
+                        }
+                    ),
+                ),
+            )
         )
 
     rows = await asyncio.wait_for(
