@@ -4,8 +4,14 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-import psycopg
-from psycopg.rows import dict_row
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except ImportError:  # pragma: no cover - fallback for local shells that only have psycopg2
+    psycopg = None
+    dict_row = None
+    import psycopg2
+    import psycopg2.extras
 
 
 SQL_SUMMARY = """
@@ -50,6 +56,25 @@ def bullet(label: str, value: str) -> str:
     return f"- {label}: **{value}**"
 
 
+def fetch_report_data(pg: str, hours: int) -> tuple[dict, dict | None]:
+    if psycopg is not None:
+        with psycopg.connect(pg, connect_timeout=10) as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(SQL_SUMMARY, (hours,))
+                summary = cur.fetchone() or {}
+                cur.execute(SQL_LATEST_NON_QUIET, (hours,))
+                latest = cur.fetchone()
+        return summary, latest
+
+    with psycopg2.connect(pg, connect_timeout=10) as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(SQL_SUMMARY, (hours,))
+            summary = cur.fetchone() or {}
+            cur.execute(SQL_LATEST_NON_QUIET, (hours,))
+            latest = cur.fetchone()
+    return summary, latest
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize hot-vs-legacy delivery parity history.")
     parser.add_argument("--hours", type=int, default=24)
@@ -60,12 +85,7 @@ def main() -> None:
     if not pg:
         raise SystemExit("PG_CONN is required")
 
-    with psycopg.connect(pg) as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(SQL_SUMMARY, (args.hours,))
-            summary = cur.fetchone() or {}
-            cur.execute(SQL_LATEST_NON_QUIET, (args.hours,))
-            latest = cur.fetchone()
+    summary, latest = fetch_report_data(pg, args.hours)
 
     now = datetime.now(timezone.utc).isoformat()
     lines = [

@@ -40,6 +40,29 @@ Practical effect:
   - `0.03` means `3 percentage points`
   - Watchlist can move while Inbox stays empty
 
+# Delivery Parity Report Hardening (2026-04-06)
+
+Made the delivery parity report runnable from the current local shell posture instead of assuming `psycopg` is always installed.
+
+Files updated:
+
+• `scripts/ops/delivery_parity_report.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• the report now prefers `psycopg` but falls back to `psycopg2` if needed
+• this matches the repo reality better:
+  - `bot` / `api` envs use `psycopg`
+  - `ingest` requirements still expose `psycopg2-binary`
+• the script can now be re-run more safely through local shells or `railway run --service bot ...`
+
+Why this matters:
+
+• the main delivery decision path depends on fast parity snapshots
+• we should not block that decision on local package drift
+
 # Supabase Security Audit (2026-04-02)
 
 Turned the Supabase security warnings into a reproducible audit plus remediation plan.

@@ -36,6 +36,22 @@ Bot UX implication:
   - `0.03` means `3 percentage points`
   - Watchlist movement and Inbox silence can coexist without indicating a bug
 
+# Delivery Parity Report Hardening (2026-04-06)
+
+The delivery-decision tooling should not depend on one Python driver being installed in every local shell.
+
+Updated artifacts:
+
+• `scripts/ops/delivery_parity_report.py`
+
+Architectural implication:
+
+• parity reporting now prefers `psycopg` but degrades to `psycopg2`
+• this is consistent with the current repo split:
+  - `bot` / `api` runtime dependencies use `psycopg`
+  - `ingest` still carries `psycopg2-binary`
+• this keeps the delivery cutover evidence path lightweight and resilient while the runtime itself remains unchanged
+
 # Supabase Security Audit (2026-04-02)
 
 The current Supabase security warnings map to a real public-surface exposure problem, not just advisor noise.
