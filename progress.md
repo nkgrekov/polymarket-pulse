@@ -63,6 +63,30 @@ Why this matters:
 • the main delivery decision path depends on fast parity snapshots
 • we should not block that decision on local package drift
 
+# Pulse Cleanup UX Clarification (2026-04-06)
+
+Added one small additive UX clarification around watchlist cleanup so stale-market handling is easier to understand without changing behavior.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/help` now frames:
+  - `/watchlist_list` as review + cleanup
+  - `/watchlist_remove` as manual cleanup
+• `/watchlist_remove` without args now points users to `/watchlist_list` for one-tap Remove buttons on `closed` / `date_passed_active` rows
+• `/watchlist_remove` miss/empty result now points users back to `Review list` inline remove flow instead of only saying “refresh”
+
+Why this matters:
+
+• it makes the cleanup path more discoverable
+• it matches the real product shape after we added inline Remove actions to `Review list`
+• it reduces the chance that users think stale rows require memorizing manual commands first
+
 # Supabase Security Audit (2026-04-02)
 
 Turned the Supabase security warnings into a reproducible audit plus remediation plan.

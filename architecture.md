@@ -52,6 +52,26 @@ Architectural implication:
   - `ingest` still carries `psycopg2-binary`
 • this keeps the delivery cutover evidence path lightweight and resilient while the runtime itself remains unchanged
 
+# Pulse Cleanup UX Clarification (2026-04-06)
+
+The bot cleanup path is now slightly clearer without changing any cleanup semantics.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+Behavioral boundary:
+
+• no SQL changed
+• no watchlist removal semantics changed
+• no callback routing changed
+
+UX effect:
+
+• `/help` now advertises `Review list` as the main review/cleanup surface
+• `/watchlist_remove` now explicitly points users back to `/watchlist_list` when the inline Remove flow is the easier path
+• this better aligns command discoverability with the existing one-tap cleanup UI for `closed` and `date_passed_active` rows
+
 # Supabase Security Audit (2026-04-02)
 
 The current Supabase security warnings map to a real public-surface exposure problem, not just advisor noise.

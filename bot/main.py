@@ -3247,9 +3247,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/menu — inline action menu\n"
             "/upgrade — move to PRO\n\n"
             "Advanced commands:\n"
-            "/watchlist_list — list markets\n"
+            "/watchlist_list — review markets and clean quiet ones\n"
             "/watchlist_add <market_id|slug>\n"
-            "/watchlist_remove <market_id|slug>\n"
+            "/watchlist_remove <market_id|slug> — manual cleanup\n"
             "/threshold 0.03 — personal threshold\n"
             "/limits — FREE/PRO limits\n"
             "/inbox20 — extended inbox"
@@ -3263,9 +3263,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/menu — inline-меню действий\n"
             "/upgrade — переход на PRO\n\n"
             "Расширенные команды:\n"
-            "/watchlist_list — список рынков\n"
+            "/watchlist_list — проверка списка и очистка тихих рынков\n"
             "/watchlist_add <market_id|slug>\n"
-            "/watchlist_remove <market_id|slug>\n"
+            "/watchlist_remove <market_id|slug> — ручная очистка\n"
             "/threshold 0.03 — персональный порог\n"
             "/limits — лимиты FREE/PRO\n"
             "/inbox20 — расширенный inbox"
@@ -3688,9 +3688,13 @@ async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYP
     locale = locale_from_update(update)
     if not context.args:
         await update.message.reply_text(
-            "Format: /watchlist_remove <market_id|slug>"
-            if locale == "en"
-            else "Формат: /watchlist_remove <market_id|slug>"
+            (
+                "Format: /watchlist_remove <market_id|slug>\n"
+                "Tip: open /watchlist_list if you want one-tap Remove buttons for closed or date-passed markets."
+                if locale == "en"
+                else "Формат: /watchlist_remove <market_id|slug>\n"
+                "Подсказка: откройте /watchlist_list, если хотите one-tap кнопки Remove для closed или date-passed рынков."
+            )
         )
         return
 
@@ -3711,9 +3715,9 @@ async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     await update.message.reply_text(
         (
-            f"This market is not in your watchlist anymore: {market_id}\nIf it still looks stale in another screen, refresh /watchlist_list."
+            f"This market is not in your watchlist anymore: {market_id}\nIf it still looks stale in another screen, refresh /watchlist_list or use the inline Remove buttons there for closed/date-passed rows."
             if locale == "en"
-            else f"Этого рынка уже нет в вашем watchlist: {market_id}\nЕсли он всё ещё кажется висящим на другом экране, обновите /watchlist_list."
+            else f"Этого рынка уже нет в вашем watchlist: {market_id}\nЕсли он всё ещё кажется висящим на другом экране, обновите /watchlist_list или используйте там inline-кнопки Remove для closed/date-passed строк."
         )
     )
 
