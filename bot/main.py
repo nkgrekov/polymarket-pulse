@@ -1603,6 +1603,11 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
             if watchlist_left <= 1
             else f"{watchlist_left} watchlist slot(s) left on FREE."
         )
+        closed_line = (
+            f"\n{closed_count} closed market(s) are still parked in your watchlist and occupy slots until you clear them in Review list."
+            if closed_count > 0
+            else ""
+        )
         return (
             "Current plan: FREE\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
@@ -1610,12 +1615,18 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
             f"{urgency}\n"
             f"PRO unlocks {PRO_WATCHLIST_LIMIT} markets, unlimited alerts, and email digest.\n"
             f"Today you already used {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot alerts."
+            f"{closed_line}"
         )
 
     urgency = (
         f"До лимита FREE остался всего {watchlist_left} слот(а) в watchlist."
         if watchlist_left <= 1
         else f"На FREE сейчас осталось {watchlist_left} слота(ов) в watchlist."
+    )
+    closed_line = (
+        f"\nУ вас ещё {closed_count} closed-рынков в watchlist, и они занимают слоты, пока вы не очистите их через Review list."
+        if closed_count > 0
+        else ""
     )
     return (
         "Текущий план: FREE\n\n"
@@ -1624,6 +1635,7 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
         f"{urgency}\n"
         f"PRO открывает {PRO_WATCHLIST_LIMIT} рынков, безлимитные алерты и email-дайджест.\n"
         f"Сегодня уже использовано {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot-алертов."
+        f"{closed_line}"
     )
 
 
@@ -3300,6 +3312,14 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Failed to read limits." if locale == "en" else "Не удалось прочитать лимиты.")
         return
 
+    closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
+    cleanup_hint = (
+        f"\n\nCleanup tip: {closed_count} closed market(s) are still occupying watchlist slots. Open /watchlist_list to clear them."
+        if locale == "en" and closed_count > 0
+        else "\n\nПодсказка по очистке: закрытые рынки всё ещё занимают слоты watchlist. Откройте /watchlist_list, чтобы очистить их."
+        if locale != "en" and closed_count > 0
+        else ""
+    )
     await update.message.reply_text(
         (
             "Limits and access:\n\n"
@@ -3313,6 +3333,7 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"PRO price: about ${PRO_MONTHLY_USD}/month in Telegram Stars\n\n"
             f"Your current usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Upgrade: /upgrade"
+            f"{cleanup_hint}"
             if locale == "en"
             else "Лимиты и доступ:\n\n"
             "FREE:\n"
@@ -3325,6 +3346,7 @@ async def cmd_limits(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Цена PRO: эквивалент ${PRO_MONTHLY_USD}/месяц в Telegram Stars\n\n"
             f"Ваш текущий usage:\n{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Чтобы перейти на PRO: /upgrade"
+            f"{cleanup_hint}"
         )
     )
 

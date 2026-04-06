@@ -72,6 +72,25 @@ UX effect:
 • `/watchlist_remove` now explicitly points users back to `/watchlist_list` when the inline Remove flow is the easier path
 • this better aligns command discoverability with the existing one-tap cleanup UI for `closed` and `date_passed_active` rows
 
+# Pulse Plan / Limits Cleanup Hint (2026-04-06)
+
+Plan and limits messaging now reflects the practical effect of stale watchlist slots more clearly.
+
+Updated artifacts:
+
+• `bot/main.py`
+
+Behavioral boundary:
+
+• no plan logic changed
+• no slot math changed
+• no cleanup semantics changed
+
+UX effect:
+
+• FREE users now get an explicit hint when `closed` markets are still consuming watchlist capacity
+• `/limits` now points them to `/watchlist_list` as the cleanup surface before implying that upgrade is the only answer
+
 # Supabase Security Audit (2026-04-02)
 
 The current Supabase security warnings map to a real public-surface exposure problem, not just advisor noise.

@@ -87,6 +87,26 @@ Why this matters:
 • it matches the real product shape after we added inline Remove actions to `Review list`
 • it reduces the chance that users think stale rows require memorizing manual commands first
 
+# Pulse Plan / Limits Cleanup Hint (2026-04-06)
+
+Added one more small UX clarification so slot pressure is easier to understand on FREE and cleanup is easier to discover.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `plan_message_text()` now explicitly tells FREE users when `closed` markets are still occupying watchlist slots
+• `/limits` now adds a cleanup hint pointing to `/watchlist_list` when closed rows are consuming capacity
+
+Why this matters:
+
+• this connects plan pressure to a concrete action
+• it reduces the chance that users think they need PRO immediately when the real issue is stale slots
+
 # Supabase Security Audit (2026-04-02)
 
 Turned the Supabase security warnings into a reproducible audit plus remediation plan.
