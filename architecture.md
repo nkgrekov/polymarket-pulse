@@ -69,6 +69,48 @@ Why this is safe:
 • no client-side Supabase usage is visible in the codebase
 • this makes grant hardening the cleanest first production security move
 
+# Supabase Grant Hardening Phase 2 (2026-04-06)
+
+The remaining analytical and hot-layer `public` relations are now treated as server-only DB surfaces rather than public client surfaces.
+
+Updated artifacts:
+
+• `db/migrations/015_public_surface_grant_hardening_phase2.sql`
+• `docs/supabase_public_security_latest.md`
+• `docs/supabase_security_remediation_plan_2026-04-02.md`
+
+Scope:
+
+• revoke `anon` / `authenticated` on the remaining 17 project-owned analytical relations in `public`
+• this includes:
+  - legacy analytical tables (`markets`, `market_snapshots`, `market_universe`)
+  - analytical views (`top_movers_*`, `snapshot_health`, `global_bucket_latest`, `buckets_latest`)
+  - hot analytical tables/views (`hot_market_registry_latest`, `hot_market_quotes_latest`, `hot_top_movers_*`, `hot_ingest_health_latest`)
+
+Boundary:
+
+• do not change:
+  - `service_role`
+  - `postgres`
+  - table ownership
+  - runtime SQL contracts
+  - schema names
+
+Why this is safe:
+
+• site, bot, and ingest all use direct server-side Postgres access
+• no client-side Supabase reads are required for the current product
+• Railway/runtime smoke can therefore validate safety without any front-end auth migration
+
+Verification state:
+
+• Phase 2 has been applied to production
+• the refreshed security snapshot now reports zero audited `anon` / `authenticated` grants in `public`
+• the residual Supabase risk is now:
+  - legacy drift such as `public.watchlist_markets`
+  - disabled RLS on legacy public tables
+  - advisor semantics around views that still live in `public`
+
 # Review List Stale Marker (2026-03-31)
 
 `Review list` now distinguishes source-closed markets from markets that only look stale to the user.

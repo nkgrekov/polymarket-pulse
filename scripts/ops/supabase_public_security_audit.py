@@ -72,6 +72,24 @@ def classify_object(name: str) -> str:
     return "review"
 
 
+def priority_findings(anon_objects: int, auth_objects: int) -> list[str]:
+    if anon_objects == 0 and auth_objects == 0:
+        return [
+            "- `anon` and `authenticated` no longer have grants on the audited `public` relations in this snapshot.",
+            "- the remaining risk is structural rather than grant-based:",
+            "  - legacy public tables still have RLS disabled",
+            "  - Supabase Security Advisor can still complain about view semantics in `public`",
+            "- `public.watchlist_markets` remains suspicious legacy drift because it exists live in the database but is not clearly managed in current repo migrations.",
+            "- the next security work should focus on legacy drift cleanup and whether any remaining public views need `security_invoker = true` or a schema move.",
+        ]
+    return [
+        "- `anon` and `authenticated` currently have broad grants on many `public` views and tables, not just read-only analytics surfaces.",
+        "- legacy watchlist / alert relations in `public` are the highest-risk objects because they look user-specific yet sit in the public schema with open grants.",
+        "- `SECURITY DEFINER`-style advisor noise matters more here because underlying grants are also too broad.",
+        "- `public.watchlist_markets` is especially suspicious because it is live in the database but not managed in current repo migrations.",
+    ]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audit Supabase public schema security posture.")
     parser.add_argument("--output", default="docs/supabase_public_security_latest.md")
@@ -120,10 +138,11 @@ def main() -> None:
             "",
             "## Priority Findings",
             "",
-            "- `anon` and `authenticated` currently have broad grants on many `public` views and tables, not just read-only analytics surfaces.",
-            "- legacy watchlist / alert relations in `public` are the highest-risk objects because they look user-specific yet sit in the public schema with open grants.",
-            "- `SECURITY DEFINER`-style advisor noise matters more here because underlying grants are also too broad.",
-            "- `public.watchlist_markets` is especially suspicious because it is live in the database but not managed in current repo migrations.",
+        ]
+    )
+    lines.extend(priority_findings(anon_objects, auth_objects))
+    lines.extend(
+        [
             "",
             "## Object Inventory",
             "",

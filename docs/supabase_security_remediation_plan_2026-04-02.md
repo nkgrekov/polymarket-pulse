@@ -81,6 +81,12 @@ Questions to answer per object:
 3. Should this move to a server-only schema later?
 4. If it remains public, should it be `security_invoker = true`?
 
+Current decision after Phase 1:
+
+- treat these as server-only relations first
+- close `anon` / `authenticated` grants before debating `security_invoker`
+- only keep a relation publicly readable later if a concrete client-side need appears
+
 ### P3. Clean Up Legacy Drift
 
 Special candidate:
@@ -113,12 +119,13 @@ Safe action:
 ## Recommended Implementation Sequence
 
 1. Add a grant-hardening migration for `anon` / `authenticated` revokes on P1 objects.
-2. Apply and verify that:
+2. Add a second grant-hardening migration for the remaining analytical/hot `public` objects.
+3. Apply and verify that:
    - site still works
    - bot still works
    - live ingest still works
-3. Generate a fresh security snapshot.
-4. Only then decide whether to:
+4. Generate a fresh security snapshot.
+5. Only then decide whether to:
    - add `security_invoker = true`
    - move some views out of `public`
    - enable RLS on any still-user-facing tables

@@ -64,6 +64,56 @@ Why this is the right first step:
 • it stays additive and reversible
 • it avoids mixing permission hardening with schema refactors
 
+# Supabase Grant Hardening Phase 2 (2026-04-06)
+
+Closed the remaining analytical and hot-layer `public` relations for `anon` / `authenticated`.
+
+Files updated:
+
+• `db/migrations/015_public_surface_grant_hardening_phase2.sql`
+• `docs/supabase_public_security_latest.md`
+• `docs/supabase_security_remediation_plan_2026-04-02.md`
+• `progress.md`
+• `architecture.md`
+
+What this migration targets:
+
+• remaining analytical `public` views:
+  - `top_movers_*`
+  - `snapshot_health`
+  - `global_bucket_latest`
+  - `buckets_latest`
+  - `analytics_core_health_latest`
+• remaining hot-layer analytical tables:
+  - `hot_market_registry_latest`
+  - `hot_market_quotes_latest`
+  - `hot_top_movers_1m`
+  - `hot_top_movers_5m`
+  - `hot_ingest_health_latest`
+• legacy analytical tables/views still exposed through `public`:
+  - `markets`
+  - `market_snapshots`
+  - `market_universe`
+  - `live_markets_latest`
+  - `user_watchlist`
+
+Why this is the right second step:
+
+• current repo runtime does not use client-side Supabase access
+• these relations are consumed server-side only
+• closing them removes the rest of the unnecessary `public` grant surface without changing schemas or app contracts
+
+Verification:
+
+• applied in production DB
+• fresh security snapshot now shows:
+  - `objects_granted_to_anon = 0`
+  - `objects_granted_to_authenticated = 0`
+• runtime smoke stayed healthy:
+  - site API responded normally
+  - bot polling stayed on `200 OK`
+  - live ingest ticks kept writing hot surfaces
+
 # Review List Stale Marker (2026-03-31)
 
 Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.

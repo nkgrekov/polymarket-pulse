@@ -1,4 +1,4 @@
-# Supabase Public Security Snapshot (2026-04-02T12:46:31.834154+00:00)
+# Supabase Public Security Snapshot (2026-04-06T09:48:57.571422+00:00)
 
 Source:
 
@@ -8,16 +8,18 @@ Source:
 ## Summary
 
 - public_objects: **31**
-- objects_granted_to_anon: **17**
-- objects_granted_to_authenticated: **17**
+- objects_granted_to_anon: **0**
+- objects_granted_to_authenticated: **0**
 - rls_disabled_public_tables: **14**
 
 ## Priority Findings
 
-- `anon` and `authenticated` currently have broad grants on many `public` views and tables, not just read-only analytics surfaces.
-- legacy watchlist / alert relations in `public` are the highest-risk objects because they look user-specific yet sit in the public schema with open grants.
-- `SECURITY DEFINER`-style advisor noise matters more here because underlying grants are also too broad.
-- `public.watchlist_markets` is especially suspicious because it is live in the database but not managed in current repo migrations.
+- `anon` and `authenticated` no longer have grants on the audited `public` relations in this snapshot.
+- the remaining risk is structural rather than grant-based:
+  - legacy public tables still have RLS disabled
+  - Supabase Security Advisor can still complain about view semantics in `public`
+- `public.watchlist_markets` remains suspicious legacy drift because it exists live in the database but is not clearly managed in current repo migrations.
+- the next security work should focus on legacy drift cleanup and whether any remaining public views need `security_invoker = true` or a schema move.
 
 ## Object Inventory
 
@@ -35,7 +37,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.hot_market_registry_latest`
 - kind: **table**
@@ -43,7 +45,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.hot_top_movers_1m`
 - kind: **table**
@@ -51,7 +53,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.hot_top_movers_5m`
 - kind: **table**
@@ -59,7 +61,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.hot_watchlist_snapshot_latest`
 - kind: **table**
@@ -75,7 +77,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.market_universe`
 - kind: **table**
@@ -83,7 +85,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.markets`
 - kind: **table**
@@ -91,7 +93,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.sent_alerts_log`
 - kind: **table**
@@ -155,7 +157,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.buckets_latest`
 - kind: **view**
@@ -163,7 +165,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.global_bucket_latest`
 - kind: **view**
@@ -171,7 +173,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.hot_ingest_health_latest`
 - kind: **view**
@@ -179,7 +181,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.live_markets_latest`
 - kind: **view**
@@ -187,7 +189,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.portfolio_snapshot_latest`
 - kind: **view**
@@ -203,7 +205,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.top_movers_1h`
 - kind: **view**
@@ -211,7 +213,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.top_movers_24h`
 - kind: **view**
@@ -219,7 +221,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.top_movers_latest`
 - kind: **view**
@@ -227,7 +229,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.user_watchlist`
 - kind: **view**
@@ -235,7 +237,7 @@ Source:
 - rls_enabled: **false**
 - rls_forced: **false**
 - reloptions: **none**
-- anon/authenticated grants: **anon:DELETE, anon:INSERT, anon:REFERENCES, anon:SELECT, anon:TRIGGER, anon:TRUNCATE, anon:UPDATE, authenticated:DELETE, authenticated:INSERT, authenticated:REFERENCES, authenticated:SELECT, authenticated:TRIGGER, authenticated:TRUNCATE, authenticated:UPDATE**
+- anon/authenticated grants: **none**
 
 ### `public.v_watchlist_movers_1h`
 - kind: **view**
