@@ -154,6 +154,37 @@ Boundary:
 • no sent-log semantics changed
 • no user-facing bot command changed
 
+# Parallel Workstreams Map (2026-04-06)
+
+The current project state now has one clear critical path and several safe sidecar tracks.
+
+Updated artifacts:
+
+• `docs/parallel_workstreams_2026-04-06.md`
+
+Critical path:
+
+• keep accumulating `bot.delivery_parity_log`
+• wait for meaningful non-quiet windows
+• use historical parity to decide the delivery cutover
+
+Safe sidecar tracks:
+
+• growth measurement (`GSC`, `GA4`)
+• Railway / Hobby operational hygiene
+• small `Pulse` UX improvements
+• legacy DB drift cleanup planning
+• SEO / intent-page polish
+
+Architectural rule:
+
+• do not mix:
+  - push-delivery semantics changes
+  - large landing redesign
+  - schema cleanup
+  - and broad RLS rollout
+  into the same cycle as the current delivery decision
+
 # Review List Stale Marker (2026-03-31)
 
 `Review list` now distinguishes source-closed markets from markets that only look stale to the user.

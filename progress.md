@@ -159,6 +159,35 @@ Why this matters:
   - `legacy_only_samples`
   - `both_non_quiet_samples`
 
+# Parallel Workstreams Map (2026-04-06)
+
+Locked the current project split so the next days of work do not drift or collide.
+
+Files updated:
+
+• `docs/parallel_workstreams_2026-04-06.md`
+• `progress.md`
+• `architecture.md`
+
+Main critical path:
+
+• accumulate `bot.delivery_parity_log`
+• wait for meaningful non-quiet windows
+• use parity history to decide whether push delivery can move to hot-first
+
+Safe parallel tracks:
+
+• GSC / GA4 review
+• Railway / Hobby ops hygiene
+• small `Pulse` UX wins
+• legacy DB drift cleanup planning
+• SEO / intent-page polish
+
+Why this matters:
+
+• keeps the team moving while delivery evidence accumulates
+• reduces the chance of accidental collisions between runtime migration and side work
+
 # Review List Stale Marker (2026-03-31)
 
 Made `Review list` more honest about markets that look dead to users but still remain `active` in source data.
