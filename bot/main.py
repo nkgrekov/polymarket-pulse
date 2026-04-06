@@ -2355,9 +2355,15 @@ async def send_inbox_view(
         if total > 0 and over == 0:
             reason = (
                 f"Signals exist ({total}), but all are below your threshold {threshold}.\n"
+                "Inbox alerts only when abs(delta) >= threshold.\n"
+                "0.03 means 3 percentage points.\n"
+                "Watchlist may still move while Inbox stays empty.\n"
                 "Try /threshold 0.02 or open /movers."
                 if locale == "en"
                 else f"Сигналы есть ({total}), но ниже вашего threshold {threshold}.\n"
+                "Inbox шлёт алерты только когда abs(delta) >= threshold.\n"
+                "0.03 означает 3 процентных пункта.\n"
+                "Watchlist может двигаться, даже если Inbox пуст.\n"
                 "Попробуйте /threshold 0.02 или откройте /movers."
             )
             if near_miss:
@@ -3403,9 +3409,15 @@ async def cmd_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             (
                 f"Your current threshold: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Inbox alerts only when abs(delta) >= threshold.\n"
+                "0.03 means 3 percentage points.\n"
+                "Watchlist may still move while Inbox stays empty.\n"
                 "Format: /threshold 0.03"
                 if locale == "en"
                 else f"Ваш текущий порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Inbox шлёт алерты только когда abs(delta) >= threshold.\n"
+                "0.03 означает 3 процентных пункта.\n"
+                "Watchlist может двигаться, даже если Inbox пуст.\n"
                 "Формат изменения: /threshold 0.03"
             )
         )
@@ -3427,7 +3439,17 @@ async def cmd_threshold(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_ctx = await resolve_user_context(update)
     execute_db_write(SQL_SET_THRESHOLD, (user_ctx["user_id"], value))
     await update.message.reply_text(
-        f"Threshold updated: {_fmt_num(value, 3)}" if locale == "en" else f"Порог обновлен: {_fmt_num(value, 3)}"
+        (
+            f"Threshold updated: {_fmt_num(value, 3)}\n"
+            f"That means Inbox alerts only when abs(delta) >= {_fmt_num(value, 3)}.\n"
+            "Example: 0.03 = 3 percentage points.\n"
+            "Watchlist may still move while Inbox stays empty."
+            if locale == "en"
+            else f"Порог обновлен: {_fmt_num(value, 3)}\n"
+            f"Это значит, что Inbox шлёт алерты только когда abs(delta) >= {_fmt_num(value, 3)}.\n"
+            "Пример: 0.03 = 3 процентных пункта.\n"
+            "Watchlist может двигаться, даже если Inbox пуст."
+        )
     )
 
 
@@ -3856,9 +3878,15 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(
             (
                 f"Your threshold: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Inbox alerts only when abs(delta) >= threshold.\n"
+                "0.03 means 3 percentage points.\n"
+                "Watchlist may still move while Inbox stays empty.\n"
                 "Change: /threshold 0.03"
                 if locale == "en"
                 else f"Ваш порог: {_fmt_num(user_ctx['threshold'], 3)}\n"
+                "Inbox шлёт алерты только когда abs(delta) >= threshold.\n"
+                "0.03 означает 3 процентных пункта.\n"
+                "Watchlist может двигаться, даже если Inbox пуст.\n"
                 "Изменить: /threshold 0.03"
             )
         )

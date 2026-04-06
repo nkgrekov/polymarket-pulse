@@ -4,6 +4,42 @@ This document tracks the current state of the project.
 
 ---
 
+# Worker Follow-Up: Railway Ops + Legacy Compatibility + Threshold UX (2026-04-06)
+
+Consolidated three safe worker follow-ups into repo-owned docs plus one additive bot UX improvement.
+
+Files updated:
+
+• `docs/railway_hobby_ops_runbook_2026-04-06.md`
+• `docs/legacy_watchlist_compatibility_plan_2026-04-06.md`
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What we fixed or clarified:
+
+• added a local Railway Hobby ops runbook based on read-only CLI checks
+• documented current production service posture separately from recommended Hobby posture:
+  - always-on: `site`, `bot`, `ingest`
+  - park-by-default: `trader-bot`, `trade-worker` unless alpha is active
+• mapped the still-live ingest dependency on:
+  - `public.user_watchlist`
+  - `public.user_positions`
+• documented the smallest safe compatibility-first path to retire `public.watchlist` / `public.watchlist_markets` later without breaking ingest
+• improved threshold explanation in the bot without changing behavior:
+  - `/threshold`
+  - `menu:threshold`
+  - quiet `/inbox` below-threshold state
+
+Practical effect:
+
+• we now have a stable local ops reference for Railway Hobby instead of relying on memory
+• the next watchlist cleanup step is better framed as compatibility work, not delete-first cleanup
+• users now get a clearer explanation that:
+  - Inbox alerts only when `abs(delta) >= threshold`
+  - `0.03` means `3 percentage points`
+  - Watchlist can move while Inbox stays empty
+
 # Supabase Security Audit (2026-04-02)
 
 Turned the Supabase security warnings into a reproducible audit plus remediation plan.

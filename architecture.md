@@ -4,6 +4,38 @@ This document describes the technical architecture.
 
 ---
 
+# Worker Follow-Up: Railway Ops + Legacy Compatibility + Threshold UX (2026-04-06)
+
+Three sidecar worker prompts are now consolidated into one repo-owned architectural note plus an additive bot UX improvement.
+
+Updated artifacts:
+
+• `docs/railway_hobby_ops_runbook_2026-04-06.md`
+• `docs/legacy_watchlist_compatibility_plan_2026-04-06.md`
+• `bot/main.py`
+
+Architectural conclusions:
+
+• Railway Hobby posture should be treated as:
+  - core always-on runtime: `site`, `bot`, `ingest`
+  - non-core parkable runtime: `trader-bot`, `trade-worker` unless alpha is active
+• `ingest/main.py` still depends directly on:
+  - `public.user_watchlist`
+  - `public.user_positions`
+• because of that, legacy watchlist cleanup must remain compatibility-first
+• the safest later sequence is:
+  - preserve the ingest-facing shape of `public.user_watchlist`
+  - back that shape from a repo-managed modern source later
+  - only then retire `public.watchlist` / `public.watchlist_markets`
+
+Bot UX implication:
+
+• threshold is now explained more honestly in the user-facing command/menu surfaces
+• the product now states explicitly that:
+  - Inbox is thresholded
+  - `0.03` means `3 percentage points`
+  - Watchlist movement and Inbox silence can coexist without indicating a bug
+
 # Supabase Security Audit (2026-04-02)
 
 The current Supabase security warnings map to a real public-surface exposure problem, not just advisor noise.
