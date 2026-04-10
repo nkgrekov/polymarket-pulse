@@ -4,6 +4,34 @@ This document tracks the current state of the project.
 
 ---
 
+# Site Event Route Hardening (2026-04-10)
+
+Tightened the `/api/events` write path after confirming that `app.site_events.path` was still collapsing to `/api/events` in real runtime samples even though `details.page_path` and `details.page_url` were already reaching the database.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `site_event(...)` now resolves the page path explicitly at the route boundary
+• that resolved path is passed into `log_site_event(...)` as a dedicated `path_override`
+• `log_site_event(...)` now prefers the explicit override before falling back to generic resolution logic
+
+Why this matters:
+
+• the database itself is not rewriting the path column
+• direct inserts into `app.site_events` preserve custom paths correctly
+• this means the ambiguity lived in the runtime `/api/events` path, not in the table schema
+• route-level override removes that ambiguity and gives us a more deterministic telemetry write path
+
+Practical effect:
+
+• new `page_view` and other site events coming through `/api/events` should persist the real page path more reliably
+• this is a safe hardening step before we do any larger telemetry cleanup or reporting changes
+
 # Site Event Path Recovery (2026-04-10)
 
 Recovered real page-context persistence for `app.site_events` without changing the site event taxonomy or rewriting every frontend tracker.

@@ -4,6 +4,32 @@ This document describes the technical architecture.
 
 ---
 
+# Site Event Route Hardening (2026-04-10)
+
+The `/api/events` handler now resolves telemetry page context explicitly at the route boundary instead of relying only on generic downstream resolution inside the shared event logger.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `site_event(...)` computes a resolved page path from:
+  - `details.page_path`
+  - `details.page_url`
+  - `Referer`
+  - request path fallback
+• that resolved value is passed into `log_site_event(...)` via a dedicated `path_override`
+• `log_site_event(...)` now treats that override as the highest-precedence write input for `app.site_events.path`
+
+Architectural consequence:
+
+• telemetry write behavior becomes more deterministic for `/api/events`
+• runtime ambiguity moves out of the shared logger and into the route that actually owns the site-event contract
+• this is the correct shape while we continue recovering trustworthy page-level analytics without changing the event taxonomy
+
 # Site Event Path Recovery (2026-04-10)
 
 The site telemetry layer now restores real page context at the server edge without requiring an immediate frontend-wide tracking rewrite.

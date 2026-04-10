@@ -1925,10 +1925,11 @@ def log_site_event(
     email: str | None = None,
     source: str | None = None,
     details: dict | None = None,
+    path_override: str | None = None,
 ) -> None:
     if not PG_CONN:
         return
-    event_path = resolve_site_event_path(request, details)
+    event_path = (path_override or "").strip()[:512] or resolve_site_event_path(request, details)
     try:
         with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
             with conn.cursor() as cur:
@@ -2605,6 +2606,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     merged_details = enrich_details(request, data.details, fallback_lang=req_lang)
     detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
+    resolved_event_path = resolve_site_event_path(request, merged_details)
     allowed = {"tg_click", "page_view", "waitlist_intent", "checkout_intent", "market_click"}
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
@@ -2616,6 +2618,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
         lang=event_lang,
         source=(data.source or "site").strip()[:64] or "site",
         details=merged_details,
+        path_override=resolved_event_path,
     )
     return JSONResponse({"ok": True})
 
