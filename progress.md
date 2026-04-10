@@ -17,6 +17,9 @@ Files updated:
 What changed:
 
 • `/api/events` no longer writes `request.url.path` blindly into `app.site_events.path`
+• event trackers on the main public pages now explicitly attach:
+  - `page_path`
+  - `page_url`
 • server-side event path resolution now prefers:
   - `details.page_path`
   - `details.page_url`

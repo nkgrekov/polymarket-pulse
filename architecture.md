@@ -17,6 +17,9 @@ Updated artifacts:
 Architectural changes:
 
 • `log_site_event()` no longer persists `request.url.path` directly for event rows coming through `/api/events`
+• the main public page trackers now send:
+  - `page_path`
+  - `page_url`
 • path resolution now prefers:
   - `details.page_path`
   - `details.page_url`

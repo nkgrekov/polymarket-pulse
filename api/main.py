@@ -1386,16 +1386,21 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     document.body.classList.add('ready');
 
     async function trackEvent(eventType, details = {{}}) {{
+      const eventDetails = {{
+        page_path: window.location.pathname + window.location.search,
+        page_url: window.location.href,
+        ...details
+      }};
       try {{
         if (typeof window.gtag === 'function') {{
-          window.gtag('event', eventType, details);
+          window.gtag('event', eventType, eventDetails);
         }}
       }} catch (_) {{}}
       try {{
         await fetch('/api/events', {{
           method: 'POST',
           headers: {{ 'Content-Type': 'application/json' }},
-          body: JSON.stringify({{ event_type: eventType, source: 'site', details }}),
+          body: JSON.stringify({{ event_type: eventType, source: 'site', details: eventDetails }}),
           keepalive: true
         }});
       }} catch (_) {{}}
