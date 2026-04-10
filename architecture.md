@@ -4,6 +4,31 @@ This document describes the technical architecture.
 
 ---
 
+# Site Event Path Recovery (2026-04-10)
+
+The site telemetry layer now restores real page context at the server edge without requiring an immediate frontend-wide tracking rewrite.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `log_site_event()` no longer persists `request.url.path` directly for event rows coming through `/api/events`
+• path resolution now prefers:
+  - `details.page_path`
+  - `details.page_url`
+  - `Referer`
+  - fallback to the request path only if no better context exists
+
+Architectural consequence:
+
+• event taxonomy stays unchanged
+• placement-level diagnostics remain valid
+• page-level diagnostics become trustworthy again for new events without needing an immediate multi-template tracker rewrite
+
 # Push Loop Hardening (2026-04-10)
 
 The bot push loop received a safe operational hardening pass after the traffic-dip investigation identified the legacy delivery SQL path as the main current runtime weakness.

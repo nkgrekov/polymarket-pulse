@@ -4,6 +4,34 @@ This document tracks the current state of the project.
 
 ---
 
+# Site Event Path Recovery (2026-04-10)
+
+Recovered real page-context persistence for `app.site_events` without changing the site event taxonomy or rewriting every frontend tracker.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/api/events` no longer writes `request.url.path` blindly into `app.site_events.path`
+• server-side event path resolution now prefers:
+  - `details.page_path`
+  - `details.page_url`
+  - `Referer`
+  - only then the event endpoint path itself
+
+Why this matters:
+
+• the current telemetry surface was still capturing placements, but page-level diagnosis was degraded because every `page_view` looked like `/api/events`
+• this fix preserves the existing event contract while making `app.site_events.path` useful again for runtime and growth analysis
+
+Practical effect:
+
+• future `page_view` rows should once again distinguish `/`, `/telegram-bot`, `/signals`, and other entry pages instead of collapsing into one event endpoint path
+
 # Push Loop Hardening (2026-04-10)
 
 Applied a safe hardening pass to the bot push loop after confirming that recent failures were coming from the legacy delivery SQL path plus conflicting timeout budgets.

@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 import psycopg
 import requests
@@ -1923,6 +1923,7 @@ def log_site_event(
 ) -> None:
     if not PG_CONN:
         return
+    event_path = resolve_site_event_path(request, details)
     try:
         with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
             with conn.cursor() as cur:
@@ -1938,7 +1939,7 @@ def log_site_event(
                         (email or "").strip().lower() or None,
                         source,
                         lang,
-                        request.url.path,
+                        event_path,
                         request.headers.get("user-agent"),
                         request.client.host if request.client else None,
                         Jsonb(details or {}),
@@ -1948,6 +1949,38 @@ def log_site_event(
     except Exception:
         # analytics must never break user-facing flow
         return
+
+
+def resolve_site_event_path(request: Request, details: dict | None = None) -> str:
+    payload = details or {}
+
+    raw_page_path = str(payload.get("page_path") or "").strip()
+    if raw_page_path:
+        return raw_page_path[:512]
+
+    raw_page_url = str(payload.get("page_url") or "").strip()
+    if raw_page_url:
+        try:
+            parsed = urlparse(raw_page_url)
+            candidate = parsed.path or request.url.path
+            if parsed.query:
+                candidate = f"{candidate}?{parsed.query}"
+            return candidate[:512]
+        except Exception:
+            pass
+
+    referer = (request.headers.get("referer") or "").strip()
+    if referer:
+        try:
+            parsed = urlparse(referer)
+            candidate = parsed.path or request.url.path
+            if parsed.query:
+                candidate = f"{candidate}?{parsed.query}"
+            return candidate[:512]
+        except Exception:
+            pass
+
+    return request.url.path[:512]
 
 
 def render_email_shell(*, title: str, body_html: str, cta_label: str, cta_url: str, footer_html: str = "") -> str:
