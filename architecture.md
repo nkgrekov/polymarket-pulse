@@ -4,6 +4,32 @@ This document describes the technical architecture.
 
 ---
 
+# Push Loop Hardening (2026-04-10)
+
+The bot push loop received a safe operational hardening pass after the traffic-dip investigation identified the legacy delivery SQL path as the main current runtime weakness.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• low-level DB helpers can now accept call-site overrides for:
+  - retry attempts
+  - statement timeout budget
+• `dispatch_push_alerts()` now treats parity as best-effort telemetry, not as a fatal gate
+• parity log persistence is also best-effort
+• the push-candidate fetch uses a looser outer async timeout that better matches the helper's internal retry posture
+• individual Telegram send failures now fail soft at the row level
+
+Architectural consequence:
+
+• the legacy push path is still legacy
+• but one slow parity query or one transient send failure no longer needs to collapse the entire push iteration
+• this is the right intermediate posture while push delivery still remains on the legacy path and before any future hot-first cutover decision
+
 # Traffic Dip Diagnostic (2026-04-10)
 
 The recent traffic dip was checked from the runtime side before making any new growth or product changes.

@@ -4,6 +4,41 @@ This document tracks the current state of the project.
 
 ---
 
+# Push Loop Hardening (2026-04-10)
+
+Applied a safe hardening pass to the bot push loop after confirming that recent failures were coming from the legacy delivery SQL path plus conflicting timeout budgets.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• DB helpers now allow call-site override of:
+  - retry attempts
+  - statement timeout budget
+• `dispatch_push_alerts()` no longer treats parity as a fatal prerequisite:
+  - parity timeout/failure now logs and skips
+  - the rest of the push loop can continue
+• parity log writes are also non-fatal
+• push candidate fetch now uses a more realistic outer timeout budget that fits the helper's retry behavior instead of cutting it off too aggressively
+• individual Telegram send failures now skip only that recipient instead of risking the whole iteration
+
+Why this matters:
+
+• the previous loop shape could fail the entire push iteration because:
+  - the DB helper had its own retry/statement-timeout logic
+  - but `asyncio.wait_for(...)` outside it was shorter than the realistic full retry path
+• this hardening does not change delivery semantics
+• it simply reduces the blast radius of transient slow windows on the legacy push path
+
+Practical effect:
+
+• parity is now diagnostic rather than a single point of failure
+• push delivery should degrade more gracefully under slow DB windows while we continue evaluating the later hot-first delivery cutover
+
 # Traffic Dip Diagnostic (2026-04-10)
 
 Checked the recent traffic drop from our side before touching any product or growth surfaces.

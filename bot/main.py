@@ -1132,59 +1132,81 @@ values (
 """
 
 
-def run_db_query(query: str, params: tuple[Any, ...], *, row_factory=None):
+def run_db_query(
+    query: str,
+    params: tuple[Any, ...],
+    *,
+    row_factory=None,
+    retry_attempts: int | None = None,
+    statement_timeout_ms: int = 8000,
+):
     last_error = None
-    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+    attempts = retry_attempts if retry_attempts is not None else DB_RETRY_ATTEMPTS
+    for attempt in range(1, attempts + 1):
         try:
             with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
                 with conn.cursor(row_factory=row_factory) as cur:
-                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(f"set statement_timeout = '{int(statement_timeout_ms)}ms'")
                     cur.execute(query, params)
                     return cur.fetchall()
         except Exception as exc:
             last_error = exc
-            if attempt == DB_RETRY_ATTEMPTS:
+            if attempt == attempts:
                 raise
-            log.warning("db query retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            log.warning("db query retry=%s/%s failed: %s", attempt, attempts, exc)
             time.sleep(DB_RETRY_SLEEP_SECONDS)
     raise last_error
 
 
-def execute_db_write(query: str, params: tuple[Any, ...]) -> None:
+def execute_db_write(
+    query: str,
+    params: tuple[Any, ...],
+    *,
+    retry_attempts: int | None = None,
+    statement_timeout_ms: int = 8000,
+) -> None:
     last_error = None
-    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+    attempts = retry_attempts if retry_attempts is not None else DB_RETRY_ATTEMPTS
+    for attempt in range(1, attempts + 1):
         try:
             with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
                 with conn.cursor() as cur:
-                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(f"set statement_timeout = '{int(statement_timeout_ms)}ms'")
                     cur.execute(query, params)
                 conn.commit()
                 return
         except Exception as exc:
             last_error = exc
-            if attempt == DB_RETRY_ATTEMPTS:
+            if attempt == attempts:
                 raise
-            log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            log.warning("db write retry=%s/%s failed: %s", attempt, attempts, exc)
             time.sleep(DB_RETRY_SLEEP_SECONDS)
     raise last_error
 
 
-def execute_db_write_count(query: str, params: tuple[Any, ...]) -> int:
+def execute_db_write_count(
+    query: str,
+    params: tuple[Any, ...],
+    *,
+    retry_attempts: int | None = None,
+    statement_timeout_ms: int = 8000,
+) -> int:
     last_error = None
-    for attempt in range(1, DB_RETRY_ATTEMPTS + 1):
+    attempts = retry_attempts if retry_attempts is not None else DB_RETRY_ATTEMPTS
+    for attempt in range(1, attempts + 1):
         try:
             with psycopg.connect(PG_CONN, connect_timeout=DB_CONNECT_TIMEOUT_SECONDS) as conn:
                 with conn.cursor() as cur:
-                    cur.execute("set statement_timeout = '8000ms'")
+                    cur.execute(f"set statement_timeout = '{int(statement_timeout_ms)}ms'")
                     cur.execute(query, params)
                     affected = int(cur.rowcount or 0)
                 conn.commit()
                 return affected
         except Exception as exc:
             last_error = exc
-            if attempt == DB_RETRY_ATTEMPTS:
+            if attempt == attempts:
                 raise
-            log.warning("db write retry=%s/%s failed: %s", attempt, DB_RETRY_ATTEMPTS, exc)
+            log.warning("db write retry=%s/%s failed: %s", attempt, attempts, exc)
             time.sleep(DB_RETRY_SLEEP_SECONDS)
     raise last_error
 
@@ -2991,10 +3013,24 @@ def log_trade_interest_sync(update: Update, user_ctx: dict, *, market_id: str | 
 
 
 async def dispatch_push_alerts(application: Application) -> None:
-    parity = await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_PUSH_PARITY_SUMMARY, (), row_factory=dict_row)),
-        timeout=10.0,
-    )
+    parity: list[dict[str, Any]] = []
+    try:
+        parity = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: run_db_query(
+                    SQL_PUSH_PARITY_SUMMARY,
+                    (),
+                    row_factory=dict_row,
+                    retry_attempts=1,
+                )
+            ),
+            timeout=12.0,
+        )
+    except asyncio.TimeoutError:
+        log.warning("push_loop parity skipped: timed out")
+    except Exception:
+        log.exception("push_loop parity skipped")
+
     if parity:
         row = parity[0]
         hot_ready_count = int(row.get("hot_ready_count") or 0)
@@ -3010,35 +3046,54 @@ async def dispatch_push_alerts(application: Application) -> None:
             hot_only_count,
             legacy_only_count,
         )
-        await asyncio.to_thread(
-            lambda: execute_db_write(
-                SQL_PUSH_PARITY_LOG_INSERT,
-                (
-                    hot_ready_count,
-                    legacy_watchlist_count,
-                    overlap_count,
-                    hot_only_count,
-                    legacy_only_count,
-                    row.get("top_hot_market_id"),
-                    row.get("top_legacy_market_id"),
-                    row.get("top_hot_abs_delta"),
-                    row.get("top_legacy_abs_delta"),
-                    Jsonb(
-                        {
-                            "top_hot_market_id": row.get("top_hot_market_id"),
-                            "top_legacy_market_id": row.get("top_legacy_market_id"),
-                            "top_hot_abs_delta": str(row.get("top_hot_abs_delta")) if row.get("top_hot_abs_delta") is not None else None,
-                            "top_legacy_abs_delta": str(row.get("top_legacy_abs_delta")) if row.get("top_legacy_abs_delta") is not None else None,
-                        }
+        try:
+            await asyncio.to_thread(
+                lambda: execute_db_write(
+                    SQL_PUSH_PARITY_LOG_INSERT,
+                    (
+                        hot_ready_count,
+                        legacy_watchlist_count,
+                        overlap_count,
+                        hot_only_count,
+                        legacy_only_count,
+                        row.get("top_hot_market_id"),
+                        row.get("top_legacy_market_id"),
+                        row.get("top_hot_abs_delta"),
+                        row.get("top_legacy_abs_delta"),
+                        Jsonb(
+                            {
+                                "top_hot_market_id": row.get("top_hot_market_id"),
+                                "top_legacy_market_id": row.get("top_legacy_market_id"),
+                                "top_hot_abs_delta": str(row.get("top_hot_abs_delta")) if row.get("top_hot_abs_delta") is not None else None,
+                                "top_legacy_abs_delta": str(row.get("top_legacy_abs_delta")) if row.get("top_legacy_abs_delta") is not None else None,
+                            }
+                        ),
                     ),
-                ),
+                    retry_attempts=1,
+                )
             )
-        )
+        except Exception:
+            log.exception("push_loop parity log write failed")
 
-    rows = await asyncio.wait_for(
-        asyncio.to_thread(lambda: run_db_query(SQL_PUSH_CANDIDATES, (PUSH_FETCH_LIMIT,), row_factory=dict_row)),
-        timeout=15.0,
-    )
+    try:
+        rows = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: run_db_query(
+                    SQL_PUSH_CANDIDATES,
+                    (PUSH_FETCH_LIMIT,),
+                    row_factory=dict_row,
+                    retry_attempts=2,
+                )
+            ),
+            timeout=20.0,
+        )
+    except asyncio.TimeoutError:
+        log.warning("push_loop candidates skipped: timed out")
+        return
+    except Exception:
+        log.exception("push_loop candidates query failed")
+        return
+
     if not rows:
         return
 
@@ -3062,7 +3117,11 @@ async def dispatch_push_alerts(application: Application) -> None:
         if already_sent:
             continue
 
-        await application.bot.send_message(chat_id=int(recipient), text="🔔 Alert\n\n" + fmt_alert_row(row))
+        try:
+            await application.bot.send_message(chat_id=int(recipient), text="🔔 Alert\n\n" + fmt_alert_row(row))
+        except Exception:
+            log.exception("push_loop send failed user_id=%s market_id=%s", user_id, market_id)
+            continue
         await asyncio.to_thread(upsert_event_sync, user_id, row)
         await asyncio.to_thread(log_sent_sync, "bot", user_id, recipient, row)
         sent_today_cache[user_id] += 1
