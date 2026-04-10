@@ -53,6 +53,69 @@ Why this matters:
 • the push / retention loop is more fragile than site serving right now
 • even if acquisition is already small, bot instability can reduce return behavior, perceived usefulness, and follow-on engagement
 
+### 3a. The push-loop failure mode is now identified more precisely
+
+The failures are not pointing at Telegram send instability first.
+
+Confirmed in logs:
+
+• repeated `db query retry=1/3 failed: canceling statement due to statement timeout`
+• these warnings line up with later:
+  - `push_loop iteration failed`
+  - `TimeoutError`
+
+Code path:
+
+• `dispatch_push_alerts()` in `/Users/nikitagrekov/polymarket-pulse/bot/main.py`
+• still reads the legacy delivery surface:
+  - `bot.alerts_inbox_latest`
+• parity also compares against that legacy path
+
+Important implementation detail:
+
+• the DB helper itself uses:
+  - `connect_timeout = 10s`
+  - `statement_timeout = 8000ms`
+  - up to `3` retries
+• but `dispatch_push_alerts()` wraps the query calls in:
+  - `asyncio.wait_for(..., timeout=10.0)` for parity
+  - `asyncio.wait_for(..., timeout=15.0)` for push candidates
+
+Meaning:
+
+• the outer async timeout can cut off the query helper before its own retry budget has a chance to complete
+• so degraded DB windows become full push-loop failures more easily than they should
+
+### 3b. The legacy watchlist delivery view is materially expensive
+
+Read-only `EXPLAIN ANALYZE` showed:
+
+• parity summary around `3.9s`
+• push candidates around `1.9s`
+
+The expensive side is not the hot table.
+
+The expensive side is the legacy watchlist path under `bot.alerts_inbox_latest`, which still depends on:
+
+• `bot.watchlist_alerts_latest`
+• `bot.watchlist_snapshot_latest`
+• `public.market_snapshots`
+• `public.global_bucket_latest`
+
+`bot.watchlist_snapshot_latest` still recomputes:
+
+• latest bucket
+• previous bucket
+• per-market last/prev mids
+
+from the large historical `market_snapshots` relation.
+
+Interpretation:
+
+• push delivery is still paying the historical-bucket tax on every loop
+• this is consistent with the observed statement timeout failures
+• it also fits the current architecture, because push delivery has deliberately remained on the legacy path while read surfaces already moved to hot-first
+
 ### 4. Internal telemetry shows a real low-traffic week
 
 Read-only DB check of `app.site_events`:
@@ -120,7 +183,10 @@ What it does **not** currently look like:
 
 ### Runtime / product side
 
-1. Investigate the repeated `push_loop` `TimeoutError` pattern in `bot`
+1. De-risk `dispatch_push_alerts()` before any full hot-delivery cutover:
+   - make parity failure non-fatal
+   - stop nesting tight `asyncio.wait_for` around a helper that already has DB retry/timeout behavior
+   - reduce the amount of legacy watchlist recomputation done on every push loop
 2. Preserve real page context in `app.site_events` for `page_view`, not just `/api/events`
 
 ### Acquisition side

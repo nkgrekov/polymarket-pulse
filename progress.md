@@ -47,6 +47,11 @@ Operational conclusion:
 • the two things worth taking seriously are:
   - bot push-loop instability hurting return/retention traffic
   - weak page attribution in `app.site_events`, which makes diagnosis less trustworthy than it should be
+• deeper push-loop diagnosis identified a concrete technical cause:
+  - repeated `statement_timeout` on the legacy delivery query path
+  - then a larger `TimeoutError` at the outer async wrapper level
+• current `dispatch_push_alerts()` still pays the historical-bucket cost of `bot.watchlist_snapshot_latest` on every loop through `bot.alerts_inbox_latest`
+• read-only `EXPLAIN ANALYZE` confirmed that the expensive side is the legacy watchlist branch, not the hot candidate table
 • the traffic drop may therefore be a mix of:
   - the previous weekend Railway outage
   - very small top-of-funnel volume

@@ -48,6 +48,11 @@ Architectural implication:
   - bot push-loop timeout investigation
   - better page-context persistence in `app.site_events`
 • this is a better next target than treating the drop as a fresh site uptime incident
+• deeper diagnosis now points to a specific weak spot:
+  - `dispatch_push_alerts()` still depends on the legacy delivery surface
+  - that surface recomputes watchlist alert state through the historical snapshot path
+  - repeated `statement_timeout` plus outer `asyncio.wait_for(...)` budgets make the loop fail harder than necessary
+• the hot-layer migration therefore reduced read-path risk, but the legacy push path still carries the heaviest historical-query burden
 
 # Worker Follow-Up: Railway Ops + Legacy Compatibility + Threshold UX (2026-04-06)
 
