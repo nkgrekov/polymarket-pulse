@@ -31,6 +31,9 @@ Practical effect:
 
 • new `page_view` and other site events coming through `/api/events` should persist the real page path more reliably
 • this is a safe hardening step before we do any larger telemetry cleanup or reporting changes
+• final production verification confirmed the fix only after deploying with the monorepo-aware command:
+  - `railway up -s site --path-as-root api`
+• a plain `railway redeploy --service site` was not sufficient for this source change because it reused the latest service snapshot rather than pushing the updated local source
 
 # Site Event Path Recovery (2026-04-10)
 

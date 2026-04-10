@@ -29,6 +29,9 @@ Architectural consequence:
 • telemetry write behavior becomes more deterministic for `/api/events`
 • runtime ambiguity moves out of the shared logger and into the route that actually owns the site-event contract
 • this is the correct shape while we continue recovering trustworthy page-level analytics without changing the event taxonomy
+• production verification also clarified an ops rule for this monorepo:
+  - `site` source changes must be deployed with `railway up -s site --path-as-root api`
+  - a plain service `redeploy` can leave the old source snapshot in place and produce false negative runtime diagnostics
 
 # Site Event Path Recovery (2026-04-10)
 

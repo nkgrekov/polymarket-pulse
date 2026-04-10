@@ -84,6 +84,17 @@ Start command:
 uvicorn api.main:app --host 0.0.0.0 --port $PORT
 ```
 
+Monorepo deploy command:
+
+```bash
+railway up -s site --path-as-root api
+```
+
+Operational note:
+
+- for source changes inside `api/`, use the monorepo deploy command above
+- `railway redeploy --service site` is suitable for restarting/rebuilding the latest service snapshot, but it is not a reliable substitute for pushing new local source from `api/`
+
 Required variables:
 
 - `PG_CONN`
