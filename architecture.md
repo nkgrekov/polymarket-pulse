@@ -4,6 +4,51 @@ This document describes the technical architecture.
 
 ---
 
+# Traffic Dip Diagnostic (2026-04-10)
+
+The recent traffic dip was checked from the runtime side before making any new growth or product changes.
+
+Updated artifacts:
+
+• `docs/traffic_dip_diagnostic_2026-04-10.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural findings:
+
+• the current live architecture is not showing a fresh broad site outage:
+  - `site` is serving `200`
+  - recent site logs do not show a matching `5xx` / timeout cluster
+  - recent ingest logs also stay clean
+• the previous weekend Railway plan-expiry outage remains the clearest recent uptime disruption
+• the most important runtime weakness this week is in the bot loop, not in site serving:
+  - `push_loop iteration failed`
+  - `TimeoutError`
+  - repeated across multiple windows between `2026-04-07` and `2026-04-10`
+• because push delivery remains on the legacy path by design, these bot loop timeouts are the strongest internal candidate for degraded retention / return traffic
+• current site telemetry has an architectural weakness:
+  - `app.site_events.path` for `page_view` is currently persisted as `/api/events`
+  - actual surface context lives primarily in `app.site_events.details.placement`
+• this does not fully break attribution, but it does mean:
+  - page-level diagnostics are weaker than intended
+  - placement-level diagnostics are more trustworthy than path-level diagnostics right now
+• current recent placement samples still show live event firing across:
+  - `page`
+  - `hero_panel`
+  - `proof_bridge`
+  - `seo_*`
+  so the telemetry surface is degraded, not dead
+• Googlebot reachability does not currently show an obvious platform-side block:
+  - homepage `200`
+  - `robots.txt` `200`
+
+Architectural implication:
+
+• the next "our side" reliability work should bias toward:
+  - bot push-loop timeout investigation
+  - better page-context persistence in `app.site_events`
+• this is a better next target than treating the drop as a fresh site uptime incident
+
 # Worker Follow-Up: Railway Ops + Legacy Compatibility + Threshold UX (2026-04-06)
 
 Three sidecar worker prompts are now consolidated into one repo-owned architectural note plus an additive bot UX improvement.

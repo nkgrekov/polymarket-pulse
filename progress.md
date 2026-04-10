@@ -4,6 +4,55 @@ This document tracks the current state of the project.
 
 ---
 
+# Traffic Dip Diagnostic (2026-04-10)
+
+Checked the recent traffic drop from our side before touching any product or growth surfaces.
+
+Updated artifacts:
+
+• `docs/traffic_dip_diagnostic_2026-04-10.md`
+• `progress.md`
+• `architecture.md`
+
+What we confirmed:
+
+• there is no fresh broad site outage pattern this week:
+  - homepage returns `200`
+  - site logs do not show a matching cluster of `5xx` / timeout failures
+  - ingest logs are also clean over the same window
+• the previous weekend outage caused by the expired Railway plan is still the clearest hard uptime event in the recent period
+• on our side, the strongest current reliability issue is now the bot push loop:
+  - repeated `push_loop iteration failed`
+  - repeated `TimeoutError`
+  - observed across `2026-04-07` through `2026-04-10`
+• internal telemetry in `app.site_events` shows a real low-traffic week, with a sharp low point on `2026-04-07`
+• however, the site telemetry shape is also weaker than it should be:
+  - `event_type='page_view'` rows currently store `path='/api/events'`
+  - real page context survives mainly in `details.placement`
+  - this makes path-level diagnosis much noisier than it should be
+• current samples still show live placements firing:
+  - `page`
+  - `hero_panel`
+  - `proof_bridge`
+  - `seo_*`
+  so this is not a total tracking blackout
+• manual crawl smoke is not showing an obvious Google block:
+  - homepage `200` for a browser UA
+  - homepage `200` for `Googlebot`
+  - `robots.txt` also returns `200` for `Googlebot`
+
+Operational conclusion:
+
+• the main issue on our side does not currently look like a fresh whole-site uptime failure
+• the two things worth taking seriously are:
+  - bot push-loop instability hurting return/retention traffic
+  - weak page attribution in `app.site_events`, which makes diagnosis less trustworthy than it should be
+• the traffic drop may therefore be a mix of:
+  - the previous weekend Railway outage
+  - very small top-of-funnel volume
+  - degraded bot reliability on recent days
+  - plus whatever GSC / GA4 later confirm on the acquisition side
+
 # Worker Follow-Up: Railway Ops + Legacy Compatibility + Threshold UX (2026-04-06)
 
 Consolidated three safe worker follow-ups into repo-owned docs plus one additive bot UX improvement.
