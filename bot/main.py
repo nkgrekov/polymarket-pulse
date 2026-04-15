@@ -41,6 +41,9 @@ DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "1
 DB_RETRY_ATTEMPTS = int(os.environ.get("DB_RETRY_ATTEMPTS", "3"))
 DB_RETRY_SLEEP_SECONDS = float(os.environ.get("DB_RETRY_SLEEP_SECONDS", "1.5"))
 PUSH_INITIAL_DELAY_SECONDS = int(os.environ.get("PUSH_INITIAL_DELAY_SECONDS", "20"))
+PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS = int(os.environ.get("PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS", "15000"))
+PUSH_CANDIDATE_TIMEOUT_SECONDS = float(os.environ.get("PUSH_CANDIDATE_TIMEOUT_SECONDS", "22"))
+PUSH_CANDIDATE_RETRY_ATTEMPTS = int(os.environ.get("PUSH_CANDIDATE_RETRY_ATTEMPTS", "1"))
 FREE_WATCHLIST_LIMIT = int(os.environ.get("FREE_WATCHLIST_LIMIT", "3"))
 FREE_DAILY_ALERT_LIMIT = int(os.environ.get("FREE_DAILY_ALERT_LIMIT", "20"))
 PRO_WATCHLIST_LIMIT = int(os.environ.get("PRO_WATCHLIST_LIMIT", "20"))
@@ -3299,16 +3302,26 @@ async def dispatch_push_alerts(application: Application) -> None:
                     SQL_PUSH_CANDIDATES,
                     (PUSH_FETCH_LIMIT,),
                     row_factory=dict_row,
-                    retry_attempts=2,
+                    retry_attempts=PUSH_CANDIDATE_RETRY_ATTEMPTS,
+                    statement_timeout_ms=PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS,
                 )
             ),
-            timeout=20.0,
+            timeout=PUSH_CANDIDATE_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError:
-        log.warning("push_loop candidates skipped: timed out")
+        log.warning(
+            "push_loop candidates skipped: timed out outer_timeout=%ss statement_timeout_ms=%s retries=%s",
+            PUSH_CANDIDATE_TIMEOUT_SECONDS,
+            PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS,
+            PUSH_CANDIDATE_RETRY_ATTEMPTS,
+        )
         return
     except Exception:
-        log.exception("push_loop candidates query failed")
+        log.exception(
+            "push_loop candidates query failed statement_timeout_ms=%s retries=%s",
+            PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS,
+            PUSH_CANDIDATE_RETRY_ATTEMPTS,
+        )
         return
 
     if not rows:

@@ -23,10 +23,13 @@ Should push delivery move to hot-first now?
 - some windows show `hot_only`
 - some windows show `legacy_only`
 - the first richer post-upgrade non-quiet sample already produced one explainable `hot_only` case:
-  - market `1919425`
-  - `delta_abs ~= 0.04`
+  - markets `1919425` and `1919417`
   - classification: `legacy_stale_bucket`
-  - meaning: hot saw a current ready move while the legacy bucket surface had not yet caught up
+  - meaning: hot saw current ready moves while the legacy bucket surface had not yet caught up
+- the next classified `legacy_only` sample now also exists:
+  - the same two markets later appeared as `legacy_only`
+  - classification: `legacy_shock_reverted`
+  - meaning: legacy still exposed the bucket shock after hot had already reclassified the current move as `below_threshold`
 
 ### Runtime reliability
 
@@ -46,13 +49,18 @@ We now have enough evidence to say:
 2. Legacy delivery is also still surfacing alerts that hot does not always mark `ready`.
 3. The two surfaces are not yet interchangeable.
 4. At least some `hot_only` divergence is already explainable as a freshness lead rather than random hot-layer noise.
+5. At least some `legacy_only` divergence is now explainable as bucket persistence after the live move has already cooled below threshold.
 
 That means a blind hot-first cutover would be irresponsible for two separate reasons:
 
 1. **Semantics**
    - `hot_only` shows that hot sees some actionable windows earlier or differently.
    - `legacy_only` shows that legacy still catches some watchlist alerts that hot would currently miss.
-   - the first classified `hot_only` case points toward a real stale-bucket lag on legacy, which is encouraging for hot, but still not enough to justify a cutover alone.
+   - classified `hot_only` currently points toward real stale-bucket lag on legacy.
+   - classified `legacy_only` currently points toward bucket shock persistence after live reversion.
+   - together, that looks less like random disagreement and more like a genuine semantic split:
+     - hot = current actionable live state
+     - legacy = slower bucket-confirmed shock memory
 
 2. **Reliability**
    - the legacy path is still operationally expensive and occasionally stalls the loop
@@ -99,6 +107,8 @@ If divergence remains meaningful:
 - or split concepts explicitly:
   - hot = live actionable tape
   - legacy = slower bucket-confirmed alert loop
+
+Current evidence is now pointing more strongly toward this semantic split than toward an immediate hot-first push cutover.
 
 ## Practical Recommendation
 

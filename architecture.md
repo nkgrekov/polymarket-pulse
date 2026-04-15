@@ -4,6 +4,40 @@ This document describes the technical architecture.
 
 ---
 
+# Legacy Push Candidate Budget Hardening (2026-04-15)
+
+The legacy push candidate fetch now uses a more realistic timeout posture for a heavy deterministic query, while leaving delivery semantics unchanged.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the legacy candidate fetch inside `dispatch_push_alerts()` now runs with:
+  - one explicit retry budget for this call-site
+  - a longer statement timeout
+  - a slightly longer outer async timeout
+• this replaces the previous posture where a heavy query could:
+  - hit the inner statement timeout
+  - consume retry sleep
+  - and still die at the outer `wait_for(...)`
+• candidate timeout/failure logs now include the active budgets
+
+Architectural consequence:
+
+• this does not change which alerts are considered valid
+• it only changes how patiently the bot waits for the legacy candidate surface before giving up on that loop iteration
+• the legacy delivery path remains legacy, but its failure mode becomes less self-inflicted by mismatched timeout layers
+• early post-deploy logs are directionally better:
+  - multiple parity cycles completed without fresh `push_loop iteration failed`
+  - no fresh `TimeoutError`
+  - no fresh `push_loop candidates skipped`
+• startup still showed short-lived Telegram `409 Conflict` overlaps during handoff between polling instances, but those did not point to the candidate-query timeout path itself
+
+
 # Delivery Mismatch Diagnostics Upgrade (2026-04-15)
 
 Delivery parity telemetry now captures mismatch reasons and top example rows for non-quiet windows, while keeping push delivery semantics unchanged.
@@ -51,7 +85,12 @@ Architectural consequence:
   - classification `legacy_stale_bucket`
 • that narrows the delivery debate slightly:
   - at least some hot divergence now looks like a legitimate freshness lead caused by legacy bucket lag
-  - but we still need classified `legacy_only` samples before any cutover decision becomes balanced
+• subsequent classified samples now also include `legacy_only` cases:
+  - markets `1919425` and `1919417`
+  - classification `legacy_shock_reverted`
+• the delivery mismatch picture is now more balanced:
+  - `hot_only` can represent live freshness lead
+  - `legacy_only` can represent bucket shock persistence after the live move has already cooled below threshold
 
 
 # Telegram Bot CTR Pass (2026-04-15)

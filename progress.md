@@ -4,6 +4,50 @@ This document tracks the current state of the project.
 
 ---
 
+# Legacy Push Candidate Budget Hardening (2026-04-15)
+
+Applied one more safe reliability pass to the legacy push delivery path without changing delivery semantics.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `dispatch_push_alerts()` now gives the legacy candidate query a more realistic single-attempt budget:
+  - `PUSH_CANDIDATE_STATEMENT_TIMEOUT_MS = 15000`
+  - `PUSH_CANDIDATE_TIMEOUT_SECONDS = 22`
+  - `PUSH_CANDIDATE_RETRY_ATTEMPTS = 1`
+• candidate fetch no longer uses the previous retry pattern that could spend time on multiple doomed attempts and then still die at the outer async timeout
+• timeout/failure logs now include the actual candidate-query budgets, so future runtime diagnosis can separate:
+  - statement budget issues
+  - outer timeout issues
+  - retry posture issues
+
+Why this matters:
+
+• read-only `EXPLAIN ANALYZE` already showed the legacy candidate path is not a cheap query
+• for a heavy deterministic view, “retry quickly with the same short statement timeout” is often worse than “one realistic attempt”
+• this change is meant to reduce avoidable `TimeoutError` cascades while the delivery surface still stays on legacy
+
+Early runtime signal:
+
+• after the deploy, fresh `bot` logs showed multiple parity cycles in a row without:
+  - `push_loop iteration failed`
+  - `TimeoutError`
+  - `push_loop candidates skipped`
+• this is only an early signal, not a final verdict, but it is directionally good
+
+What did not change:
+
+• no delivery semantics change
+• no hot-first cutover
+• no alert ranking change
+• no SQL surface change
+
+
 # Delivery Mismatch Diagnostics Upgrade (2026-04-15)
 
 Upgraded the delivery parity instrumentation so non-quiet windows can carry mismatch reasons and concrete example rows, not just raw counts.
@@ -60,6 +104,12 @@ First useful outcome:
   - market `1919425`
   - classification `legacy_stale_bucket`
 • that is our first concrete evidence that at least some `hot_only` divergence is a legitimate hot freshness lead, not just unexplained noise
+• a few fresh cycles later, the same market cluster also produced the first classified `legacy_only` case:
+  - markets `1919425` and `1919417`
+  - classification `legacy_shock_reverted`
+• this makes the mismatch story much clearer:
+  - `hot_only` is now explainable as current live freshness lead
+  - `legacy_only` is now explainable as bucket shock persistence after live reversion
 
 
 # Telegram Bot CTR Pass (2026-04-15)

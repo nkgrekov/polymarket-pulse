@@ -1,4 +1,4 @@
-# Delivery Parity Snapshot (2026-04-15T11:56:54.220961+00:00)
+# Delivery Parity Snapshot (2026-04-15T14:19:07.462669+00:00)
 
 Source:
 
@@ -11,40 +11,43 @@ Source:
 ## Summary
 
 - samples_total: **1919**
-- non_quiet_samples: **572**
-- classified_non_quiet_samples: **1**
-- unclassified_non_quiet_samples: **571**
-- hot_only_samples: **134**
-- legacy_only_samples: **296**
-- both_non_quiet_samples: **142**
+- non_quiet_samples: **577**
+- classified_non_quiet_samples: **27**
+- unclassified_non_quiet_samples: **550**
+- hot_only_samples: **158**
+- legacy_only_samples: **286**
+- both_non_quiet_samples: **133**
 - max_hot_ready_count: **2**
 - max_legacy_watchlist_count: **2**
-- max_overlap_count: **1**
+- max_overlap_count: **2**
 
 ## Latest Non-Quiet Sample
 
-- sampled_at: **2026-04-15 11:52:37.074497+00:00**
-- hot_ready_count: **1**
-- legacy_watchlist_count: **0**
+- sampled_at: **2026-04-15 14:14:50.859779+00:00**
+- hot_ready_count: **0**
+- legacy_watchlist_count: **2**
 - overlap_count: **0**
-- hot_only_count: **1**
-- legacy_only_count: **0**
-- top_hot_market_id: **1919425**
-- top_legacy_market_id: **none**
-- top_hot_abs_delta: **0.03999999999999998**
-- top_legacy_abs_delta: **none**
+- hot_only_count: **0**
+- legacy_only_count: **2**
+- top_hot_market_id: **none**
+- top_legacy_market_id: **1919425**
+- top_hot_abs_delta: **none**
+- top_legacy_abs_delta: **0.09000000000000000000**
 
 ## Classification Totals
 
-- legacy_stale_bucket: **1**
+- legacy_stale_bucket: **34**
+- legacy_shock_reverted: **2**
 
 ## Recent Hot-Only Examples
 
-- sampled_at=2026-04-15 11:52:37.074497+00:00 | market_id=1919425 | classification=legacy_stale_bucket | delta_abs=0.03999999999999998 | threshold_value=0.03 | live_state=ready | quote_ts=2026-04-15T11:51:52.846249+00:00
+- sampled_at=2026-04-15 14:04:03.287209+00:00 | market_id=1919425 | classification=legacy_stale_bucket | delta_abs=0.06 | threshold_value=0.03 | live_state=ready | quote_ts=2026-04-15T14:02:52.862025+00:00
+- sampled_at=2026-04-15 14:04:03.287209+00:00 | market_id=1919417 | classification=legacy_stale_bucket | delta_abs=0.04000000000000001 | threshold_value=0.03 | live_state=ready | quote_ts=2026-04-15T14:02:52.862025+00:00
 
 ## Recent Legacy-Only Examples
 
-- none
+- sampled_at=2026-04-15 14:14:50.859779+00:00 | market_id=1919425 | classification=legacy_shock_reverted | abs_delta=0.09 | threshold_value=0.03 | candidate_state=below_threshold | live_state=ready | legacy_last_bucket=2026-04-15T14:05:00+00:00
+- sampled_at=2026-04-15 14:14:50.859779+00:00 | market_id=1919417 | classification=legacy_shock_reverted | abs_delta=0.04 | threshold_value=0.03 | candidate_state=below_threshold | live_state=ready | legacy_last_bucket=2026-04-15T14:05:00+00:00
 
 ## Interpretation
 
