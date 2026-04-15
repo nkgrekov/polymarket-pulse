@@ -4,6 +4,36 @@ This document describes the technical architecture.
 
 ---
 
+# Watchlist Empty-State Recovery (2026-04-15)
+
+The review and manual-cleanup surfaces now recover back into the normal button-driven bot flow even when the watchlist is already empty.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `send_watchlist_list_view(...)` no longer returns a bare command-only empty state
+• the empty review state now renders the same action-oriented navigation posture as the rest of the bot:
+  - `Add market`
+  - `Watchlist`
+  - `Inbox`
+  - `Top movers`
+• `/watchlist_remove` without an argument now keeps the command-format hint but also renders inline navigation so the user can recover without typing a second command immediately
+
+Architectural consequence:
+
+• the cleanup/review branch has fewer dead ends
+• empty-state recovery now points users back into the same guided menu loop as the rest of `Pulse`
+• this is additive UX only:
+  - no SQL change
+  - no delivery change
+  - no data-layer change
+
+
 # Legacy Push Candidate Budget Hardening (2026-04-15)
 
 The legacy push candidate fetch now uses a more realistic timeout posture for a heavy deterministic query, while leaving delivery semantics unchanged.

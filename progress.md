@@ -4,6 +4,33 @@ This document tracks the current state of the project.
 
 ---
 
+# Watchlist Empty-State Recovery (2026-04-15)
+
+Added one more small `Pulse` UX improvement so cleanup and review flows do not dead-end when the list is already empty or when the user opens manual removal without an argument.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/watchlist_list` empty state now explains the next useful move instead of only showing a raw command format
+• that empty state now also shows inline navigation buttons:
+  - `Add market`
+  - `Watchlist`
+  - `Inbox`
+  - `Top movers`
+• `/watchlist_remove` without an argument now keeps the existing usage hint but also shows the same inline action path, so the user can recover without typing more commands first
+
+Why this matters:
+
+• the review/cleanup loop already got stronger, but an empty list still felt like a dead end
+• this change keeps users inside the normal button-driven flow instead of pushing them back into command memorization
+• it is fully additive and does not touch any SQL, delivery semantics, or runtime data flow
+
+
 # Legacy Push Candidate Budget Hardening (2026-04-15)
 
 Applied one more safe reliability pass to the legacy push delivery path without changing delivery semantics.

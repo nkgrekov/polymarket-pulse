@@ -3822,9 +3822,14 @@ async def send_watchlist_list_view(
     rows = run_db_query(SQL_WATCHLIST_LIST, (user_ctx["user_id"], 50), row_factory=dict_row)
     if not rows:
         await message.reply_text(
-            "Your watchlist is empty. Use /watchlist_add <market_id|slug>."
-            if locale == "en"
-            else "Ваш watchlist пуст. Используйте /watchlist_add <market_id|slug>."
+            (
+                "Your watchlist is empty.\n"
+                "Best next step: add one live market first, then come back here when you want to review or clean the list."
+                if locale == "en"
+                else "Ваш watchlist пуст.\n"
+                "Лучший следующий шаг: сначала добавьте один live-рынок, а потом возвращайтесь сюда, когда захотите проверить или почистить список."
+            ),
+            reply_markup=watchlist_list_inline(locale, has_closed=False),
         )
         return
 
@@ -4005,7 +4010,8 @@ async def cmd_watchlist_remove(update: Update, context: ContextTypes.DEFAULT_TYP
                 if locale == "en"
                 else "Формат: /watchlist_remove <market_id|slug>\n"
                 "Подсказка: откройте /watchlist_list, если хотите one-tap кнопки Remove для closed или date-passed рынков."
-            )
+            ),
+            reply_markup=watchlist_list_inline(locale, has_closed=False),
         )
         return
 
