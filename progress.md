@@ -4,6 +4,41 @@ This document tracks the current state of the project.
 
 ---
 
+# Weekly Status Checkpoint (2026-04-15)
+
+Took a fresh runtime and data-layer checkpoint nearly a week after the telemetry and push-loop fixes so we could separate real recovery from wishful thinking.
+
+Files updated:
+
+• `docs/weekly_status_2026-04-15.md`
+• `progress.md`
+• `architecture.md`
+
+What we confirmed:
+
+• core Railway services are healthy:
+  - `site` `SUCCESS`
+  - `bot` `SUCCESS`
+  - `ingest` `SUCCESS`
+• the hot layer is healthy and populated:
+  - registry / quotes fresh at roughly `~60s`
+  - movers `1m` and `5m` populated
+  - watchlist and alert candidate hot surfaces populated
+• the site telemetry path fix is now genuinely working in production for new rows
+• internal `page_view` traffic recovered from the `2026-04-07` low point, but the top-of-funnel is still very small
+• `tg_click` volume is still extremely thin over the last 7 days
+• delivery parity is no longer blocked by quiet windows:
+  - we now have meaningful `hot_only`
+  - meaningful `legacy_only`
+  - and overlap windows too
+• push-loop hardening reduced blast radius, but intermittent legacy-query `statement timeout` windows still exist
+
+Practical consequence:
+
+• we are no longer waiting for "any non-quiet sample" to discuss delivery
+• the delivery question is now a real semantic/parity decision with reliability constraints, not a data-absence problem
+• growth-wise, the bigger constraint still looks like tiny acquisition volume rather than a fresh full-site outage
+
 # Site Event Route Hardening (2026-04-10)
 
 Tightened the `/api/events` write path after confirming that `app.site_events.path` was still collapsing to `/api/events` in real runtime samples even though `details.page_path` and `details.page_url` were already reaching the database.

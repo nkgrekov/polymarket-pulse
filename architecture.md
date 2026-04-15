@@ -4,6 +4,46 @@ This document describes the technical architecture.
 
 ---
 
+# Weekly Status Checkpoint (2026-04-15)
+
+The system now has enough live evidence to treat the current state as a proper architectural checkpoint rather than a speculative transition.
+
+Updated artifacts:
+
+• `docs/weekly_status_2026-04-15.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural findings:
+
+• the three core Railway runtimes are currently healthy:
+  - `site`
+  - `bot`
+  - `ingest`
+• the hot layer is functioning as intended:
+  - fresh registry and quote ages
+  - populated `1m` / `5m` mover surfaces
+  - populated hot watchlist and alert-candidate surfaces
+• page-level telemetry is now trustworthy again for newly written site events
+• the delivery decision has moved into a more mature phase:
+  - quiet windows are no longer the main blocker
+  - there is real hot-only divergence
+  - real legacy-only divergence
+  - and real overlap windows
+• this means push delivery should now be framed as:
+  - a semantics + reliability decision
+  - not merely a "wait for more signal" problem
+• despite the push-loop hardening, the legacy path still shows intermittent `statement timeout` behavior in production
+• acquisition remains structurally thin:
+  - internal `page_view` counts are small
+  - tracked `tg_click` volume is even smaller
+
+Architectural consequence:
+
+• the hot read migration is now a demonstrated success
+• the next major technical choice is how aggressively to continue with delivery migration while the legacy path remains intermittently expensive
+• on the growth side, the strongest current constraint still looks like acquisition scale rather than a new broad uptime failure
+
 # Site Event Route Hardening (2026-04-10)
 
 The `/api/events` handler now resolves telemetry page context explicitly at the route boundary instead of relying only on generic downstream resolution inside the shared event logger.
