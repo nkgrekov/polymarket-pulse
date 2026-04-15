@@ -4,6 +4,35 @@ This document describes the technical architecture.
 
 ---
 
+# Telegram Bot CTR Pass (2026-04-15)
+
+The highest-impression search landing page is now `/telegram-bot`, so the next SEO move is not broader site rewriting but sharpening that page as a true bot-intent SERP surface.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `/telegram-bot` English metadata and hero copy now align more tightly with the actual GSC query cluster:
+  - `Polymarket Telegram Bot`
+  - live movers
+  - watchlists
+  - low-noise alerts
+• the page now answers the product question more directly in FAQ form:
+  - what the bot actually does
+• SEO-page routes now set `noindex,follow` for parameterized variants
+  - this keeps canonical slug URLs indexable
+  - while reducing index competition from query-string variants such as `?lang=en` and tracking parameters
+
+Architectural consequence:
+
+• `/telegram-bot` becomes the primary search-intent landing surface
+• canonical slug URLs remain the target index surfaces
+• parameterized SEO-page variants are now explicitly treated as supporting runtime URLs, not index targets
+
 # Delivery Decision Pass (2026-04-15)
 
 The delivery migration has now reached a point where the primary uncertainty is semantic, not infrastructural.

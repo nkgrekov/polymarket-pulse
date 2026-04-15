@@ -101,13 +101,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "telegram-bot": {
         "en": {
-            "title": "Polymarket Pulse Telegram Bot - Live Movers, Watchlists, and Signals",
-            "description": "Use the Polymarket Pulse Telegram bot for top movers, watchlist tracking, and low-noise probability alerts built for fast action on Polymarket.",
-            "h1": "Polymarket Pulse, as a Telegram bot.",
-            "intro": "If you are looking for a Polymarket Telegram bot, this is the Pulse flow: open Telegram, add one live market, and get a useful signal before dashboard scanning catches up.",
-            "k1": "One-tap path from /start to live market tracking",
-            "k2": "Clear movers, inbox, and watchlist flow in one bot",
-            "k3": "Signal quality over noise with threshold and dedup",
+            "title": "Polymarket Telegram Bot - Live Movers, Watchlists & Alerts | Polymarket Pulse",
+            "description": "Looking for a Polymarket Telegram bot? Polymarket Pulse tracks live movers, watchlist markets, and low-noise alerts in Telegram so you can act before dashboard lag.",
+            "h1": "A Polymarket Telegram bot for live movers and watchlist alerts.",
+            "intro": "Open Telegram, add one live market, and let Pulse surface the move when it matters. No dashboard camping and no wallet required for the signal layer.",
+            "k1": "Top movers and one-market watchlist setup in one tap",
+            "k2": "Thresholded alerts that stay quiet until the move is real",
+            "k3": "Telegram-first live loop with email only as backup",
         },
         "ru": {
             "title": "Polymarket Telegram bot - live movers и watchlist алерты",
@@ -237,6 +237,10 @@ SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "q": "Is Polymarket Pulse a Telegram bot for Polymarket?",
                 "a": "Yes. Polymarket Pulse is a Telegram-first signal product for Polymarket. It focuses on top movers, watchlist tracking, and low-noise alerts rather than dashboard overload.",
+            },
+            {
+                "q": "What can this Polymarket Telegram bot actually do?",
+                "a": "It lets you watch top movers, add markets to a personal watchlist, tune your alert threshold, and use Inbox to see only the moves that clear your level.",
             },
             {
                 "q": "Why do /movers or /inbox sometimes show zero?",
@@ -687,7 +691,7 @@ def base_url() -> str:
     return APP_BASE_URL.rstrip("/")
 
 
-def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
+def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: bool = False) -> str:
     page = SEO_PAGES[slug][lang]
     faq_items = SEO_PAGE_FAQ.get(slug, {}).get(lang, [])
     related_page_slugs = SEO_PAGE_LINKS.get(slug, [name for name in SEO_PAGES if name != slug])
@@ -807,7 +811,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
     backup_cta = f'<a id="backup-link" class="cta-backup-link" href="{backup_href}">{cta_backup_link_text}</a>'
     compare_head = "Why Pulse instead of another dashboard" if lang == "en" else "Почему Pulse, а не ещё один dashboard"
     compare_title = (
-        "Normal-user speed beats terminal cosplay."
+        "Open the bot. Track one market. Ignore the dashboard bloat."
         if lang == "en"
         else "Скорость для нормального пользователя важнее терминального косплея."
     )
@@ -860,17 +864,17 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         <article class="preview-card">
           <p class="preview-kicker">01</p>
           <h3 class="preview-title">Open the bot now</h3>
-          <p class="preview-copy">Do not keep reading if the intent is clear. Open Telegram, hit /start, and add one live market before the move becomes old news.</p>
+          <p class="preview-copy">If the intent is already clear, skip the extra tabs. Open Telegram, hit /start, and add one live market before the move gets stale.</p>
         </article>
         <article class="preview-card">
           <p class="preview-kicker">02</p>
-          <h3 class="preview-title">What happens next</h3>
-          <p class="preview-copy">You land in movers, add one market, and use Watchlist or Inbox to decide whether the repricing actually matters.</p>
+          <h3 class="preview-title">What you get</h3>
+          <p class="preview-copy">Top movers, watchlist tracking, and Inbox alerts live in one Telegram flow instead of forcing another dashboard habit.</p>
         </article>
         <article class="preview-card">
           <p class="preview-kicker">03</p>
           <h3 class="preview-title">Backup, not a detour</h3>
-          <p class="preview-copy">Email stays optional and secondary. Telegram is still the shortest path to first value.</p>
+          <p class="preview-copy">Email stays optional and secondary. Telegram remains the shortest path to first value and the main live signal loop.</p>
         </article>
       </div>
       <div class="cta-row" style="margin-top:14px;">
@@ -883,6 +887,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"]) -> str:
         if slug == "telegram-bot" and lang == "en"
         else ""
     )
+    robots_meta = "index,follow" if lang == "en" else "noindex,follow"
+    if noindex_override:
+        robots_meta = "noindex,follow"
 
     return f"""<!doctype html>
 <html lang="{lang}">
@@ -3092,4 +3099,4 @@ def seo_page(slug: str, request: Request) -> HTMLResponse:
     if slug not in SEO_PAGES:
         raise HTTPException(status_code=404, detail="Not found")
     lang = detect_site_lang(request)
-    return HTMLResponse(render_seo_page(slug, lang))
+    return HTMLResponse(render_seo_page(slug, lang, noindex_override=bool(request.query_params)))

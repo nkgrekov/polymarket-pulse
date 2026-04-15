@@ -4,6 +4,42 @@ This document tracks the current state of the project.
 
 ---
 
+# Telegram Bot CTR Pass (2026-04-15)
+
+Made a focused CTR/SEO pass on the `/telegram-bot` intent page after GSC showed it had the highest impression count among our search landing pages but still produced zero clicks.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• strengthened `/telegram-bot` English title, description, `h1`, and intro around the exact search intent:
+  - `Polymarket Telegram Bot`
+  - live movers
+  - watchlist alerts
+  - low-noise Telegram flow
+• tightened the comparison / bridge copy so the page explains the value more directly in Telegram-first terms
+• added one more FAQ entry that answers what the bot actually does for Polymarket users
+• parameterized SEO-page URLs now emit `noindex,follow`
+  - this is a soft duplicate-control guard for paths such as:
+    - `?lang=en`
+    - tracking / placement query variants
+
+Why this matters:
+
+• GSC now clearly shows `/telegram-bot` as the strongest search-impression page in the project
+• the problem is no longer “Google does not see us there”
+• the problem is “Google sees us there, but the snippet is not earning clicks yet”
+• duplicate-ish query-param variants were also showing up in GSC, so letting canonical pages stay indexable while parameterized variants become `noindex` is the safer posture
+
+Practical effect:
+
+• the `/telegram-bot` page is now a cleaner bot-intent landing page
+• new crawls of parameterized SEO-page variants should be less likely to compete with canonical paths in the index
+
 # Delivery Decision Pass (2026-04-15)
 
 Took the first real delivery decision pass using a full week of parity history instead of waiting for one lucky non-quiet window.
