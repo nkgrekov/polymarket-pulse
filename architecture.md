@@ -38,12 +38,20 @@ Architectural changes:
   - classification totals across the lookback window
   - recent hot-only examples
   - recent legacy-only examples
+  - classified vs unclassified non-quiet sample counts
 
 Architectural consequence:
 
 • the next delivery decision can be made on mismatch reasons rather than on raw divergence counts alone
 • this keeps the current legacy push path intact while making the shadow-evaluation layer decision-grade
 • because the detail query is still best-effort and separately timed, a slow diagnostic branch should not become a fatal dependency of push delivery
+• the first post-upgrade classified sample already produced:
+  - `hot_only = 1`
+  - `legacy_only = 0`
+  - classification `legacy_stale_bucket`
+• that narrows the delivery debate slightly:
+  - at least some hot divergence now looks like a legitimate freshness lead caused by legacy bucket lag
+  - but we still need classified `legacy_only` samples before any cutover decision becomes balanced
 
 
 # Telegram Bot CTR Pass (2026-04-15)

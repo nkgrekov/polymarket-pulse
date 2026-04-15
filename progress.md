@@ -34,6 +34,10 @@ What changed:
   - classification totals
   - recent hot-only examples
   - recent legacy-only examples
+• the report now also separates:
+  - `classified_non_quiet_samples`
+  - `unclassified_non_quiet_samples`
+  so we can tell how much of the parity window still predates the richer instrumentation
 
 Why this matters:
 
@@ -46,6 +50,16 @@ Current limitation:
 
 • the production snapshot taken immediately after this upgrade still showed a quiet current window
 • so the richer sections in `docs/delivery_parity_latest.md` are structurally ready, but they still need the next fresh non-quiet sample written by the upgraded bot loop
+
+First useful outcome:
+
+• the next fresh non-quiet sample arrived after deployment
+• it showed:
+  - `hot_only = 1`
+  - `legacy_only = 0`
+  - market `1919425`
+  - classification `legacy_stale_bucket`
+• that is our first concrete evidence that at least some `hot_only` divergence is a legitimate hot freshness lead, not just unexplained noise
 
 
 # Telegram Bot CTR Pass (2026-04-15)

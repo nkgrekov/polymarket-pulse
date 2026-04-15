@@ -60,17 +60,25 @@
 ## Delivery Parity
 
 - last 7 days:
-  - `samples_total = 1918`
-  - `non_quiet_samples = 570`
-  - `hot_only_samples = 133`
-  - `legacy_only_samples = 294`
-  - `both_non_quiet_samples = 143`
+  - `samples_total = 1920`
+  - `non_quiet_samples = 572`
+  - `hot_only_samples = 134`
+  - `legacy_only_samples = 296`
+  - `both_non_quiet_samples = 142`
 - this means hot vs legacy delivery is no longer a quiet-window question
 - there is real semantic divergence in both directions
 - current recent windows show:
   - some periods with full overlap
   - some `legacy_only`
   - some `hot_only`
+- the first richer post-upgrade classified sample now exists:
+  - `sampled_at = 2026-04-15 11:52:37+00:00`
+  - `hot_only = 1`
+  - `legacy_only = 0`
+  - top market `1919425`
+  - classification `legacy_stale_bucket`
+- practical meaning:
+  - at least one recent `hot_only` mismatch already looks like a legitimate freshness lead for hot rather than random noise
 
 ## Bot Reliability
 

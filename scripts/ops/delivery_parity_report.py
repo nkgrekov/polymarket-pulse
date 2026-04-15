@@ -25,6 +25,10 @@ with recent as (
 select
   count(*)::bigint as samples_total,
   count(*) filter (where hot_ready_count > 0 or legacy_watchlist_count > 0)::bigint as non_quiet_samples,
+  count(*) filter (
+    where (hot_ready_count > 0 or legacy_watchlist_count > 0)
+      and coalesce(payload, '{}'::jsonb) ? 'classification_counts'
+  )::bigint as classified_non_quiet_samples,
   count(*) filter (where hot_only_count > 0 and legacy_watchlist_count = 0)::bigint as hot_only_samples,
   count(*) filter (where legacy_only_count > 0 and hot_ready_count = 0)::bigint as legacy_only_samples,
   count(*) filter (where hot_ready_count > 0 and legacy_watchlist_count > 0)::bigint as both_non_quiet_samples,
@@ -178,6 +182,11 @@ def main() -> None:
         "",
         bullet("samples_total", str(summary.get("samples_total", 0))),
         bullet("non_quiet_samples", str(summary.get("non_quiet_samples", 0))),
+        bullet("classified_non_quiet_samples", str(summary.get("classified_non_quiet_samples", 0))),
+        bullet(
+            "unclassified_non_quiet_samples",
+            str(max(int(summary.get("non_quiet_samples", 0) or 0) - int(summary.get("classified_non_quiet_samples", 0) or 0), 0)),
+        ),
         bullet("hot_only_samples", str(summary.get("hot_only_samples", 0))),
         bullet("legacy_only_samples", str(summary.get("legacy_only_samples", 0))),
         bullet("both_non_quiet_samples", str(summary.get("both_non_quiet_samples", 0))),

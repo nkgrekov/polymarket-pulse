@@ -22,6 +22,11 @@ Should push delivery move to hot-first now?
   - `overlap=1`
 - some windows show `hot_only`
 - some windows show `legacy_only`
+- the first richer post-upgrade non-quiet sample already produced one explainable `hot_only` case:
+  - market `1919425`
+  - `delta_abs ~= 0.04`
+  - classification: `legacy_stale_bucket`
+  - meaning: hot saw a current ready move while the legacy bucket surface had not yet caught up
 
 ### Runtime reliability
 
@@ -40,12 +45,14 @@ We now have enough evidence to say:
 1. The hot layer is real and product-meaningful.
 2. Legacy delivery is also still surfacing alerts that hot does not always mark `ready`.
 3. The two surfaces are not yet interchangeable.
+4. At least some `hot_only` divergence is already explainable as a freshness lead rather than random hot-layer noise.
 
 That means a blind hot-first cutover would be irresponsible for two separate reasons:
 
 1. **Semantics**
    - `hot_only` shows that hot sees some actionable windows earlier or differently.
    - `legacy_only` shows that legacy still catches some watchlist alerts that hot would currently miss.
+   - the first classified `hot_only` case points toward a real stale-bucket lag on legacy, which is encouraging for hot, but still not enough to justify a cutover alone.
 
 2. **Reliability**
    - the legacy path is still operationally expensive and occasionally stalls the loop
