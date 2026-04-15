@@ -4,6 +4,50 @@ This document tracks the current state of the project.
 
 ---
 
+# Delivery Mismatch Diagnostics Upgrade (2026-04-15)
+
+Upgraded the delivery parity instrumentation so non-quiet windows can carry mismatch reasons and concrete example rows, not just raw counts.
+
+Files updated:
+
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `dispatch_push_alerts()` still keeps parity best-effort and non-fatal
+• but for non-quiet windows it now also tries a second best-effort detail query that captures:
+  - top `hot_only` examples
+  - top `legacy_only` examples
+  - classification counts
+• detail is written into the existing `bot.delivery_parity_log.payload` JSON field, so no schema change was needed
+• current classification vocabulary is:
+  - `legacy_shock_reverted`
+  - `hot_below_threshold`
+  - `legacy_stale_bucket`
+  - `hot_missing_quote`
+  - `unknown`
+• the parity report now reads those payload details and renders:
+  - classification totals
+  - recent hot-only examples
+  - recent legacy-only examples
+
+Why this matters:
+
+• the delivery question is no longer blocked on “do we have any divergence?”
+• we already know divergence exists
+• the real blocker is “what kind of divergence is it?”
+• this upgrade makes the next non-quiet window much more useful because it will explain the mismatch instead of just counting it
+
+Current limitation:
+
+• the production snapshot taken immediately after this upgrade still showed a quiet current window
+• so the richer sections in `docs/delivery_parity_latest.md` are structurally ready, but they still need the next fresh non-quiet sample written by the upgraded bot loop
+
+
 # Telegram Bot CTR Pass (2026-04-15)
 
 Made a focused CTR/SEO pass on the `/telegram-bot` intent page after GSC showed it had the highest impression count among our search landing pages but still produced zero clicks.

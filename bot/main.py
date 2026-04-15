@@ -944,6 +944,202 @@ select
   (select abs_delta from legacy_top) as top_legacy_abs_delta;
 """
 
+SQL_PUSH_PARITY_DETAIL = """
+with hot_ready as (
+  select
+    app_user_id::text as user_id,
+    market_id,
+    question,
+    delta_abs,
+    threshold_value,
+    liquidity,
+    spread,
+    quote_ts,
+    candidate_state
+  from public.hot_alert_candidates_latest
+  where candidate_state = 'ready'
+), hot_all as (
+  select
+    app_user_id::text as user_id,
+    market_id,
+    question,
+    delta_abs,
+    threshold_value,
+    liquidity,
+    spread,
+    quote_ts,
+    candidate_state
+  from public.hot_alert_candidates_latest
+), hot_snapshot as (
+  select
+    app_user_id::text as user_id,
+    market_id,
+    question,
+    live_state,
+    liquidity,
+    spread,
+    quote_ts
+  from public.hot_watchlist_snapshot_latest
+), legacy_watchlist as (
+  select
+    user_id::text as user_id,
+    market_id,
+    question,
+    abs_delta,
+    last_bucket
+  from bot.alerts_inbox_latest
+  where alert_type = 'watchlist'
+), global_bucket as (
+  select last_bucket
+  from public.global_bucket_latest
+), hot_only_rows as (
+  select
+    h.user_id,
+    h.market_id,
+    h.question,
+    h.delta_abs,
+    h.threshold_value,
+    h.candidate_state,
+    coalesce(s.live_state, 'ready') as live_state,
+    h.liquidity,
+    h.spread,
+    h.quote_ts,
+    case
+      when g.last_bucket is not null
+       and h.quote_ts is not null
+       and h.quote_ts > g.last_bucket
+      then 'legacy_stale_bucket'
+      else 'unknown'
+    end as classification
+  from hot_ready h
+  left join legacy_watchlist l
+    on l.user_id = h.user_id
+   and l.market_id = h.market_id
+  left join hot_snapshot s
+    on s.user_id = h.user_id
+   and s.market_id = h.market_id
+  cross join global_bucket g
+  where l.market_id is null
+), legacy_only_rows as (
+  select
+    l.user_id,
+    l.market_id,
+    coalesce(h.question, s.question, l.question) as question,
+    l.abs_delta,
+    l.last_bucket,
+    h.threshold_value,
+    h.candidate_state,
+    coalesce(s.live_state, h.candidate_state, 'missing') as live_state,
+    coalesce(h.liquidity, s.liquidity) as liquidity,
+    coalesce(h.spread, s.spread) as spread,
+    coalesce(h.quote_ts, s.quote_ts) as quote_ts,
+    case
+      when h.candidate_state = 'below_threshold'
+       and coalesce(h.quote_ts, s.quote_ts) is not null
+       and l.last_bucket is not null
+       and coalesce(h.quote_ts, s.quote_ts) > l.last_bucket
+      then 'legacy_shock_reverted'
+      when h.candidate_state = 'below_threshold'
+      then 'hot_below_threshold'
+      when h.market_id is null
+        or h.candidate_state in ('no_quotes', 'stale_quotes')
+        or coalesce(s.live_state, '') in ('no_quotes', 'partial')
+      then 'hot_missing_quote'
+      else 'unknown'
+    end as classification
+  from legacy_watchlist l
+  left join hot_all h
+    on h.user_id = l.user_id
+   and h.market_id = l.market_id
+  left join hot_snapshot s
+    on s.user_id = l.user_id
+   and s.market_id = l.market_id
+  left join hot_ready r
+    on r.user_id = l.user_id
+   and r.market_id = l.market_id
+  where r.market_id is null
+), classification_counts as (
+  select
+    classification,
+    count(*)::bigint as row_count
+  from (
+    select classification from hot_only_rows
+    union all
+    select classification from legacy_only_rows
+  ) c
+  group by classification
+), hot_only_top as (
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'user_id', user_id,
+        'market_id', market_id,
+        'question', question,
+        'delta_abs', delta_abs,
+        'threshold_value', threshold_value,
+        'candidate_state', candidate_state,
+        'live_state', live_state,
+        'liquidity', liquidity,
+        'spread', spread,
+        'quote_ts', quote_ts,
+        'classification', classification
+      )
+      order by delta_abs desc nulls last, market_id
+    ),
+    '[]'::jsonb
+  ) as rows
+  from (
+    select *
+    from hot_only_rows
+    order by delta_abs desc nulls last, market_id
+    limit 3
+  ) t
+), legacy_only_top as (
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'user_id', user_id,
+        'market_id', market_id,
+        'question', question,
+        'abs_delta', abs_delta,
+        'threshold_value', threshold_value,
+        'candidate_state', candidate_state,
+        'live_state', live_state,
+        'liquidity', liquidity,
+        'spread', spread,
+        'quote_ts', quote_ts,
+        'legacy_last_bucket', last_bucket,
+        'classification', classification
+      )
+      order by abs_delta desc nulls last, market_id
+    ),
+    '[]'::jsonb
+  ) as rows
+  from (
+    select *
+    from legacy_only_rows
+    order by abs_delta desc nulls last, market_id
+    limit 3
+  ) t
+)
+select
+  (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'classification', classification,
+          'count', row_count
+        )
+        order by row_count desc, classification asc
+      ),
+      '[]'::jsonb
+    )
+    from classification_counts
+  ) as classification_counts,
+  (select rows from hot_only_top) as hot_only_top,
+  (select rows from legacy_only_top) as legacy_only_top;
+"""
+
 SQL_PUSH_PARITY_LOG_INSERT = """
 insert into bot.delivery_parity_log (
   hot_ready_count,
@@ -3038,6 +3234,12 @@ async def dispatch_push_alerts(application: Application) -> None:
         overlap_count = int(row.get("overlap_count") or 0)
         hot_only_count = int(row.get("hot_only_count") or 0)
         legacy_only_count = int(row.get("legacy_only_count") or 0)
+        payload_data: dict[str, Any] = {
+            "top_hot_market_id": row.get("top_hot_market_id"),
+            "top_legacy_market_id": row.get("top_legacy_market_id"),
+            "top_hot_abs_delta": str(row.get("top_hot_abs_delta")) if row.get("top_hot_abs_delta") is not None else None,
+            "top_legacy_abs_delta": str(row.get("top_legacy_abs_delta")) if row.get("top_legacy_abs_delta") is not None else None,
+        }
         log.info(
             "push_loop parity hot_ready=%s legacy_watchlist=%s overlap=%s hot_only=%s legacy_only=%s",
             hot_ready_count,
@@ -3046,6 +3248,28 @@ async def dispatch_push_alerts(application: Application) -> None:
             hot_only_count,
             legacy_only_count,
         )
+        if hot_ready_count > 0 or legacy_watchlist_count > 0:
+            try:
+                detail_rows = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        lambda: run_db_query(
+                            SQL_PUSH_PARITY_DETAIL,
+                            (),
+                            row_factory=dict_row,
+                            retry_attempts=1,
+                        )
+                    ),
+                    timeout=8.0,
+                )
+                if detail_rows:
+                    detail = detail_rows[0]
+                    payload_data["classification_counts"] = detail.get("classification_counts") or []
+                    payload_data["hot_only_top"] = detail.get("hot_only_top") or []
+                    payload_data["legacy_only_top"] = detail.get("legacy_only_top") or []
+            except asyncio.TimeoutError:
+                log.warning("push_loop parity detail skipped: timed out")
+            except Exception:
+                log.exception("push_loop parity detail skipped")
         try:
             await asyncio.to_thread(
                 lambda: execute_db_write(
@@ -3060,14 +3284,7 @@ async def dispatch_push_alerts(application: Application) -> None:
                         row.get("top_legacy_market_id"),
                         row.get("top_hot_abs_delta"),
                         row.get("top_legacy_abs_delta"),
-                        Jsonb(
-                            {
-                                "top_hot_market_id": row.get("top_hot_market_id"),
-                                "top_legacy_market_id": row.get("top_legacy_market_id"),
-                                "top_hot_abs_delta": str(row.get("top_hot_abs_delta")) if row.get("top_hot_abs_delta") is not None else None,
-                                "top_legacy_abs_delta": str(row.get("top_legacy_abs_delta")) if row.get("top_legacy_abs_delta") is not None else None,
-                            }
-                        ),
+                        Jsonb(payload_data),
                     ),
                     retry_attempts=1,
                 )

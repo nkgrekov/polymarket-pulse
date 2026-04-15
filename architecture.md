@@ -4,6 +4,48 @@ This document describes the technical architecture.
 
 ---
 
+# Delivery Mismatch Diagnostics Upgrade (2026-04-15)
+
+Delivery parity telemetry now captures mismatch reasons and top example rows for non-quiet windows, while keeping push delivery semantics unchanged.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `dispatch_push_alerts()` still treats parity as best-effort telemetry
+• for non-quiet windows it now performs a second best-effort detail query over:
+  - `public.hot_alert_candidates_latest`
+  - `public.hot_watchlist_snapshot_latest`
+  - `bot.alerts_inbox_latest`
+  - `public.global_bucket_latest`
+• that detail query classifies mismatch rows into a small controlled vocabulary:
+  - `legacy_shock_reverted`
+  - `hot_below_threshold`
+  - `legacy_stale_bucket`
+  - `hot_missing_quote`
+  - `unknown`
+• richer mismatch detail is stored in the existing `bot.delivery_parity_log.payload` JSON field:
+  - `classification_counts`
+  - `hot_only_top`
+  - `legacy_only_top`
+• the parity report now aggregates those payload details into:
+  - classification totals across the lookback window
+  - recent hot-only examples
+  - recent legacy-only examples
+
+Architectural consequence:
+
+• the next delivery decision can be made on mismatch reasons rather than on raw divergence counts alone
+• this keeps the current legacy push path intact while making the shadow-evaluation layer decision-grade
+• because the detail query is still best-effort and separately timed, a slow diagnostic branch should not become a fatal dependency of push delivery
+
+
 # Telegram Bot CTR Pass (2026-04-15)
 
 The highest-impression search landing page is now `/telegram-bot`, so the next SEO move is not broader site rewriting but sharpening that page as a true bot-intent SERP surface.
