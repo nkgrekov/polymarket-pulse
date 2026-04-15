@@ -4,6 +4,39 @@ This document describes the technical architecture.
 
 ---
 
+# Delivery Decision Pass (2026-04-15)
+
+The delivery migration has now reached a point where the primary uncertainty is semantic, not infrastructural.
+
+Updated artifacts:
+
+• `docs/delivery_decision_pass_2026-04-15.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural findings:
+
+• a full week of `bot.delivery_parity_log` history now shows meaningful divergence:
+  - repeated `hot_only`
+  - repeated `legacy_only`
+  - repeated overlap windows
+• this means:
+  - the hot layer is not merely “waiting for signal”
+  - legacy is not merely “obviously stale”
+  - the two delivery surfaces still encode different alert semantics
+• the remaining decision is therefore not a simple infra cutover
+• it is a product-quality decision about which surface should own push semantics
+
+Architectural consequence:
+
+• push delivery should remain on legacy for now
+• hot-first read migration remains the right choice
+• the next correct step is richer shadow diagnostics on non-quiet mismatches so we can classify:
+  - valid hot lead
+  - valid legacy catch
+  - legacy noise
+  - hot over-strictness or omission
+
 # Weekly Status Checkpoint (2026-04-15)
 
 The system now has enough live evidence to treat the current state as a proper architectural checkpoint rather than a speculative transition.

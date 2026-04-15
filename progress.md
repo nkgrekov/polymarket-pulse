@@ -4,6 +4,34 @@ This document tracks the current state of the project.
 
 ---
 
+# Delivery Decision Pass (2026-04-15)
+
+Took the first real delivery decision pass using a full week of parity history instead of waiting for one lucky non-quiet window.
+
+Files updated:
+
+• `docs/delivery_decision_pass_2026-04-15.md`
+• `progress.md`
+• `architecture.md`
+
+What we concluded:
+
+• push delivery should **not** move to hot-first yet
+• this is no longer because of missing data
+• it is because we now have enough data to see real semantic divergence:
+  - meaningful `hot_only`
+  - meaningful `legacy_only`
+  - some clean overlap windows too
+• the current blocker is therefore:
+  - not “wait for more signal”
+  - but “understand mismatched signal quality”
+
+Practical consequence:
+
+• keep read surfaces hot-first
+• keep push delivery on legacy for now
+• next step should be richer shadow diagnostics on non-quiet parity windows, not a blind cutover
+
 # Weekly Status Checkpoint (2026-04-15)
 
 Took a fresh runtime and data-layer checkpoint nearly a week after the telemetry and push-loop fixes so we could separate real recovery from wishful thinking.
