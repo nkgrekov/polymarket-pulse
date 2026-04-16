@@ -2364,6 +2364,21 @@ def watchlist_list_inline(locale: str, *, has_closed: bool = False) -> InlineKey
     return InlineKeyboardMarkup(rows)
 
 
+def picker_empty_inline(locale: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Refresh list" if locale == "en" else "Обновить список", callback_data="menu:pick_refresh"),
+                InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+            ],
+            [
+                InlineKeyboardButton("Watchlist" if locale == "en" else "Вотчлист", callback_data="menu:watchlist"),
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+            ],
+        ]
+    )
+
+
 def watchlist_review_remove_inline(
     chat_id: int,
     rows: list[dict[str, Any]],
@@ -2890,19 +2905,19 @@ async def send_watchlist_picker(
         text = (
             f"No live candidates for {_picker_category_label(category)} filter right now.\n"
             f"Current picker floor: liquidity >= {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}.\n"
-            "Try another filter or /watchlist_add <market_id|slug>."
+            "Best next step: refresh the picker, check Top movers, or add a specific market via /watchlist_add <market_id|slug>."
             if locale == "en"
             else f"Для фильтра {_picker_category_label(category)} сейчас нет live-кандидатов.\n"
             f"Текущий порог picker: liquidity >= {int(WATCHLIST_PICKER_MIN_LIQUIDITY)}.\n"
-            "Попробуйте другой фильтр или /watchlist_add <market_id|slug>."
+            "Лучший следующий шаг: обновить picker, проверить Топ муверы или добавить конкретный рынок через /watchlist_add <market_id|slug>."
         )
         if edit_message:
             try:
-                await message.edit_text(text)
+                await message.edit_text(text, reply_markup=picker_empty_inline(locale))
                 return
             except Exception:
                 log.debug("watchlist picker edit failed; fallback to reply", exc_info=True)
-        await message.reply_text(text)
+        await message.reply_text(text, reply_markup=picker_empty_inline(locale))
         return
 
     chat_id = message.chat_id

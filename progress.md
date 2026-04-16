@@ -4,6 +4,36 @@ This document tracks the current state of the project.
 
 ---
 
+# Picker Empty-State Recovery (2026-04-16)
+
+Added another small `Pulse` UX improvement so the watchlist picker does not dead-end when the current live filter has no candidates.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `send_watchlist_picker(...)` no longer returns a text-only empty state when the chosen live filter has no candidates
+• the picker empty state now explains the best next step more explicitly:
+  - refresh the picker
+  - check `Top movers`
+  - or add a specific market manually via `/watchlist_add <market_id|slug>`
+• the empty state now also renders inline recovery buttons:
+  - `Refresh list`
+  - `Top movers`
+  - `Watchlist`
+  - `Inbox`
+
+Why this matters:
+
+• the picker is one of the main first-value paths in `Pulse`
+• when a live filter temporarily dries up, a text-only response feels like the flow is broken
+• this keeps the user inside the normal navigation loop and makes the next action obvious without changing any data or delivery behavior
+
+
 # Watchlist Empty-State Recovery (2026-04-15)
 
 Added one more small `Pulse` UX improvement so cleanup and review flows do not dead-end when the list is already empty or when the user opens manual removal without an argument.

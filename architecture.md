@@ -4,6 +4,39 @@ This document describes the technical architecture.
 
 ---
 
+# Picker Empty-State Recovery (2026-04-16)
+
+The watchlist picker now recovers back into the normal button-driven bot loop when the chosen live filter has no candidates.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `send_watchlist_picker(...)` no longer emits a text-only empty state for no-candidate live windows
+• the picker empty branch now renders a small recovery keyboard with:
+  - `Refresh list`
+  - `Top movers`
+  - `Watchlist`
+  - `Inbox`
+• the explanatory copy now points users toward:
+  - refreshing the live picker
+  - checking broader movers
+  - or manually adding a specific market
+
+Architectural consequence:
+
+• the picker branch has fewer dead ends during thin live windows
+• the main first-value market-add path stays action-oriented even when a chosen category is temporarily empty
+• this remains additive UX only:
+  - no SQL change
+  - no delivery change
+  - no data-layer change
+
+
 # Watchlist Empty-State Recovery (2026-04-15)
 
 The review and manual-cleanup surfaces now recover back into the normal button-driven bot flow even when the watchlist is already empty.
