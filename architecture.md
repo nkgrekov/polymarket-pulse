@@ -4,6 +4,32 @@ This document describes the technical architecture.
 
 ---
 
+# Watchlist Empty Recovery (2026-04-20)
+
+The `/watchlist` surface now distinguishes between an actually empty list and a quiet live window.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `send_watchlist_view(...)` now short-circuits on `watchlist_count == 0`
+• instead of entering the normal live/fallback/diagnostic path, it emits a dedicated empty-state message with inline recovery buttons
+
+Architectural consequence:
+
+• the watchlist surface now encodes two different states honestly:
+  - empty list
+  - existing list with no current live movement
+• this reduces ambiguity in first-return UX without changing:
+  - SQL
+  - delivery semantics
+  - hot/legacy data-layer behavior
+
+
 # Picker Empty-State Recovery (2026-04-16)
 
 The watchlist picker now recovers back into the normal button-driven bot loop when the chosen live filter has no candidates.

@@ -4,6 +4,32 @@ This document tracks the current state of the project.
 
 ---
 
+# Watchlist Empty Recovery (2026-04-20)
+
+Added another small `Pulse` UX improvement so a truly empty watchlist no longer looks like a quiet or broken live window.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `send_watchlist_view(...)` now checks for `watchlist_count == 0` before running the normal live read path
+• if the list is empty, the bot now says so explicitly instead of falling through into generic “no live changes” logic
+• the empty state points to the next useful action:
+  - add one live market first
+  - then come back for live deltas
+• the screen also renders the normal inline recovery/navigation buttons
+
+Why this matters:
+
+• an empty watchlist and a quiet live window are different product states
+• treating them the same makes the bot feel confusing for new or returning users
+• this keeps the first-return flow honest without touching any SQL, alerting, or delivery behavior
+
+
 # Picker Empty-State Recovery (2026-04-16)
 
 Added another small `Pulse` UX improvement so the watchlist picker does not dead-end when the current live filter has no candidates.

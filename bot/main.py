@@ -2671,6 +2671,18 @@ async def send_watchlist_view(
     show_loader: bool = True,
     context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
+    if int(user_ctx.get("watchlist_count") or 0) == 0:
+        await message.reply_text(
+            (
+                "Your watchlist is empty.\n"
+                "Best next step: add one live market first, then come back here to read live deltas."
+                if locale == "en"
+                else "Ваш watchlist пуст.\n"
+                "Лучший следующий шаг: сначала добавьте один live-рынок, а потом возвращайтесь сюда смотреть live-дельты."
+            ),
+            reply_markup=watchlist_list_inline(locale, has_closed=False),
+        )
+        return
     if show_loader:
         await message.reply_text(
             "Checking live changes in your watchlist..." if locale == "en" else "Смотрю live изменения вашего watchlist..."
