@@ -4,6 +4,32 @@ This document tracks the current state of the project.
 
 ---
 
+# Inbox Empty Recovery (2026-04-21)
+
+Added one more small `Pulse` UX improvement so an actually empty watchlist no longer reads as a generic empty inbox state.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `send_inbox_view(...)` now checks `watchlist_count == 0` before entering the normal inbox read path
+• if the user is not tracking any markets yet, the bot now says so explicitly instead of falling into generic “no alerts / no deltas” copy
+• the empty state points to the next useful move:
+  - add one live market first
+  - then return to Inbox for thresholded alerts
+• the screen still keeps the normal inline recovery/navigation buttons
+
+Why this matters:
+
+• an empty watchlist and a quiet inbox are not the same product state
+• treating them as the same makes the bot feel vague for new and reactivated users
+• this keeps the first-return logic honest without changing delivery semantics or the data layer
+
+
 # Watchlist Empty Recovery (2026-04-20)
 
 Added another small `Pulse` UX improvement so a truly empty watchlist no longer looks like a quiet or broken live window.
@@ -193,6 +219,14 @@ First useful outcome:
 • this makes the mismatch story much clearer:
   - `hot_only` is now explainable as current live freshness lead
   - `legacy_only` is now explainable as bucket shock persistence after live reversion
+• the latest 7-day refresh now shows this is no longer a small-sample interpretation:
+  - `classified_non_quiet_samples = 987`
+  - `hot_only_samples = 215`
+  - `legacy_only_samples = 511`
+  - `both_non_quiet_samples = 464`
+• this strengthens the current decision:
+  - push delivery still should not move to blind hot-first
+  - if we continue delivery work, it should be via hybrid/fallback refinement rather than outright replacement
 
 
 # Telegram Bot CTR Pass (2026-04-15)

@@ -110,6 +110,40 @@ If divergence remains meaningful:
 
 Current evidence is now pointing more strongly toward this semantic split than toward an immediate hot-first push cutover.
 
+## Fresh Follow-Up (2026-04-21)
+
+The latest regenerated parity snapshot strengthens this conclusion instead of weakening it.
+
+### Parity history refresh (last 7 days)
+
+- `samples_total = 1887`
+- `non_quiet_samples = 1190`
+- `classified_non_quiet_samples = 987`
+- `hot_only_samples = 215`
+- `legacy_only_samples = 511`
+- `both_non_quiet_samples = 464`
+- `max_overlap_count = 5`
+
+### What changed
+
+1. The classified sample is now large enough to trust as an actual operating picture.
+2. Overlap is real and frequent, so this is not a simple “hot and legacy never agree” story.
+3. `legacy_only` still materially outweighs `hot_only`, so hot is not yet safe as a drop-in delivery replacement.
+4. The mismatch vocabulary still points to the same semantic split:
+   - `legacy_stale_bucket`
+   - `legacy_shock_reverted`
+
+### Current reading
+
+- hot is clearly useful and often fresher
+- legacy is clearly slower and noisier in some windows
+- but legacy still owns a larger share of currently surfaced push-only cases
+
+That keeps the recommendation unchanged:
+
+- do **not** cut over push delivery to hot-first yet
+- if we continue delivery work, the safest next move is a hybrid/fallback refinement path, not a blind replacement
+
 ## Practical Recommendation
 
 The next useful implementation step is **not** the cutover itself.

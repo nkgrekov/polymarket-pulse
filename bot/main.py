@@ -2570,6 +2570,18 @@ async def send_inbox_view(
     show_loader: bool = True,
     context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
+    if int(user_ctx.get("watchlist_count") or 0) == 0:
+        await message.reply_text(
+            (
+                "Your watchlist is empty, so Inbox may stay empty too.\n"
+                "Best next step: add one live market first, then come back here for thresholded alerts."
+                if locale == "en"
+                else "Ваш watchlist пуст, поэтому Inbox тоже может быть пустым.\n"
+                "Лучший следующий шаг: сначала добавьте один live-рынок, а потом возвращайтесь сюда за пороговыми алертами."
+            ),
+            reply_markup=inbox_live_inline(locale, has_closed=False),
+        )
+        return
     if show_loader:
         await message.reply_text("Reading your inbox..." if locale == "en" else "Читаю ваш inbox...")
     try:

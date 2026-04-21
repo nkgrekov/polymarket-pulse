@@ -4,6 +4,32 @@ This document describes the technical architecture.
 
 ---
 
+# Inbox Empty Recovery (2026-04-21)
+
+The `/inbox` surface now distinguishes between a truly empty tracked set and a quiet alert window.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `send_inbox_view(...)` now short-circuits on `watchlist_count == 0`
+• instead of entering the normal inbox read and diagnostic path, it emits a dedicated empty-state message with inline recovery buttons
+
+Architectural consequence:
+
+• the inbox surface now encodes two different states honestly:
+  - no tracked watchlist markets yet
+  - tracked markets exist, but no current thresholded alerts
+• this reduces ambiguity in onboarding and reactivation without changing:
+  - SQL
+  - delivery semantics
+  - hot/legacy alert generation
+
+
 # Watchlist Empty Recovery (2026-04-20)
 
 The `/watchlist` surface now distinguishes between an actually empty list and a quiet live window.
@@ -180,6 +206,18 @@ Architectural consequence:
 • the delivery mismatch picture is now more balanced:
   - `hot_only` can represent live freshness lead
   - `legacy_only` can represent bucket shock persistence after the live move has already cooled below threshold
+• the fresh 7-day parity refresh now shows this at larger scale:
+  - `classified_non_quiet_samples = 987`
+  - `hot_only_samples = 215`
+  - `legacy_only_samples = 511`
+  - `both_non_quiet_samples = 464`
+• the architectural implication is now firmer:
+  - hot is product-real and often fresher
+  - legacy is slower and noisier in some windows
+  - but legacy still owns a larger share of push-only surfaced cases
+• that keeps the safest next move the same:
+  - no blind hot-first cutover
+  - prefer hybrid/fallback refinement if delivery migration continues
 
 
 # Telegram Bot CTR Pass (2026-04-15)
