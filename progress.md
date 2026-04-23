@@ -4,6 +4,34 @@ This document tracks the current state of the project.
 
 ---
 
+# Trader Services Parked On Railway Hobby (2026-04-23)
+
+Parked the non-core trader services on Railway so the current Hobby footprint matches the product focus and cost posture.
+
+Files updated:
+
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `trader-bot` current deployment was removed in Railway
+• `trade-worker` current deployment was removed in Railway
+• both services now have no active deployment attached
+• the core runtime remained unchanged:
+  - `site`
+  - `bot`
+  - `ingest`
+
+Why this matters:
+
+• the current critical path is still `Pulse`, not `Trader`
+• keeping inactive trader services live on Hobby adds avoidable operational and cost noise
+• parking them now makes the runtime posture match the current plan:
+  - keep `site`, `bot`, `ingest` always-on
+  - keep `trader-bot` and `trade-worker` parked-by-default until alpha work resumes
+
+
 # Inbox Empty Recovery (2026-04-21)
 
 Added one more small `Pulse` UX improvement so an actually empty watchlist no longer reads as a generic empty inbox state.

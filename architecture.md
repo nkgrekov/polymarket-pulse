@@ -4,6 +4,31 @@ This document describes the technical architecture.
 
 ---
 
+# Trader Services Parked On Railway Hobby (2026-04-23)
+
+The runtime posture on Railway now matches the current product and cost plan more closely.
+
+Updated artifacts:
+
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the current deployments for `trader-bot` and `trade-worker` were removed in Railway
+• both trader services are now operationally parked and no longer part of the active always-on runtime set
+• the active core set remains:
+  - `site`
+  - `bot`
+  - `ingest`
+
+Architectural consequence:
+
+• the current production runtime is intentionally centered on `Pulse`
+• `Trader` infrastructure remains available as service definitions, but not as active continuously running deployments
+• this reduces Hobby footprint and avoids ambiguity about which surfaces are meant to be operational right now
+
+
 # Inbox Empty Recovery (2026-04-21)
 
 The `/inbox` surface now distinguishes between a truly empty tracked set and a quiet alert window.
