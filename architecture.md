@@ -4,6 +4,109 @@ This document describes the technical architecture.
 
 ---
 
+# Telegram Identity Bridge + Bell Model + Hot Alert Alignment (2026-04-27)
+
+The watchlist model is no longer “saved market == implicit alert.”
+
+The system now separates:
+
+• web watchlist membership
+• Telegram identity/session
+• per-market bell configuration
+• hot alert candidate eligibility
+
+Updated artifacts:
+
+• `db/migrations/017_web_watchlist_identity_and_alerts.sql`
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `bot/main.py`
+• `ingest/live_main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• added a new website auth/session bridge on the shared app identity layer:
+  - `app.web_auth_requests`
+  - `app.web_sessions`
+• the website no longer pretends browser-local state is real persistence
+• `watchlist-client.js` now treats Telegram as the only identity resolver for persisted watchlist state:
+  - logged-out users can still browse and compare markets
+  - persisted save/remove flow now goes through server-owned endpoints
+  - return-to-site session is finalized through `/auth/telegram/complete`
+• `api/main.py` now owns a minimal server-backed web watchlist control plane:
+  - `/api/watchlist/session`
+  - `/api/watchlist/auth/start`
+  - `/api/watchlist/save`
+  - `/api/watchlist/remove`
+  - `/api/watchlist-workspace`
+• the workspace API now has two modes:
+  - logged-in: hydrate from `bot.watchlist` + alert metadata server-side
+  - logged-out: hydrate pending local market ids through the existing read-only market workspace query
+• introduced `bot.watchlist_alert_settings` as the additive per-user per-market bell table:
+  - `alert_enabled`
+  - `alert_paused`
+  - `threshold_value`
+  - `last_alert_at`
+  - `source`
+• `bot.watchlist` remains the canonical saved-market membership table
+• compatibility rule for existing users:
+  - legacy/current Telegram watchlist rows are backfilled into `bot.watchlist_alert_settings` with `alert_enabled = true`
+  - new website-created saved rows default to `alert_enabled = false`
+• website product semantics are now explicit:
+  - save to watchlist = membership only
+  - bell = Telegram alert eligibility
+  - sensitivity = per-market threshold when explicitly configured, otherwise fallback to global `/threshold`
+• bot deep-link handling now understands website identity payloads:
+  - `site_login_<token>`
+  - `site_watchlist_add_<market_id>_<token>`
+  - `site_alert_<market_id>_<token>`
+  - `site_return_watchlist_<token>`
+  - `site_alert_<market_id>` for in-Telegram manage-alert reentry
+• Telegram alert setup is now a narrow bot flow:
+  - website bell click opens Telegram bridge
+  - Telegram stores per-market sensitivity into `bot.watchlist_alert_settings`
+  - no new public write access is exposed to the browser
+• `ingest/live_main.py` changed the hot alert source contract:
+  - `public.hot_watchlist_snapshot_latest` still reflects all saved markets from `bot.watchlist`
+  - `public.hot_alert_candidates_latest` now only materializes rows from:
+    - `bot.watchlist_alert_settings.alert_enabled = true`
+    - `bot.watchlist_alert_settings.alert_paused = false`
+• per-market alert threshold resolution now becomes:
+  - `bot.watchlist_alert_settings.threshold_value`
+  - else global `bot.user_settings.threshold`
+  - else `0.03`
+• legacy-primary bot push delivery remains in place, but now reads bell semantics additively:
+  - suppress if `alert_enabled = false`
+  - suppress if `alert_paused = true`
+  - still suppress stale legacy rows when hot says `closed` or `below_threshold_reverted`
+• push alert messages now carry runtime action buttons:
+  - open on site
+  - open on Polymarket
+  - manage alert
+
+Architectural consequence:
+
+• the public web surface now owns saved-market workspace UX, but not identity truth
+• Telegram becomes both:
+  - the persistent identity bridge for the website
+  - the configuration surface for bell sensitivity
+• hot watchlist state and hot alert eligibility are no longer the same dataset
+• this is the first real additive step toward the product model:
+  - website = research workspace
+  - Telegram = alert control loop
+• rollback remains straightforward:
+  - `bot.watchlist` membership is unchanged
+  - delivery is still legacy-primary
+  - new web session and bell tables can be ignored if needed without deleting existing saved markets
+• the remaining validation burden is operational, not conceptual:
+  - apply migration `017`
+  - deploy `site` / `bot` / `ingest`
+  - verify save -> Telegram -> return -> persisted watchlist -> bell sensitivity -> hot candidate filtering end to end
+
 # Website Watchlist UX Workspace (2026-04-27)
 
 The site now has a first real watchlist workspace layer on top of the hot/live market data surfaces.

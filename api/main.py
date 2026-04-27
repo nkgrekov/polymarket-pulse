@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import html
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 from urllib.parse import quote, urlencode, urlparse
@@ -15,7 +15,7 @@ import psycopg
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from pydantic import BaseModel, EmailStr
 from psycopg.types.json import Jsonb
 
@@ -35,6 +35,9 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_SUCCESS_URL = os.environ.get("STRIPE_SUCCESS_URL", "")
 STRIPE_CANCEL_URL = os.environ.get("STRIPE_CANCEL_URL", "")
 PRO_SUBSCRIPTION_DAYS = int(os.environ.get("PRO_SUBSCRIPTION_DAYS", "30"))
+WEB_SESSION_DAYS = int(os.environ.get("WEB_SESSION_DAYS", "30"))
+WEB_AUTH_REQUEST_MINUTES = int(os.environ.get("WEB_AUTH_REQUEST_MINUTES", "30"))
+WEB_SESSION_COOKIE = os.environ.get("WEB_SESSION_COOKIE", "pulse_session")
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
@@ -513,6 +516,22 @@ class TraderSignerSubmitRequest(BaseModel):
     signed_payload: str
 
 
+class WatchlistAuthStartRequest(BaseModel):
+    intent: Literal["login", "watchlist_add", "alert", "return_watchlist"] = "login"
+    market_id: str | None = None
+    return_path: str | None = "/watchlist"
+    locale: Literal["ru", "en"] | None = None
+    question: str | None = None
+    source: str = "site"
+
+
+class WatchlistSaveRequest(BaseModel):
+    market_id: str
+    question: str | None = None
+    slug: str | None = None
+    source: str = "site"
+
+
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
@@ -678,6 +697,246 @@ left join public.hot_market_quotes_latest q using (market_id)
 left join public.hot_top_movers_1m hm1 using (market_id)
 left join public.hot_top_movers_5m hm5 using (market_id)
 left join public.top_movers_latest tm using (market_id);
+"""
+
+SQL_WATCHLIST_WORKSPACE_USER = """
+with wanted as (
+  select
+    w.market_id,
+    w.created_at as saved_at
+  from bot.watchlist w
+  where w.user_id = %s::uuid
+  order by w.created_at desc
+  limit 100
+), last_alert as (
+  select
+    market_id,
+    max(sent_at) as last_alert_at
+  from bot.sent_alerts_log
+  where user_id = %s::uuid
+    and channel = 'bot'
+    and alert_type = 'watchlist'
+  group by market_id
+)
+select
+  w.market_id,
+  w.saved_at,
+  coalesce(r.question, m.question, tm.question, w.market_id) as question,
+  coalesce(r.slug, m.slug) as slug,
+  coalesce(r.status, m.status, 'unknown') as market_status,
+  coalesce(q.quote_ts, hm5.quote_ts, tm.last_bucket) as quote_ts,
+  coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now)::double precision as yes_mid_now,
+  coalesce(hm5.prev_mid, tm.yes_mid_prev)::double precision as yes_mid_prev_5m,
+  hm1.delta_mid::double precision as delta_1m,
+  hm5.delta_mid::double precision as delta_5m,
+  coalesce(hm5.delta_mid, tm.delta_yes)::double precision as delta_primary,
+  q.liquidity::double precision as liquidity,
+  q.spread::double precision as spread,
+  q.freshness_seconds::double precision as freshness_seconds,
+  q.has_two_sided_quote,
+  coalesce(s.alert_enabled, false) as alert_enabled,
+  coalesce(s.alert_paused, false) as alert_paused,
+  s.threshold_value::double precision as alert_threshold_value,
+  coalesce(s.threshold_value, u.threshold, 0.03)::double precision as effective_threshold_value,
+  coalesce(s.last_alert_at, la.last_alert_at) as last_alert_at,
+  case
+    when coalesce(r.status, m.status, 'unknown') <> 'active' then 'market_closed'
+    when coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now) is null then 'no_quotes'
+    when q.freshness_seconds is not null and q.freshness_seconds > %s then 'stale_quotes'
+    when q.spread is not null and q.spread > %s then 'filtered_by_spread'
+    when q.liquidity is not null and q.liquidity < %s then 'filtered_by_liquidity'
+    when q.mid_yes is not null then 'saved'
+    when hm5.current_mid is not null or tm.yes_mid_now is not null then 'legacy_snapshot'
+    else 'no_quotes'
+  end as row_state,
+  case
+    when coalesce(r.status, m.status, 'unknown') <> 'active' then 'market_closed'
+    when coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now) is null then 'no_quotes'
+    when q.freshness_seconds is not null and q.freshness_seconds > %s then 'stale_quotes'
+    when q.spread is not null and q.spread > %s then 'filtered_by_spread'
+    when q.liquidity is not null and q.liquidity < %s then 'filtered_by_liquidity'
+    when q.mid_yes is not null then 'live_quality_gated'
+    when hm5.current_mid is not null or tm.yes_mid_now is not null then 'legacy_fallback'
+    else 'no_quotes'
+  end as signal_quality
+from wanted w
+left join public.hot_market_registry_latest r using (market_id)
+left join public.markets m using (market_id)
+left join public.hot_market_quotes_latest q using (market_id)
+left join public.hot_top_movers_1m hm1 using (market_id)
+left join public.hot_top_movers_5m hm5 using (market_id)
+left join public.top_movers_latest tm using (market_id)
+left join bot.watchlist_alert_settings s
+  on s.user_id = %s::uuid
+ and s.market_id = w.market_id
+left join bot.user_settings u
+  on u.user_id = %s::uuid
+left join last_alert la
+  on la.market_id = w.market_id;
+"""
+
+SQL_WEB_AUTH_REQUEST_INSERT = """
+insert into app.web_auth_requests (
+  request_token,
+  market_id,
+  intent,
+  return_path,
+  locale,
+  payload,
+  expires_at
+)
+values (
+  %s,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s,
+  now() + make_interval(mins => %s)
+);
+"""
+
+SQL_WEB_AUTH_REQUEST_COMPLETE = """
+update app.web_auth_requests
+set user_id = %s::uuid,
+    telegram_id = %s,
+    chat_id = %s,
+    status = 'completed',
+    completed_at = now(),
+    payload = coalesce(payload, '{}'::jsonb) || %s::jsonb
+where request_token = %s
+  and expires_at > now()
+returning
+  id,
+  request_token,
+  market_id,
+  intent,
+  return_path,
+  locale,
+  status,
+  user_id,
+  payload,
+  expires_at;
+"""
+
+SQL_WEB_AUTH_REQUEST_SELECT = """
+select
+  id,
+  request_token,
+  market_id,
+  intent,
+  return_path,
+  locale,
+  status,
+  user_id,
+  payload,
+  expires_at
+from app.web_auth_requests
+where request_token = %s
+limit 1;
+"""
+
+SQL_WEB_AUTH_REQUEST_CLAIM = """
+update app.web_auth_requests
+set status = 'claimed',
+    claimed_at = now()
+where request_token = %s
+  and status = 'completed'
+  and expires_at > now()
+returning
+  id,
+  request_token,
+  market_id,
+  intent,
+  return_path,
+  locale,
+  user_id,
+  payload;
+"""
+
+SQL_WEB_SESSION_INSERT = """
+insert into app.web_sessions (
+  session_token,
+  user_id,
+  source,
+  expires_at,
+  user_agent,
+  ip,
+  payload
+)
+values (
+  %s,
+  %s::uuid,
+  'telegram',
+  now() + make_interval(days => %s),
+  %s,
+  %s,
+  %s
+);
+"""
+
+SQL_WEB_SESSION_SELECT = """
+select
+  s.session_token,
+  s.user_id,
+  s.created_at,
+  s.expires_at,
+  s.last_seen_at,
+  p.telegram_id,
+  p.chat_id,
+  p.username,
+  p.first_name,
+  p.last_name,
+  p.locale
+from app.web_sessions s
+left join bot.profiles p
+  on p.user_id = s.user_id
+where s.session_token = %s
+  and s.expires_at > now()
+limit 1;
+"""
+
+SQL_WEB_SESSION_TOUCH = """
+update app.web_sessions
+set last_seen_at = now()
+where session_token = %s;
+"""
+
+SQL_SITE_WATCHLIST_ADD = """
+insert into bot.watchlist (user_id, market_id)
+values (%s::uuid, %s)
+on conflict (user_id, market_id) do nothing;
+"""
+
+SQL_SITE_WATCHLIST_REMOVE = """
+delete from bot.watchlist
+where user_id = %s::uuid
+  and market_id = %s;
+"""
+
+SQL_SITE_ALERT_SETTINGS_UPSERT = """
+insert into bot.watchlist_alert_settings (
+  user_id,
+  market_id,
+  alert_enabled,
+  alert_paused,
+  threshold_value,
+  source
+)
+values (
+  %s::uuid,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s
+)
+on conflict (user_id, market_id) do update
+set alert_enabled = excluded.alert_enabled,
+    alert_paused = excluded.alert_paused,
+    threshold_value = coalesce(excluded.threshold_value, bot.watchlist_alert_settings.threshold_value),
+    source = excluded.source,
+    updated_at = now();
 """
 
 SQL_ENSURE_PAYMENT_EVENTS = """
@@ -887,6 +1146,135 @@ def load_page(base_name: str, lang: Literal["ru", "en"]) -> str:
 
 def base_url() -> str:
     return APP_BASE_URL.rstrip("/")
+
+
+def _safe_return_path(value: str | None) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return "/watchlist"
+    if not raw.startswith("/"):
+        return "/watchlist"
+    if raw.startswith("//") or raw.startswith("/auth/telegram/complete"):
+        return "/watchlist"
+    return raw[:512]
+
+
+def _build_site_start_payload(*, intent: str, market_id: str | None, token: str) -> str:
+    clean_market_id = _safe_market_token(market_id, max_len=48)
+    if intent == "watchlist_add" and clean_market_id:
+        return f"site_watchlist_add_{clean_market_id}_{token}"
+    if intent == "alert" and clean_market_id:
+        return f"site_alert_{clean_market_id}_{token}"
+    if intent == "return_watchlist":
+        return f"site_return_watchlist_{token}"
+    return f"site_login_{token}"
+
+
+def build_site_telegram_url(*, intent: str, market_id: str | None, token: str) -> str:
+    payload = _build_site_start_payload(intent=intent, market_id=market_id, token=token)
+    return f"https://t.me/polymarket_pulse_bot?start={quote(payload)}"
+
+
+def fetch_site_session(token: str) -> dict | None:
+    if not PG_CONN or not token:
+        return None
+    with psycopg.connect(PG_CONN, connect_timeout=5, row_factory=psycopg.rows.dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(SQL_WEB_SESSION_SELECT, (token,))
+            row = cur.fetchone()
+            if row:
+                cur.execute(SQL_WEB_SESSION_TOUCH, (token,))
+                conn.commit()
+            return dict(row) if row else None
+
+
+def current_site_session(request: Request) -> dict | None:
+    token = str(request.cookies.get(WEB_SESSION_COOKIE) or "").strip()
+    if not token:
+        return None
+    try:
+        return fetch_site_session(token)
+    except Exception:
+        logger.exception("site session lookup failed")
+        return None
+
+
+def create_web_auth_request(
+    *,
+    intent: str,
+    market_id: str | None,
+    return_path: str,
+    locale: str,
+    payload: dict | None,
+) -> str:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    token = secrets.token_urlsafe(24)
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(
+                SQL_WEB_AUTH_REQUEST_INSERT,
+                (
+                    token,
+                    _safe_market_token(market_id, max_len=48) or None,
+                    intent,
+                    _safe_return_path(return_path),
+                    "ru" if locale == "ru" else "en",
+                    Jsonb(payload or {}),
+                    WEB_AUTH_REQUEST_MINUTES,
+                ),
+            )
+        conn.commit()
+    return token
+
+
+def create_site_session(
+    *,
+    user_id: str,
+    request: Request,
+    auth_request: dict,
+) -> str:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    token = secrets.token_urlsafe(32)
+    payload = {
+        "auth_request_id": auth_request.get("id"),
+        "intent": auth_request.get("intent"),
+        "market_id": auth_request.get("market_id"),
+    }
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(
+                SQL_WEB_SESSION_INSERT,
+                (
+                    token,
+                    user_id,
+                    WEB_SESSION_DAYS,
+                    request.headers.get("user-agent"),
+                    request.client.host if request.client else None,
+                    Jsonb(payload),
+                ),
+            )
+        conn.commit()
+    return token
+
+
+def site_session_response_redirect(url: str, *, session_token: str) -> RedirectResponse:
+    response = RedirectResponse(url=url, status_code=303)
+    secure = base_url().startswith("https://")
+    response.set_cookie(
+        WEB_SESSION_COOKIE,
+        session_token,
+        max_age=WEB_SESSION_DAYS * 24 * 60 * 60,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        path="/",
+    )
+    return response
 
 
 def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: bool = False) -> str:
@@ -3221,7 +3609,7 @@ def _watchlist_category(question: str | None) -> str:
     return "other"
 
 
-def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
+def _clean_watchlist_market_ids(market_ids: list[str]) -> list[str]:
     clean_ids: list[str] = []
     seen: set[str] = set()
     for market_id in market_ids:
@@ -3229,38 +3617,80 @@ def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
         if token and token not in seen:
             seen.add(token)
             clean_ids.append(token)
-    if not clean_ids or not PG_CONN:
-        return []
+    return clean_ids
 
+
+def _workspace_rows_from_query(query: str, params: tuple) -> list[dict]:
+    if not PG_CONN:
+        return []
     with psycopg.connect(PG_CONN, connect_timeout=5, row_factory=psycopg.rows.dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute("set statement_timeout = '8000ms'")
-            cur.execute(
-                SQL_WATCHLIST_WORKSPACE,
-                (
-                    clean_ids,
-                    HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
-                    HOT_PREVIEW_MAX_SPREAD,
-                    HOT_PREVIEW_MIN_LIQUIDITY,
-                    HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
-                    HOT_PREVIEW_MAX_SPREAD,
-                    HOT_PREVIEW_MIN_LIQUIDITY,
-                ),
-            )
-            rows = cur.fetchall()
+            cur.execute(query, params)
+            return cur.fetchall()
 
+
+def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
+    clean_ids = _clean_watchlist_market_ids(market_ids)
+    if not clean_ids:
+        return []
+
+    rows = _workspace_rows_from_query(
+        SQL_WATCHLIST_WORKSPACE,
+        (
+            clean_ids,
+            HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+            HOT_PREVIEW_MAX_SPREAD,
+            HOT_PREVIEW_MIN_LIQUIDITY,
+            HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+            HOT_PREVIEW_MAX_SPREAD,
+            HOT_PREVIEW_MIN_LIQUIDITY,
+        ),
+    )
+    return _hydrate_watchlist_workspace_rows(rows, ordered_market_ids=clean_ids)
+
+
+def fetch_watchlist_workspace_for_user(user_id: str) -> list[dict]:
+    safe_user_id = str(user_id or "").strip()
+    if not safe_user_id:
+        return []
+
+    rows = _workspace_rows_from_query(
+        SQL_WATCHLIST_WORKSPACE_USER,
+        (
+            safe_user_id,
+            safe_user_id,
+            HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+            HOT_PREVIEW_MAX_SPREAD,
+            HOT_PREVIEW_MIN_LIQUIDITY,
+            HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+            HOT_PREVIEW_MAX_SPREAD,
+            HOT_PREVIEW_MIN_LIQUIDITY,
+            safe_user_id,
+            safe_user_id,
+        ),
+    )
+    ordered_market_ids = [str(row.get("market_id") or "") for row in rows if row.get("market_id")]
+    return _hydrate_watchlist_workspace_rows(rows, ordered_market_ids=ordered_market_ids)
+
+
+def _hydrate_watchlist_workspace_rows(rows: list[dict], *, ordered_market_ids: list[str]) -> list[dict]:
     row_map: dict[str, dict] = {}
     for row in rows:
         market_id = str(row.get("market_id") or "")
         if not market_id:
             continue
         question = str(row.get("question") or market_id)
-        market_url = _polymarket_market_url(row.get("slug"))
+        raw_threshold = _float_or_none(row.get("alert_threshold_value"))
+        effective_threshold = _float_or_none(row.get("effective_threshold_value"))
+        alert_enabled = bool(row.get("alert_enabled"))
+        alert_paused = bool(row.get("alert_paused"))
+        alert_state = "paused" if alert_enabled and alert_paused else "on" if alert_enabled else "off"
         payload = {
             "market_id": market_id,
             "question": question,
             "slug": row.get("slug") or "",
-            "market_url": market_url,
+            "market_url": _polymarket_market_url(row.get("slug")),
             "track_url": _pulse_track_market_url(market_id),
             "market_status": str(row.get("market_status") or "unknown"),
             "status": str(row.get("row_state") or "saved"),
@@ -3276,11 +3706,18 @@ def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
             "spread": _float_or_none(row.get("spread")),
             "freshness_seconds": _float_or_none(row.get("freshness_seconds")),
             "has_two_sided_quote": bool(row.get("has_two_sided_quote")),
+            "saved_at": _to_iso(row.get("saved_at")),
+            "alert_enabled": alert_enabled,
+            "alert_paused": alert_paused,
+            "alert_state": alert_state,
+            "alert_threshold_value": raw_threshold,
+            "effective_threshold_value": effective_threshold,
+            "last_alert_at": _to_iso(row.get("last_alert_at")),
         }
         row_map[market_id] = payload
 
     out: list[dict] = []
-    for market_id in clean_ids:
+    for market_id in ordered_market_ids:
         payload = row_map.get(market_id)
         if payload:
             out.append(payload)
@@ -3306,9 +3743,59 @@ def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
                     "spread": None,
                     "freshness_seconds": None,
                     "has_two_sided_quote": False,
+                    "saved_at": None,
+                    "alert_enabled": False,
+                    "alert_paused": False,
+                    "alert_state": "off",
+                    "alert_threshold_value": None,
+                    "effective_threshold_value": None,
+                    "last_alert_at": None,
                 }
             )
     return out
+
+
+def save_site_watchlist_market(
+    *,
+    user_id: str,
+    market_id: str,
+    source: str,
+    default_alert_enabled: bool = False,
+) -> None:
+    safe_market_id = _safe_market_token(market_id, max_len=48)
+    if not safe_market_id:
+        raise HTTPException(status_code=400, detail="invalid_market_id")
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(SQL_SITE_WATCHLIST_ADD, (user_id, safe_market_id))
+            cur.execute(
+                SQL_SITE_ALERT_SETTINGS_UPSERT,
+                (
+                    user_id,
+                    safe_market_id,
+                    default_alert_enabled,
+                    False,
+                    None,
+                    source,
+                ),
+            )
+        conn.commit()
+
+
+def remove_site_watchlist_market(*, user_id: str, market_id: str) -> int:
+    safe_market_id = _safe_market_token(market_id, max_len=48)
+    if not safe_market_id or not PG_CONN:
+        return 0
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(SQL_SITE_WATCHLIST_REMOVE, (user_id, safe_market_id))
+            removed = int(cur.rowcount or 0)
+        conn.commit()
+    return removed
 
 
 def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
@@ -3332,8 +3819,8 @@ def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
           <p class="watchlist-workspace-copy">{subtitle}</p>
         </div>
         <div class="watchlist-login-inline">
-          <p class="watchlist-login-copy">{login_copy}</p>
-          <a class="site-cta" href="{PULSE_BOT_URL}" target="_blank" rel="noopener noreferrer">{login_cta}</a>
+          <p class="watchlist-login-copy" data-watchlist-session-copy="logged-out">{login_copy}</p>
+          <a class="site-cta" href="{PULSE_BOT_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">{login_cta}</a>
         </div>
       </div>
       <div id="watchlist-workspace-root" data-watchlist-workspace="true" data-watchlist-lang="{lang}"></div>
@@ -3371,6 +3858,7 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
     track_label = "Track in Telegram" if lang == "en" else "Отслеживать в Telegram"
     open_label = "Open market" if lang == "en" else "Открыть рынок"
     save_label = "Add to watchlist" if lang == "en" else "Add to watchlist"
+    bell_label = "🔔 Alerts" if lang == "en" else "🔔 Alerts"
 
     cards: list[str] = []
     for row in rows:
@@ -3418,6 +3906,16 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
             f'data-track-url="{track_url}" '
             f'data-market-slug="{market_slug}" '
             f'data-market-source="{html.escape(source)}">{save_label}</button>'
+        )
+        actions += (
+            f'<button type="button" class="live-signal-link" '
+            f'data-watchlist-action="toggle_alert" '
+            f'data-market-id="{market_id}" '
+            f'data-market-question="{question}" '
+            f'data-market-url="{market_url}" '
+            f'data-track-url="{track_url}" '
+            f'data-market-slug="{market_slug}" '
+            f'data-market-source="{html.escape(source)}">{bell_label}</button>'
         )
         cards.append(
             f"""
@@ -3728,6 +4226,7 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
         "watchlist_add",
         "watchlist_remove",
         "watchlist_alert_toggle",
+        "watchlist_auth_complete",
         "watchlist_prompt_open",
         "watchlist_sensitivity_change",
     }
@@ -3798,11 +4297,15 @@ def live_movers_preview(limit: int = 3) -> JSONResponse:
 
 
 @app.get("/api/watchlist-workspace")
-def watchlist_workspace(market_ids: str = "") -> JSONResponse:
+def watchlist_workspace(request: Request, market_ids: str = "") -> JSONResponse:
+    session = current_site_session(request)
     raw_ids = [part.strip() for part in market_ids.split(",") if part.strip()]
     safe_ids = raw_ids[:40]
     try:
-        rows = fetch_watchlist_workspace(safe_ids)
+        if session and str(session.get("user_id") or "").strip():
+            rows = fetch_watchlist_workspace_for_user(str(session["user_id"]))
+        else:
+            rows = fetch_watchlist_workspace(safe_ids)
     except Exception:
         rows = []
     return JSONResponse(
@@ -3810,9 +4313,134 @@ def watchlist_workspace(market_ids: str = "") -> JSONResponse:
             "ok": True,
             "rows": rows,
             "market_ids": safe_ids,
+            "session": {
+                "logged_in": bool(session),
+                "user_id": str(session.get("user_id") or "") if session else None,
+                "username": session.get("username") if session else None,
+                "first_name": session.get("first_name") if session else None,
+            },
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
     )
+
+
+@app.get("/api/watchlist/session")
+def watchlist_session(request: Request) -> JSONResponse:
+    session = current_site_session(request)
+    return JSONResponse(
+        {
+            "ok": True,
+            "logged_in": bool(session),
+            "user": (
+                {
+                    "user_id": str(session.get("user_id") or ""),
+                    "telegram_id": session.get("telegram_id"),
+                    "username": session.get("username"),
+                    "first_name": session.get("first_name"),
+                    "locale": session.get("locale"),
+                }
+                if session
+                else None
+            ),
+        }
+    )
+
+
+@app.post("/api/watchlist/auth/start")
+def watchlist_auth_start(data: WatchlistAuthStartRequest, request: Request) -> JSONResponse:
+    locale = data.locale or ("ru" if "lang=ru" in str(request.url) else "en")
+    return_path = _safe_return_path(data.return_path or request.headers.get("referer") or "/watchlist")
+    market_id = _safe_market_token(data.market_id, max_len=48) or None
+    payload = {
+        "question": (data.question or "")[:280] or None,
+        "source": data.source,
+        "page_path": return_path,
+    }
+    token = create_web_auth_request(
+        intent=data.intent,
+        market_id=market_id,
+        return_path=return_path,
+        locale=locale,
+        payload=payload,
+    )
+    telegram_url = build_site_telegram_url(intent=data.intent, market_id=market_id, token=token)
+    log_site_event(
+        event_type="watchlist_auth_start",
+        request=request,
+        lang=locale,
+        source=data.source,
+        details={"intent": data.intent, "market_id": market_id, "request_token": token[:8], "return_path": return_path},
+        path_override=return_path,
+    )
+    return JSONResponse({"ok": True, "telegram_url": telegram_url, "request_token": token})
+
+
+@app.post("/api/watchlist/save")
+def watchlist_save(data: WatchlistSaveRequest, request: Request) -> JSONResponse:
+    session = current_site_session(request)
+    if not session or not session.get("user_id"):
+        raise HTTPException(status_code=401, detail="telegram_login_required")
+    safe_market_id = _safe_market_token(data.market_id, max_len=48)
+    if not safe_market_id:
+        raise HTTPException(status_code=400, detail="invalid_market_id")
+    save_site_watchlist_market(
+        user_id=str(session["user_id"]),
+        market_id=safe_market_id,
+        source="web",
+        default_alert_enabled=False,
+    )
+    log_site_event(
+        event_type="watchlist_save_site",
+        request=request,
+        lang=str(session.get("locale") or "en"),
+        source=data.source,
+        details={"market_id": safe_market_id, "question": data.question, "slug": data.slug},
+        path_override=request.url.path,
+    )
+    return JSONResponse({"ok": True, "market_id": safe_market_id, "saved": True})
+
+
+@app.post("/api/watchlist/remove")
+def watchlist_remove(data: WatchlistSaveRequest, request: Request) -> JSONResponse:
+    session = current_site_session(request)
+    if not session or not session.get("user_id"):
+        raise HTTPException(status_code=401, detail="telegram_login_required")
+    safe_market_id = _safe_market_token(data.market_id, max_len=48)
+    if not safe_market_id:
+        raise HTTPException(status_code=400, detail="invalid_market_id")
+    removed = remove_site_watchlist_market(user_id=str(session["user_id"]), market_id=safe_market_id)
+    log_site_event(
+        event_type="watchlist_remove_site",
+        request=request,
+        lang=str(session.get("locale") or "en"),
+        source=data.source,
+        details={"market_id": safe_market_id, "removed": bool(removed)},
+        path_override=request.url.path,
+    )
+    return JSONResponse({"ok": True, "market_id": safe_market_id, "removed": bool(removed)})
+
+
+@app.get("/auth/telegram/complete")
+def watchlist_auth_complete(token: str, request: Request) -> Response:
+    if not PG_CONN:
+        raise HTTPException(status_code=500, detail="PG_CONN is not configured")
+    with psycopg.connect(PG_CONN, connect_timeout=5, row_factory=psycopg.rows.dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '6000ms'")
+            cur.execute(SQL_WEB_AUTH_REQUEST_CLAIM, (token,))
+            auth_request = cur.fetchone()
+        conn.commit()
+    if not auth_request:
+        raise HTTPException(status_code=400, detail="auth_request_not_ready")
+    auth_request_dict = dict(auth_request)
+    user_id = str(auth_request_dict.get("user_id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="auth_request_missing_user")
+    session_token = create_site_session(user_id=user_id, request=request, auth_request=auth_request_dict)
+    return_path = _safe_return_path(auth_request_dict.get("return_path") or "/watchlist")
+    separator = "&" if "?" in return_path else "?"
+    redirect_url = f"{return_path}{separator}tg_auth=1"
+    return site_session_response_redirect(redirect_url, session_token=session_token)
 
 
 @app.get("/watchlist-client.js")

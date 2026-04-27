@@ -1967,6 +1967,19 @@
                 data-market-source="${esc(r.source || '')}"
               >Add to watchlist</button>
             `;
+        const bellAction = `
+              <button
+                type="button"
+                class="row-link"
+                data-watchlist-action="toggle_alert"
+                data-market-id="${marketId}"
+                data-market-question="${question}"
+                data-market-url="${marketUrl}"
+                data-track-url="${trackUrl}"
+                data-market-slug="${esc(r.slug || '')}"
+                data-market-source="${esc(r.source || '')}"
+              >🔔 Alerts</button>
+            `;
         return `
           <div class="row">
             <${rowTag} ${rowMainAttrs}>
@@ -1987,6 +2000,7 @@
             <div class="row-actions">
               ${primaryAction}
               ${watchlistAction}
+              ${bellAction}
               <a
                 class="row-link"
                 href="${trackUrl}"

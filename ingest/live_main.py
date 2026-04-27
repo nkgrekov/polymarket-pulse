@@ -545,8 +545,13 @@ def _load_hot_watchlist_candidate_source(pg_conn: str) -> list[dict]:
                   h.spread,
                   h.live_state,
                   h.quote_ts,
-                  coalesce(s.threshold, 0.03) as threshold_value
+                  coalesce(a.threshold_value, s.threshold, 0.03) as threshold_value
                 from public.hot_watchlist_snapshot_latest h
+                join bot.watchlist_alert_settings a
+                  on a.user_id = h.app_user_id
+                 and a.market_id = h.market_id
+                 and a.alert_enabled
+                 and not a.alert_paused
                 left join bot.user_settings s on s.user_id = h.app_user_id
                 order by h.app_user_id, h.market_id
                 """

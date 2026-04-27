@@ -56,6 +56,10 @@ PRO_STARS_PAYLOAD_PREFIX = "pro_monthly_stars"
 WATCHLIST_PICKER_MIN_LIQUIDITY = Decimal(os.environ.get("WATCHLIST_PICKER_MIN_LIQUIDITY", "1000"))
 TRADER_ALPHA_URL = os.environ.get("TRADER_ALPHA_URL", "https://polymarketpulse.app/trader-bot")
 TRADER_BOT_USERNAME = os.environ.get("TRADER_BOT_USERNAME", "PolymarketPulse_trader_bot")
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "https://polymarketpulse.app").rstrip("/")
+SITE_AUTH_RETURN_LABEL_EN = "Return to site"
+SITE_AUTH_RETURN_LABEL_RU = "Вернуться на сайт"
+ALERT_MAJOR_MOVES_THRESHOLD = Decimal(os.environ.get("ALERT_MAJOR_MOVES_THRESHOLD", "0.15"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -864,6 +868,60 @@ values (%s::uuid, %s)
 on conflict (user_id, market_id) do nothing;
 """
 
+SQL_ALERT_SETTINGS_UPSERT = """
+insert into bot.watchlist_alert_settings (
+  user_id,
+  market_id,
+  alert_enabled,
+  alert_paused,
+  threshold_value,
+  source
+)
+values (
+  %s::uuid,
+  %s,
+  %s,
+  %s,
+  %s,
+  %s
+)
+on conflict (user_id, market_id) do update
+set alert_enabled = excluded.alert_enabled,
+    alert_paused = excluded.alert_paused,
+    threshold_value = coalesce(excluded.threshold_value, bot.watchlist_alert_settings.threshold_value),
+    source = excluded.source,
+    updated_at = now();
+"""
+
+SQL_ALERT_SETTINGS_TOUCH_LAST_ALERT = """
+update bot.watchlist_alert_settings
+set last_alert_at = now(),
+    updated_at = now()
+where user_id = %s::uuid
+  and market_id = %s;
+"""
+
+SQL_WEB_AUTH_REQUEST_COMPLETE = """
+update app.web_auth_requests
+set user_id = %s::uuid,
+    telegram_id = %s,
+    chat_id = %s,
+    status = 'completed',
+    completed_at = now(),
+    payload = coalesce(payload, '{}'::jsonb) || %s::jsonb
+where request_token = %s
+  and expires_at > now()
+returning
+  request_token,
+  market_id,
+  intent,
+  return_path,
+  locale,
+  status,
+  user_id,
+  payload;
+"""
+
 SQL_WATCHLIST_REMOVE = """
 delete from bot.watchlist
 where user_id = %s::uuid
@@ -909,12 +967,21 @@ select
   i.abs_delta,
   p.chat_id,
   bot.current_plan(i.user_id) as plan,
+  coalesce(s.alert_enabled, true) as alert_enabled,
+  coalesce(s.alert_paused, false) as alert_paused,
+  coalesce(s.threshold_value, us.threshold, 0.03) as alert_threshold_value,
   h.candidate_state as hot_candidate_state,
   h.quote_ts as hot_quote_ts,
   h.threshold_value as hot_threshold_value,
-  coalesce(r.status, m.status, 'unknown') as hot_market_status
+  coalesce(r.status, m.status, 'unknown') as hot_market_status,
+  m.slug as market_slug
 from bot.alerts_inbox_latest i
 join bot.profiles p on p.user_id = i.user_id
+left join bot.watchlist_alert_settings s
+  on s.user_id = i.user_id
+ and s.market_id = i.market_id
+left join bot.user_settings us
+  on us.user_id = i.user_id
 left join public.hot_alert_candidates_latest h
   on h.app_user_id::text = i.user_id::text
  and h.market_id = i.market_id
@@ -1450,6 +1517,38 @@ def normalize_start_payload(context: ContextTypes.DEFAULT_TYPE) -> str | None:
     return payload or None
 
 
+def parse_site_start_payload(start_payload: str | None) -> dict[str, str] | None:
+    payload = (start_payload or "").strip()
+    if not payload.startswith("site_"):
+        return None
+
+    if payload.startswith("site_login_"):
+        token = payload[len("site_login_"):].strip()
+        return {"kind": "login", "token": token} if token else None
+
+    if payload.startswith("site_return_watchlist_"):
+        token = payload[len("site_return_watchlist_"):].strip()
+        return {"kind": "return_watchlist", "token": token} if token else None
+
+    if payload.startswith("site_watchlist_add_"):
+        rest = payload[len("site_watchlist_add_"):].strip()
+        market_id, _, token = rest.rpartition("_")
+        if market_id.isdigit() and token:
+            return {"kind": "watchlist_add", "market_id": market_id, "token": token}
+        return None
+
+    if payload.startswith("site_alert_"):
+        rest = payload[len("site_alert_"):].strip()
+        market_id, _, token = rest.rpartition("_")
+        if market_id.isdigit() and token:
+            return {"kind": "alert", "market_id": market_id, "token": token}
+        if rest.isdigit():
+            return {"kind": "alert", "market_id": rest}
+        return None
+
+    return None
+
+
 def market_id_from_site_track_payload(start_payload: str | None) -> str | None:
     payload = (start_payload or "").strip()
     prefix = "site_track_"
@@ -1546,6 +1645,105 @@ def log_watchlist_add_sync(
     )
 
 
+def complete_web_auth_request_sync(
+    update: Update,
+    user_ctx: dict,
+    *,
+    token: str,
+    start_payload: str | None,
+    market_id: str | None = None,
+    intent: str,
+) -> dict | None:
+    tg_user = update.effective_user
+    tg_chat = update.effective_chat
+    if not tg_user or not tg_chat or not token:
+        return None
+    rows = run_db_query(
+        SQL_WEB_AUTH_REQUEST_COMPLETE,
+        (
+            user_ctx["user_id"],
+            tg_user.id,
+            tg_chat.id,
+            Jsonb(
+                {
+                    "start_payload": start_payload,
+                    "intent": intent,
+                    "market_id": market_id,
+                    "completed_via": "telegram_bot",
+                }
+            ),
+            token,
+        ),
+        row_factory=dict_row,
+    )
+    return rows[0] if rows else None
+
+
+def save_watchlist_market_sync(
+    user_ctx: dict,
+    market_id: str,
+    *,
+    alert_enabled: bool,
+    threshold_value: Decimal | None = None,
+    source: str,
+) -> None:
+    save_watchlist_market_sync(
+        user_ctx,
+        market_id,
+        alert_enabled=True,
+        threshold_value=None,
+        source="telegram",
+    )
+    execute_db_write(
+        SQL_ALERT_SETTINGS_UPSERT,
+        (
+            user_ctx["user_id"],
+            market_id,
+            alert_enabled,
+            False,
+            threshold_value,
+            source,
+        ),
+    )
+
+
+def alert_manage_url(market_id: str) -> str:
+    safe_market_id = "".join(ch for ch in str(market_id) if ch.isdigit())
+    payload = f"site_alert_{safe_market_id}" if safe_market_id else "site_login"
+    return f"https://t.me/polymarket_pulse_bot?start={quote(payload)}"
+
+
+def site_watchlist_url(market_id: str | None = None) -> str:
+    if market_id:
+        return f"{SITE_BASE_URL}/watchlist?market_id={quote(str(market_id))}"
+    return f"{SITE_BASE_URL}/watchlist"
+
+
+def web_auth_return_url(token: str) -> str:
+    return f"{SITE_BASE_URL}/auth/telegram/complete?token={quote(token)}"
+
+
+def web_auth_return_inline(locale: str, token: str) -> InlineKeyboardMarkup:
+    label = SITE_AUTH_RETURN_LABEL_EN if locale == "en" else SITE_AUTH_RETURN_LABEL_RU
+    return InlineKeyboardMarkup([[InlineKeyboardButton(label, url=web_auth_return_url(token))]])
+
+
+def alert_sensitivity_keyboard(locale: str, market_id: str) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton("1pp", callback_data=f"alertcfg:{market_id}:0.01"),
+            InlineKeyboardButton("2pp", callback_data=f"alertcfg:{market_id}:0.02"),
+            InlineKeyboardButton("3pp", callback_data=f"alertcfg:{market_id}:0.03"),
+        ],
+        [
+            InlineKeyboardButton("5pp", callback_data=f"alertcfg:{market_id}:0.05"),
+            InlineKeyboardButton("10pp", callback_data=f"alertcfg:{market_id}:0.10"),
+            InlineKeyboardButton("Major", callback_data=f"alertcfg:{market_id}:major"),
+        ],
+    ]
+    return InlineKeyboardMarkup(rows)
+
+
 def ensure_payment_schema_sync() -> None:
     execute_db_write(SQL_ENSURE_PAYMENT_EVENTS, ())
 
@@ -1613,11 +1811,13 @@ def _fmt_num(value: object, digits: int, signed: bool = False) -> str:
 
 def fmt_alert_row(row: dict) -> str:
     window = fmt_window(row.get("last_bucket"), row.get("prev_bucket"))
+    threshold_value = row.get("alert_threshold_value") or row.get("hot_threshold_value")
     return (
         f"[{row.get('alert_type')}] {row.get('question') or 'n/a'}\n"
         f"market: {row.get('market_id')}\n"
         f"mid: {_fmt_num(row.get('mid_now'), 3)} -> {_fmt_num(row.get('mid_prev'), 3)} | "
         f"Δ {_fmt_num(row.get('delta_mid'), 3, signed=True)}\n"
+        f"threshold: {_fmt_num(threshold_value, 3)}\n"
         f"window: {window}"
     )
 
@@ -1666,9 +1866,29 @@ def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:
         return f"{prev_bucket} -> {last_bucket}"
 
 
+def alert_message_markup(row: dict, *, locale: str = "en") -> InlineKeyboardMarkup | None:
+    market_id = str(row.get("market_id") or "")
+    if not market_id:
+        return None
+    market_slug = str(row.get("market_slug") or "").strip()
+    market_url = f"https://polymarket.com/market/{quote(market_slug, safe='-_~')}" if market_slug else None
+    buttons: list[InlineKeyboardButton] = [
+        InlineKeyboardButton("Open on site" if locale == "en" else "Открыть на сайте", url=site_watchlist_url(market_id)),
+    ]
+    if market_url:
+        buttons.append(InlineKeyboardButton("Open on Polymarket", url=market_url))
+    rows = [buttons]
+    rows.append([InlineKeyboardButton("Manage alert" if locale == "en" else "Настроить алерт", url=alert_manage_url(market_id))])
+    return InlineKeyboardMarkup(rows)
+
+
 def push_suppression_reason(row: dict[str, Any]) -> str | None:
     if str(row.get("alert_type") or "") != "watchlist":
         return None
+    if not bool(row.get("alert_enabled", True)):
+        return "alert_disabled"
+    if bool(row.get("alert_paused", False)):
+        return "alert_paused"
     hot_state = str(row.get("hot_candidate_state") or "")
     hot_market_status = str(row.get("hot_market_status") or "")
     if hot_state == "closed" or hot_market_status == "closed":
@@ -2949,7 +3169,13 @@ def replace_watchlist_market_sync(user_ctx: dict, market_id: str, *, locale: str
 
     target = target_rows[0]
     execute_db_write(SQL_WATCHLIST_REMOVE, (user_ctx["user_id"], target["market_id"]))
-    execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+    save_watchlist_market_sync(
+        user_ctx,
+        market_id,
+        alert_enabled=True,
+        threshold_value=None,
+        source="telegram",
+    )
     live_summary = market_live_state_summary(market_id, locale=locale)
     preview_line = market_live_preview_line(market_id, locale=locale) if live_summary["live_state"] == "ready" else ""
     preview_block = f"{preview_line}\n" if preview_line else ""
@@ -3244,6 +3470,8 @@ def log_sent_sync(channel: str, user_id: str, recipient: str, row: dict) -> None
             payload,
         ),
     )
+    if channel == "bot" and str(row.get("alert_type") or "") == "watchlist":
+        execute_db_write(SQL_ALERT_SETTINGS_TOUCH_LAST_ALERT, (user_id, str(row.get("market_id"))))
 
 
 def upsert_event_sync(user_id: str, row: dict) -> None:
@@ -3475,7 +3703,11 @@ async def dispatch_push_alerts(application: Application) -> None:
             continue
 
         try:
-            await application.bot.send_message(chat_id=int(recipient), text="🔔 Alert\n\n" + fmt_alert_row(row))
+            await application.bot.send_message(
+                chat_id=int(recipient),
+                text="🔔 Alert\n\n" + fmt_alert_row(row),
+                reply_markup=alert_message_markup(row, locale="en"),
+            )
         except Exception:
             log.exception("push_loop send failed user_id=%s market_id=%s", user_id, market_id)
             continue
@@ -3555,6 +3787,95 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=quick_reply_keyboard(locale),
     )
+    site_start = parse_site_start_payload(start_payload)
+    if site_start and site_start.get("token"):
+        auth_request = await asyncio.to_thread(
+            complete_web_auth_request_sync,
+            update,
+            user_ctx,
+            token=str(site_start["token"]),
+            start_payload=start_payload,
+            market_id=site_start.get("market_id"),
+            intent=str(site_start.get("kind") or "login"),
+        )
+        locale = locale_from_update(update)
+        if auth_request:
+            site_kind = str(site_start.get("kind") or "login")
+            site_market_id = str(site_start.get("market_id") or "")
+            return_markup = web_auth_return_inline(locale, str(site_start["token"]))
+            if site_kind == "watchlist_add" and site_market_id:
+                save_watchlist_market_sync(
+                    user_ctx,
+                    site_market_id,
+                    alert_enabled=False,
+                    threshold_value=None,
+                    source="site_bridge",
+                )
+                await update.message.reply_text(
+                    (
+                        "Site watchlist login confirmed.\n"
+                        "This market is now saved to your website watchlist.\n"
+                        "Alerts stay OFF until you enable the bell in Telegram."
+                        if locale == "en"
+                        else "Вход для website watchlist подтверждён.\n"
+                        "Этот рынок теперь сохранён в вашем watchlist на сайте.\n"
+                        "Алерты пока ВЫКЛ, пока вы отдельно не включите bell через Telegram."
+                    ),
+                    reply_markup=return_markup,
+                )
+                return
+            if site_kind == "alert" and site_market_id:
+                save_watchlist_market_sync(
+                    user_ctx,
+                    site_market_id,
+                    alert_enabled=True,
+                    threshold_value=None,
+                    source="site_bridge",
+                )
+                combined_markup = merge_inline_markups(
+                    alert_sensitivity_keyboard(locale, site_market_id),
+                    return_markup,
+                )
+                await update.message.reply_text(
+                    (
+                        "Site alert bridge confirmed.\n"
+                        "Choose sensitivity for this market. Watchlist stays saved separately; the bell decides if Telegram can wake you up."
+                        if locale == "en"
+                        else "Bridge для site alert подтверждён.\n"
+                        "Выберите чувствительность для этого рынка. Watchlist остаётся отдельным слоем; bell решает, может ли Telegram вас будить."
+                    ),
+                    reply_markup=combined_markup,
+                )
+                return
+            await update.message.reply_text(
+                (
+                    "Telegram identity confirmed for the website. Return to the site and your watchlist will persist there now."
+                    if locale == "en"
+                    else "Telegram identity для сайта подтверждён. Вернитесь на сайт, и watchlist теперь будет сохраняться там."
+                ),
+                reply_markup=return_markup,
+            )
+            return
+
+    if site_start and str(site_start.get("kind") or "") == "alert" and site_start.get("market_id"):
+        site_market_id = str(site_start.get("market_id") or "")
+        save_watchlist_market_sync(
+            user_ctx,
+            site_market_id,
+            alert_enabled=True,
+            threshold_value=None,
+            source="telegram",
+        )
+        await update.message.reply_text(
+            (
+                "Manage bell for this market.\nChoose sensitivity now."
+                if locale == "en"
+                else "Управляйте bell для этого рынка.\nТеперь выберите чувствительность."
+            ),
+            reply_markup=alert_sensitivity_keyboard(locale, site_market_id),
+        )
+        return
+
     track_market_id = market_id_from_site_track_payload(start_payload)
     if track_market_id:
         track_result = await asyncio.to_thread(add_watchlist_market_sync, user_ctx, track_market_id, locale=locale)
@@ -4246,6 +4567,40 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = locale_from_update(update)
     await query.answer()
     data = query.data or ""
+
+    if data.startswith("alertcfg:"):
+        parts = data.split(":")
+        if len(parts) != 3:
+            await query.message.reply_text("Alert setup item expired." if locale == "en" else "Элемент настройки алерта устарел.")
+            return
+        market_id = parts[1].strip()
+        threshold_token = parts[2].strip().lower()
+        if not market_id.isdigit():
+            await query.message.reply_text("Alert setup item expired." if locale == "en" else "Элемент настройки алерта устарел.")
+            return
+        threshold_value = ALERT_MAJOR_MOVES_THRESHOLD if threshold_token == "major" else Decimal(threshold_token)
+        user_ctx = await resolve_user_context(update)
+        await asyncio.to_thread(
+            save_watchlist_market_sync,
+            user_ctx,
+            market_id,
+            alert_enabled=True,
+            threshold_value=threshold_value,
+            source="telegram",
+        )
+        await query.message.reply_text(
+            (
+                f"Alert enabled for market {market_id}.\n"
+                f"Sensitivity: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                "Website watchlist will now show this bell as ON after refresh."
+                if locale == "en"
+                else f"Алерт включён для рынка {market_id}.\n"
+                f"Чувствительность: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                "После обновления сайта этот bell в watchlist будет показан как ON."
+            ),
+            reply_markup=watchlist_added_inline(locale),
+        )
+        return
 
     if data == "menu:movers":
         await send_movers_view(query.message, locale=locale, show_loader=False)
