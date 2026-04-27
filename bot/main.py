@@ -199,6 +199,11 @@ with base as (
     yes_mid_now,
     yes_mid_prev,
     delta_yes,
+    null::numeric as liquidity,
+    null::numeric as spread,
+    null::numeric as freshness_seconds,
+    'legacy'::text as source,
+    'legacy_fallback'::text as signal_quality,
     coalesce(nullif(regexp_replace(question, ' - .*$', ''), ''), market_id) as root_key
   from public.top_movers_latest
   where abs(delta_yes) > 0
@@ -210,7 +215,12 @@ with base as (
     prev_bucket,
     yes_mid_now,
     yes_mid_prev,
-    delta_yes
+    delta_yes,
+    liquidity,
+    spread,
+    freshness_seconds,
+    source,
+    signal_quality
   from base
   order by root_key, abs(delta_yes) desc nulls last
 )
@@ -230,6 +240,11 @@ with base as (
     current_mid as yes_mid_now,
     prev_mid as yes_mid_prev,
     delta_mid as delta_yes,
+    liquidity,
+    spread,
+    extract(epoch from (now() - quote_ts))::numeric as freshness_seconds,
+    'hot'::text as source,
+    'live_quality_gated'::text as signal_quality,
     coalesce(nullif(regexp_replace(question, ' - .*$', ''), ''), market_id) as root_key
   from public.hot_top_movers_5m
   where delta_abs > 0
@@ -241,7 +256,12 @@ with base as (
     prev_bucket,
     yes_mid_now,
     yes_mid_prev,
-    delta_yes
+    delta_yes,
+    liquidity,
+    spread,
+    freshness_seconds,
+    source,
+    signal_quality
   from base
   order by root_key, abs(delta_yes) desc nulls last
 )
@@ -1592,13 +1612,35 @@ def fmt_alert_row(row: dict) -> str:
 
 def fmt_mover_row(row: dict) -> str:
     window = fmt_window(row.get("last_bucket"), row.get("prev_bucket"))
-    return (
+    quality_line = fmt_mover_quality_line(row)
+    body = (
         f"{row.get('question') or 'n/a'}\n"
         f"market: {row.get('market_id')}\n"
         f"mid: {_fmt_num(row.get('yes_mid_now'), 3)} -> {_fmt_num(row.get('yes_mid_prev'), 3)} | "
         f"Δ {_fmt_num(row.get('delta_yes'), 3, signed=True)}\n"
         f"window: {window}"
     )
+    return f"{body}\n{quality_line}" if quality_line else body
+
+
+def fmt_mover_quality_line(row: dict) -> str:
+    source = str(row.get("source") or "")
+    parts: list[str] = []
+    if source == "hot":
+        parts.append("live quality-gated")
+    elif source == "legacy":
+        parts.append("historical fallback")
+
+    freshness = row.get("freshness_seconds")
+    if freshness is not None:
+        parts.append(f"quote {_fmt_num(freshness, 0)}s old")
+    liquidity = row.get("liquidity")
+    if liquidity is not None:
+        parts.append(f"liq ${_fmt_num(liquidity, 0)}")
+    spread = row.get("spread")
+    if spread is not None:
+        parts.append(f"spread {_fmt_num(Decimal(str(spread)) * Decimal('100'), 0)}pp")
+    return "quality: " + " · ".join(parts) if parts else ""
 
 
 def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:

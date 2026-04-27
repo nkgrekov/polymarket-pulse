@@ -6,13 +6,14 @@ This document tracks the current state of the project.
 
 # Homepage Live Signal Quality Context (2026-04-27)
 
-Started the week with a small analytics-quality improvement on the public live preview.
+Started the week with a small analytics-quality improvement on the public live preview and the `Pulse` movers surface.
 
 Files updated:
 
 • `api/main.py`
 • `api/web/index.en.html`
 • `api/web/index.ru.html`
+• `bot/main.py`
 • `progress.md`
 • `architecture.md`
 
@@ -30,12 +31,17 @@ What changed:
   - quote freshness
   - liquidity
   - spread
+• `/movers` now also prints a compact `quality:` line for hot rows:
+  - live quality gate
+  - quote age
+  - liquidity
+  - spread
 
 Why this matters:
 
 • the site should increasingly behave like a live analytics surface, not only a marketing page
 • showing why a mover passed quality gates makes the signal feel more trustworthy
-• this is additive and does not change ranking, delivery, bot semantics, or the hot ingest contract
+• this is additive and does not change ranking, delivery semantics, or the hot ingest contract
 
 
 # Trader Services Parked On Railway Hobby (2026-04-23)

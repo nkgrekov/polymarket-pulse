@@ -6,13 +6,14 @@ This document describes the technical architecture.
 
 # Homepage Live Signal Quality Context (2026-04-27)
 
-The homepage live preview now exposes a small quality-context layer on top of the existing hot-first mover feed.
+The homepage live preview and `Pulse` movers surface now expose a small quality-context layer on top of the existing hot-first mover feed.
 
 Updated artifacts:
 
 • `api/main.py`
 • `api/web/index.en.html`
 • `api/web/index.ru.html`
+• `bot/main.py`
 • `progress.md`
 • `architecture.md`
 
@@ -26,10 +27,12 @@ Architectural changes:
   - spread
 • legacy fallback rows are marked distinctly so the frontend can avoid implying they passed the live quality gates
 • homepage rendering now shows compact quality chips under each live mover row
+• `fmt_mover_row(...)` now includes the same quality posture for hot `/movers` rows in Telegram
 
 Architectural consequence:
 
 • the public site now explains more of the live analytics contract directly in the UI
+• `Pulse` users now see why a mover is considered signal-worthy without changing what qualifies as a mover
 • the current hot-first ranking and fallback behavior remain unchanged
 • this creates a better foundation for future `/signals` or `/top-movers` surfaces where signal quality needs to be visible, not implicit
 
