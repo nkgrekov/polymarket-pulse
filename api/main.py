@@ -902,6 +902,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         else ""
     )
     live_signal_block = _render_signal_quality_block(slug, lang)
+    hero_live_signal_block = live_signal_block if slug == "signals" else ""
+    body_live_signal_block = "" if slug == "signals" else live_signal_block
     robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     if noindex_override:
         robots_meta = "noindex,follow"
@@ -1242,7 +1244,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       border: 1px solid rgba(0, 255, 136, 0.2);
       border-radius: 16px;
       padding: 14px;
-      background: #101511;
+      background:
+        linear-gradient(180deg, rgba(0, 255, 136, 0.045), rgba(0, 0, 0, 0) 42%),
+        #101511;
     }}
     .live-signal-head {{
       display: flex;
@@ -1303,6 +1307,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       text-transform: uppercase;
       white-space: nowrap;
     }}
+    .live-signal-pill.strong {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.28);
+      background: rgba(0, 255, 136, 0.07);
+    }}
     .live-signal-side {{
       display: flex;
       flex-direction: column;
@@ -1317,6 +1326,15 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     }}
     .live-signal-delta.up {{ color: var(--accent); }}
     .live-signal-delta.down {{ color: var(--negative); }}
+    .live-signal-tape {{
+      margin-top: 5px;
+      display: block;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      text-align: right;
+      white-space: nowrap;
+    }}
     .live-signal-actions {{
       display: flex;
       justify-content: flex-end;
@@ -1481,6 +1499,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       <p class="cta-note">{cta_note}</p>
       <p class="cta-backup-note">{cta_backup_note}</p>
       <p class="cta-backup-link-wrap">{backup_cta}</p>
+      {hero_live_signal_block}
     </article>
     <section class="preview reveal delay-3">
       <p class="links-title">{preview_head}</p>
@@ -1505,7 +1524,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         </article>
       </div>
     </section>
-    {live_signal_block}
+    {body_live_signal_block}
     {compare_block}
     {bridge_block}
     {faq_block}
@@ -2573,6 +2592,7 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         source = str(row.get("source") or "")
         delta = float(row.get("delta_yes") or 0.0)
         delta_cls = "up" if delta >= 0 else "down"
+        delta_1m = float(row.get("delta_1m") or 0.0)
         age = _fmt_live_age(row.get("freshness_seconds"))
         liq = _fmt_live_liquidity(row.get("liquidity"))
         spread = _fmt_live_pp(row.get("spread"), signed=False) if row.get("spread") is not None else None
@@ -2583,7 +2603,11 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
             quality.append(liq)
         if spread:
             quality.append(f"{spread} spread")
-        quality_html = "".join(f'<span class="live-signal-pill">{html.escape(item)}</span>' for item in quality)
+        quality_html = "".join(
+            f'<span class="live-signal-pill{" strong" if idx == 0 else ""}">{html.escape(item)}</span>'
+            for idx, item in enumerate(quality)
+        )
+        tape_html = f'<span class="live-signal-tape">1m {_fmt_live_pp(delta_1m)}</span>' if abs(delta_1m) > 0 else ""
         actions = ""
         if market_url:
             actions += (
@@ -2604,7 +2628,10 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
             <div class="live-signal-quality">{quality_html}</div>
           </div>
           <div class="live-signal-side">
-            <span class="live-signal-delta {delta_cls}">{_fmt_live_pp(row.get("delta_yes"))}</span>
+            <div>
+              <span class="live-signal-delta {delta_cls}">{_fmt_live_pp(row.get("delta_yes"))}</span>
+              {tape_html}
+            </div>
             <div class="live-signal-actions">{actions}</div>
           </div>
         </article>

@@ -4,6 +4,29 @@ This document describes the technical architecture.
 
 ---
 
+# Signals Page Board Promotion (2026-04-27)
+
+The `/signals` page now treats the live signal board as a primary product surface instead of a secondary supporting section.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `render_seo_page(...)` now places `_render_signal_quality_block(...)` inside the first card for `slug == "signals"`
+• `/top-movers` and `/analytics` keep the same block as a normal body section after the preview area
+• live signal rows now render a highlighted first quality pill and an optional `1m` tape cue from `delta_1m`
+
+Architectural consequence:
+
+• the highest-signal search page now exposes current market movement earlier in the page hierarchy
+• no new endpoint, table, ingest process, or tracking contract was introduced
+• the page continues to use the same hot-first `fetch_live_movers_preview(...)` read path and the same `seo_live_signal_board` tracking placement
+
+
 # Signals Page Live Board (2026-04-27)
 
 The SEO/intent pages can now expose a server-rendered live analytics board when the page intent benefits from showing current market movement.

@@ -4,6 +4,29 @@ This document tracks the current state of the project.
 
 ---
 
+# Signals Page Board Promotion (2026-04-27)
+
+Promoted the live signal board from a supporting section into a primary product surface on `/signals`.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/signals` now renders the live signal board inside the first hero card, immediately after the primary CTA and trust notes
+• `/top-movers` and `/analytics` keep the board below the generic preview section
+• live rows now highlight the first quality pill and show a `1m` tape cue when the short-window delta is non-zero
+
+Why this matters:
+
+• `/signals` should feel like a live product surface, not just an SEO explainer
+• the page now puts real movement, quality gates, and Telegram tracking closer to the first viewport
+• this keeps the same data path and tracking behavior while improving the perceived value of the page
+
+
 # Signals Page Live Board (2026-04-27)
 
 Turned the quality-context work into a real site surface instead of keeping it only inside the homepage preview.
