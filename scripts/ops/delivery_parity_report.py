@@ -142,22 +142,53 @@ with recent as (
       order by sample_count desc, max_abs_delta desc nulls last, market_id
     ) as rn
   from normalized
+), current_candidates as (
+  select
+    market_id::text as market_id,
+    string_agg(distinct candidate_state, ',' order by candidate_state) as current_candidate_states,
+    count(*)::bigint as current_candidate_rows
+  from public.hot_alert_candidates_latest
+  group by market_id::text
+), current_watchlist as (
+  select
+    w.market_id::text as market_id,
+    count(*)::bigint as current_watchlist_rows,
+    count(*) filter (where coalesce(m.status, 'unknown') = 'closed')::bigint as current_closed_watchlist_rows
+  from bot.watchlist w
+  left join public.markets m on m.market_id::text = w.market_id::text
+  group by w.market_id::text
 )
 select
-  side,
-  market_id,
-  classification,
-  question,
-  sample_count,
-  first_seen,
-  last_seen,
-  max_abs_delta,
-  max_threshold_value,
-  max_liquidity,
-  max_spread
-from ranked
-where rn <= %s
-order by side, rn;
+  r.side,
+  r.market_id,
+  r.classification,
+  r.question,
+  r.sample_count,
+  r.first_seen,
+  r.last_seen,
+  r.max_abs_delta,
+  r.max_threshold_value,
+  r.max_liquidity,
+  r.max_spread,
+  coalesce(m.status, 'unknown') as current_market_status,
+  coalesce(h.status, 'unknown') as current_hot_status,
+  h.end_date as current_hot_end_date,
+  case
+    when coalesce(m.status, h.status, 'unknown') = 'closed' then 'closed'
+    when h.end_date is not null and h.end_date < now() then 'date_passed_active'
+    else coalesce(h.status, m.status, 'unknown')
+  end as current_lifecycle_state,
+  coalesce(c.current_candidate_states, 'none') as current_candidate_states,
+  coalesce(c.current_candidate_rows, 0) as current_candidate_rows,
+  coalesce(w.current_watchlist_rows, 0) as current_watchlist_rows,
+  coalesce(w.current_closed_watchlist_rows, 0) as current_closed_watchlist_rows
+from ranked r
+left join public.markets m on m.market_id::text = r.market_id
+left join public.hot_market_registry_latest h on h.market_id::text = r.market_id
+left join current_candidates c on c.market_id = r.market_id
+left join current_watchlist w on w.market_id = r.market_id
+where r.rn <= %s
+order by r.side, r.rn;
 """
 
 
@@ -204,6 +235,9 @@ def fmt_mismatch_market_rows(rows: list[dict], side: str) -> list[str]:
             f"samples={row.get('sample_count')} | "
             f"max_abs_delta={fmt_float(row.get('max_abs_delta'))} | "
             f"threshold={fmt_float(row.get('max_threshold_value'))} | "
+            f"current={row.get('current_lifecycle_state')} | "
+            f"candidate_states={row.get('current_candidate_states')} | "
+            f"watchlist_rows={row.get('current_watchlist_rows')} | "
             f"last_seen={row.get('last_seen')} | "
             f"question={short_text(row.get('question'))}"
         )
@@ -465,6 +499,8 @@ def main() -> None:
             "- `legacy_only_samples > 0` means legacy delivery still surfaces watchlist alerts that the hot layer did not mark `ready`.",
             "- `both_non_quiet_samples > 0` plus a healthy `max_overlap_count` is the strongest evidence for a safe hot-first delivery cutover.",
             "- `Classification Totals` help separate semantic mismatch types from raw count drift so delivery decisions are based on reasons, not just volumes.",
+            "- `current=closed` in top mismatch markets means the historical mismatch came from a market that has since exited live delivery.",
+            "- `current=active` plus `candidate_states=below_threshold` means the market is still tracked, but hot currently sees no threshold-clearing move.",
             "",
         ]
     )

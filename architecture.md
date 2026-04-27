@@ -4,6 +4,39 @@ This document describes the technical architecture.
 
 ---
 
+# Delivery Mismatch Lifecycle Context (2026-04-27)
+
+Delivery mismatch diagnostics now join recurring mismatch markets with their current lifecycle posture.
+
+Updated artifacts:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the top mismatch rollup now joins current state from:
+  - `public.markets`
+  - `public.hot_market_registry_latest`
+  - `public.hot_alert_candidates_latest`
+  - `bot.watchlist`
+• report rows now expose:
+  - current lifecycle state
+  - current hot candidate states
+  - current watchlist row count
+• this remains read-only ops reporting; no delivery query, table schema, ingest path, or push send logic changed
+
+Architectural consequence:
+
+• recurring mismatch markets can now be separated into:
+  - markets that have since closed
+  - active markets whose current hot candidate state is below threshold
+• this narrows the next safe runtime work to stale/shock hardening around legacy bucket rows
+• hot-first delivery remains blocked until that semantic mismatch is reduced or intentionally accepted
+
+
 # Delivery Mismatch Market Rollup (2026-04-27)
 
 The delivery diagnostics report now exposes which concrete markets repeatedly create hot-vs-legacy mismatch rows.

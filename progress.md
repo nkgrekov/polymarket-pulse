@@ -4,6 +4,41 @@ This document tracks the current state of the project.
 
 ---
 
+# Delivery Mismatch Lifecycle Context (2026-04-27)
+
+Extended the delivery mismatch report one level deeper by attaching current market lifecycle state to the recurring mismatch market rollups.
+
+Files updated:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• top mismatch market rows now include:
+  - current lifecycle state
+  - current hot candidate states
+  - current watchlist row count
+• regenerated the 168-hour report from live Railway/Supabase data
+
+Current finding:
+
+• the main recurring mismatch markets split into two useful groups:
+  - `closed`: `1919417`, `2007076`
+  - `active` but currently `below_threshold`: `1919421`, `1919425`
+• this confirms that the mismatch is partly historical bucket shock behavior and partly current below-threshold semantics, not a missing telemetry problem
+
+Why this matters:
+
+• the next safe engineering step is not hot-first delivery
+• the next safe engineering step is a conservative stale/shock hardening plan:
+  - suppress or age out legacy bucket shocks when hot now says `closed`
+  - treat active-but-below-threshold legacy-only rows as candidates for tighter recency/bucket-age filtering
+• runtime delivery remains unchanged in this step
+
+
 # Delivery Mismatch Market Rollup (2026-04-27)
 
 Extended the delivery parity report so mismatch diagnostics identify the repeat market ids behind `hot_only` and `legacy_only`, not just aggregate classifications.
