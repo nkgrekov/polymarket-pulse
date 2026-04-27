@@ -4,6 +4,35 @@ This document describes the technical architecture.
 
 ---
 
+# Legacy Push Shock Hardening (2026-04-27)
+
+The bot push loop now applies a narrow hot-aware suppression pass on top of the existing legacy delivery query.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `SQL_PUSH_CANDIDATES` now enriches legacy inbox rows with current hot state from:
+  - `public.hot_alert_candidates_latest`
+  - `public.hot_market_registry_latest`
+  - `public.markets`
+• `dispatch_push_alerts(...)` now runs `push_suppression_reason(...)` before send
+• suppression currently applies only to `watchlist` alerts and only for two conservative cases:
+  - `hot_closed`
+  - `hot_below_threshold_reverted`
+• suppressed rows are skipped in send, but the underlying legacy inbox view remains unchanged
+
+Architectural consequence:
+
+• push delivery remains legacy-primary, but it is no longer fully blind to current hot lifecycle state
+• read surfaces and parity instrumentation stay intact
+• this is a hybrid hardening step, not a hot-first cutover
+
+
 # Delivery Mismatch Lifecycle Context (2026-04-27)
 
 Delivery mismatch diagnostics now join recurring mismatch markets with their current lifecycle posture.

@@ -1,4 +1,5 @@
 import asyncio
+from collections import Counter
 import hashlib
 import logging
 import os
@@ -907,9 +908,20 @@ select
   i.prev_bucket,
   i.abs_delta,
   p.chat_id,
-  bot.current_plan(i.user_id) as plan
+  bot.current_plan(i.user_id) as plan,
+  h.candidate_state as hot_candidate_state,
+  h.quote_ts as hot_quote_ts,
+  h.threshold_value as hot_threshold_value,
+  coalesce(r.status, m.status, 'unknown') as hot_market_status
 from bot.alerts_inbox_latest i
 join bot.profiles p on p.user_id = i.user_id
+left join public.hot_alert_candidates_latest h
+  on h.app_user_id::text = i.user_id::text
+ and h.market_id = i.market_id
+left join public.hot_market_registry_latest r
+  on r.market_id = i.market_id
+left join public.markets m
+  on m.market_id = i.market_id
 where p.chat_id is not null
 order by i.abs_delta desc nulls last
 limit %s;
@@ -1652,6 +1664,24 @@ def fmt_window(last_bucket: Any, prev_bucket: Any) -> str:
         return f"{prev_bucket} -> {last_bucket} ({mins}m)"
     except Exception:
         return f"{prev_bucket} -> {last_bucket}"
+
+
+def push_suppression_reason(row: dict[str, Any]) -> str | None:
+    if str(row.get("alert_type") or "") != "watchlist":
+        return None
+    hot_state = str(row.get("hot_candidate_state") or "")
+    hot_market_status = str(row.get("hot_market_status") or "")
+    if hot_state == "closed" or hot_market_status == "closed":
+        return "hot_closed"
+    hot_quote_ts = row.get("hot_quote_ts")
+    legacy_last_bucket = row.get("last_bucket")
+    if hot_state == "below_threshold" and hot_quote_ts is not None and legacy_last_bucket is not None:
+        try:
+            if hot_quote_ts > legacy_last_bucket:
+                return "hot_below_threshold_reverted"
+        except Exception:
+            return None
+    return None
 
 
 def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
@@ -3410,6 +3440,7 @@ async def dispatch_push_alerts(application: Application) -> None:
 
     sent_count = 0
     sent_today_cache: dict[str, int] = {}
+    suppressed_counts: Counter[str] = Counter()
     for row in rows:
         user_id = str(row["user_id"])
         recipient = str(row["chat_id"])
@@ -3417,6 +3448,21 @@ async def dispatch_push_alerts(application: Application) -> None:
         alert_type = row["alert_type"]
         bucket = row["last_bucket"]
         plan = row.get("plan") or "free"
+
+        suppression_reason = push_suppression_reason(row)
+        if suppression_reason:
+            suppressed_counts[suppression_reason] += 1
+            log.info(
+                "push_loop suppressed user_id=%s market_id=%s reason=%s hot_state=%s hot_status=%s legacy_bucket=%s hot_quote_ts=%s",
+                user_id,
+                market_id,
+                suppression_reason,
+                row.get("hot_candidate_state"),
+                row.get("hot_market_status"),
+                row.get("last_bucket"),
+                row.get("hot_quote_ts"),
+            )
+            continue
 
         if user_id not in sent_today_cache:
             sent_today_cache[user_id] = await asyncio.to_thread(sent_today_sync, user_id)
@@ -3440,6 +3486,8 @@ async def dispatch_push_alerts(application: Application) -> None:
 
     if sent_count:
         log.info("push_loop delivered=%s", sent_count)
+    if suppressed_counts:
+        log.info("push_loop suppressed=%s", dict(suppressed_counts))
 
 
 async def push_loop(application: Application) -> None:

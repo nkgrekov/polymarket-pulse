@@ -4,6 +4,39 @@ This document tracks the current state of the project.
 
 ---
 
+# Legacy Push Shock Hardening (2026-04-27)
+
+Added a conservative suppression layer in the bot push loop so legacy watchlist alerts do not send when hot state already says the market is closed or the legacy bucket shock has already cooled below threshold.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `SQL_PUSH_CANDIDATES` now carries current hot state alongside legacy inbox rows:
+  - `hot_candidate_state`
+  - `hot_quote_ts`
+  - `hot_threshold_value`
+  - `hot_market_status`
+• `dispatch_push_alerts(...)` now suppresses only `watchlist` pushes when:
+  - hot says `closed`
+  - hot says `below_threshold` and the hot quote is newer than the legacy bucket
+• suppression is logged with explicit reasons:
+  - `hot_closed`
+  - `hot_below_threshold_reverted`
+
+Why this matters:
+
+• this directly targets the two mismatch families we just isolated:
+  - closed markets still echoed by legacy bucket state
+  - stale legacy bucket shocks after hot has already cooled below threshold
+• the change is conservative: it does not alter inbox reads, mover reads, ranking, or the main legacy delivery source
+• it reduces the chance of obviously stale push alerts without forcing a hot-first delivery cutover
+
+
 # Delivery Mismatch Lifecycle Context (2026-04-27)
 
 Extended the delivery mismatch report one level deeper by attaching current market lifecycle state to the recurring mismatch market rollups.
