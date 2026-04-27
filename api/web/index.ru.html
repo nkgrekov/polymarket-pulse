@@ -444,6 +444,35 @@
       background: rgba(19, 23, 20, 0.72);
     }
 
+    .quality-line {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .quality-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(211, 255, 224, 0.1);
+      padding: 0 7px;
+      color: var(--muted-soft);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(211, 255, 224, 0.035);
+      white-space: nowrap;
+    }
+
+    .quality-pill.strong {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.22);
+      background: rgba(0, 255, 136, 0.07);
+    }
+
     .spark {
       margin-top: 8px;
       width: 100%;
@@ -1526,6 +1555,28 @@
       return `<div class="${cls}"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="M ${pts.replaceAll(' ', ' L ')}" /></svg></div>`;
     }
 
+    function formatLiq(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return '';
+      if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}m liq`;
+      if (n >= 1000) return `$${Math.round(n / 1000)}k liq`;
+      return `$${Math.round(n)} liq`;
+    }
+
+    function qualityLine(row) {
+      const items = [];
+      const source = String(row.source || '');
+      const freshness = Number(row.freshness_seconds);
+      const spread = Number(row.spread);
+      const liq = formatLiq(row.liquidity);
+      if (source === 'hot') items.push('<span class="quality-pill strong">live filter</span>');
+      if (Number.isFinite(freshness)) items.push(`<span class="quality-pill">${Math.round(freshness)}s quote</span>`);
+      if (liq) items.push(`<span class="quality-pill">${esc(liq)}</span>`);
+      if (Number.isFinite(spread)) items.push(`<span class="quality-pill">${Math.round(spread * 100)}pp spread</span>`);
+      if (!items.length && source === 'legacy') items.push('<span class="quality-pill">historical fallback</span>');
+      return items.length ? `<div class="quality-line">${items.join('')}</div>` : '';
+    }
+
     function renderLiveMovers(rows) {
       if (!liveRows || !Array.isArray(rows) || rows.length === 0) return;
       liveRows.innerHTML = rows.map((r) => {
@@ -1541,6 +1592,7 @@
         const tapeChip = Math.abs(tapeDelta) > 0
           ? `<span class="tape-chip ${tapeUp ? 'delta-up' : 'delta-down'}">1m ${pp(tapeDelta)}</span>`
           : '';
+        const quality = qualityLine(r);
         const rowTag = marketUrl ? 'a' : 'div';
         const rowMainAttrs = marketUrl
           ? `class="row-main" href="${marketUrl}" target="_blank" rel="noopener noreferrer" data-market-action="open_polymarket" data-market-id="${marketId}" data-market-question="${question}"`
@@ -1572,6 +1624,7 @@
                 </span>
                 <span class="${deltaCls}">${pp(r.delta_yes)}</span>
               </div>
+              ${quality}
               ${spark}
             </${rowTag}>
             <div class="row-actions">

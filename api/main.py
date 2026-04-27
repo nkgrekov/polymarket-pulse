@@ -392,7 +392,8 @@ with hot as (
     (q.mid_yes - prev.mid_yes_prev)::double precision as delta_yes,
     m1.delta_mid::double precision as delta_1m,
     coalesce(q.liquidity, 0)::double precision as liquidity,
-    q.spread::double precision as spread
+    q.spread::double precision as spread,
+    q.freshness_seconds::double precision as freshness_seconds
   from public.hot_market_registry_latest r
   join public.hot_market_quotes_latest q using (market_id)
   left join public.hot_top_movers_1m m1 using (market_id)
@@ -429,7 +430,12 @@ select
   yes_mid_now,
   yes_mid_prev,
   delta_yes,
-  delta_1m
+  delta_1m,
+  liquidity,
+  spread,
+  freshness_seconds,
+  'hot'::text as source,
+  'live_quality_gated'::text as signal_quality
 from hot
 order by abs(delta_yes) desc nulls last, liquidity desc nulls last
 limit %s;
@@ -444,7 +450,12 @@ select
   tm.prev_bucket,
   tm.yes_mid_now,
   tm.yes_mid_prev,
-  tm.delta_yes
+  tm.delta_yes,
+  null::double precision as liquidity,
+  null::double precision as spread,
+  null::double precision as freshness_seconds,
+  'legacy'::text as source,
+  'legacy_fallback'::text as signal_quality
 from public.top_movers_latest tm
 join public.markets m on m.market_id = tm.market_id
 where tm.yes_mid_now is not null
@@ -2360,6 +2371,15 @@ def _pulse_track_market_url(market_id: str | None) -> str:
     return f"https://t.me/polymarket_pulse_bot?start={payload}"
 
 
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_live_movers_preview(
     limit: int = 3,
     spark_snapshots: int = 16,
@@ -2427,6 +2447,11 @@ def fetch_live_movers_preview(
             "yes_mid_prev": float(row.get("yes_mid_prev") or 0.0),
             "delta_yes": float(row.get("delta_yes") or 0.0),
             "delta_1m": float(row.get("delta_1m") or 0.0),
+            "liquidity": _float_or_none(row.get("liquidity")),
+            "spread": _float_or_none(row.get("spread")),
+            "freshness_seconds": _float_or_none(row.get("freshness_seconds")),
+            "source": row.get("source") or source,
+            "signal_quality": row.get("signal_quality") or ("hot_quality_gated" if source == "hot" else "legacy_fallback"),
             "spark": spark,
             "market_url": _polymarket_market_url(row.get("slug")),
             "track_url": _pulse_track_market_url(market_id),

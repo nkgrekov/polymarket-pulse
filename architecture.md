@@ -4,6 +4,36 @@ This document describes the technical architecture.
 
 ---
 
+# Homepage Live Signal Quality Context (2026-04-27)
+
+The homepage live preview now exposes a small quality-context layer on top of the existing hot-first mover feed.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `fetch_live_movers_preview(...)` now includes quality metadata from the hot row selection:
+  - row source
+  - signal quality label
+  - quote freshness
+  - liquidity
+  - spread
+• legacy fallback rows are marked distinctly so the frontend can avoid implying they passed the live quality gates
+• homepage rendering now shows compact quality chips under each live mover row
+
+Architectural consequence:
+
+• the public site now explains more of the live analytics contract directly in the UI
+• the current hot-first ranking and fallback behavior remain unchanged
+• this creates a better foundation for future `/signals` or `/top-movers` surfaces where signal quality needs to be visible, not implicit
+
+
 # Trader Services Parked On Railway Hobby (2026-04-23)
 
 The runtime posture on Railway now matches the current product and cost plan more closely.

@@ -4,6 +4,40 @@ This document tracks the current state of the project.
 
 ---
 
+# Homepage Live Signal Quality Context (2026-04-27)
+
+Started the week with a small analytics-quality improvement on the public live preview.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/api/live-movers-preview` now returns signal-quality context for hot rows:
+  - `source`
+  - `signal_quality`
+  - `freshness_seconds`
+  - `liquidity`
+  - `spread`
+• legacy fallback rows are explicitly marked as `legacy_fallback`
+• homepage live mover rows now render compact quality chips:
+  - live quality gate
+  - quote freshness
+  - liquidity
+  - spread
+
+Why this matters:
+
+• the site should increasingly behave like a live analytics surface, not only a marketing page
+• showing why a mover passed quality gates makes the signal feel more trustworthy
+• this is additive and does not change ranking, delivery, bot semantics, or the hot ingest contract
+
+
 # Trader Services Parked On Railway Hobby (2026-04-23)
 
 Parked the non-core trader services on Railway so the current Hobby footprint matches the product focus and cost posture.
