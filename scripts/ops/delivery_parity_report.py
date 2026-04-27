@@ -96,6 +96,70 @@ group by classification
 order by row_count desc, classification asc;
 """
 
+SQL_TOP_MISMATCH_MARKETS = """
+with recent as (
+  select
+    sampled_at,
+    payload
+  from bot.delivery_parity_log
+  where sampled_at >= now() - (%s::int * interval '1 hour')
+    and payload is not null
+), expanded as (
+  select
+    r.sampled_at,
+    'hot_only'::text as side,
+    item
+  from recent r
+  cross join lateral jsonb_array_elements(coalesce(r.payload->'hot_only_top', '[]'::jsonb)) item
+  union all
+  select
+    r.sampled_at,
+    'legacy_only'::text as side,
+    item
+  from recent r
+  cross join lateral jsonb_array_elements(coalesce(r.payload->'legacy_only_top', '[]'::jsonb)) item
+), normalized as (
+  select
+    side,
+    item->>'market_id' as market_id,
+    coalesce(item->>'classification', 'unknown') as classification,
+    max(nullif(item->>'question', '')) as question,
+    count(*)::bigint as sample_count,
+    min(sampled_at) as first_seen,
+    max(sampled_at) as last_seen,
+    max(abs(coalesce(nullif(item->>'delta_abs', '')::double precision, nullif(item->>'abs_delta', '')::double precision, 0))) as max_abs_delta,
+    max(nullif(item->>'threshold_value', '')::double precision) as max_threshold_value,
+    max(nullif(item->>'liquidity', '')::double precision) as max_liquidity,
+    max(nullif(item->>'spread', '')::double precision) as max_spread
+  from expanded
+  where coalesce(item->>'market_id', '') <> ''
+  group by side, item->>'market_id', coalesce(item->>'classification', 'unknown')
+), ranked as (
+  select
+    *,
+    row_number() over (
+      partition by side
+      order by sample_count desc, max_abs_delta desc nulls last, market_id
+    ) as rn
+  from normalized
+)
+select
+  side,
+  market_id,
+  classification,
+  question,
+  sample_count,
+  first_seen,
+  last_seen,
+  max_abs_delta,
+  max_threshold_value,
+  max_liquidity,
+  max_spread
+from ranked
+where rn <= %s
+order by side, rn;
+"""
+
 
 def bullet(label: str, value: str) -> str:
     return f"- {label}: **{value}**"
@@ -108,6 +172,41 @@ def fmt_rows(rows: list[dict], keys: list[str]) -> list[str]:
     for row in rows:
         parts = [f"{key}={row.get(key)}" for key in keys]
         out.append(f"- {' | '.join(parts)}")
+    return out
+
+
+def fmt_float(value: object, digits: int = 4) -> str:
+    if value is None:
+        return "none"
+    try:
+        return f"{float(value):.{digits}f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def short_text(value: object, limit: int = 90) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 1]}..."
+
+
+def fmt_mismatch_market_rows(rows: list[dict], side: str) -> list[str]:
+    selected = [row for row in rows if row.get("side") == side]
+    if not selected:
+        return ["- none"]
+    out: list[str] = []
+    for row in selected:
+        out.append(
+            "- "
+            f"market_id={row.get('market_id')} | "
+            f"classification={row.get('classification')} | "
+            f"samples={row.get('sample_count')} | "
+            f"max_abs_delta={fmt_float(row.get('max_abs_delta'))} | "
+            f"threshold={fmt_float(row.get('max_threshold_value'))} | "
+            f"last_seen={row.get('last_seen')} | "
+            f"question={short_text(row.get('question'))}"
+        )
     return out
 
 
@@ -124,7 +223,7 @@ def normalize_payload(value: object) -> dict[str, object]:
     return {}
 
 
-def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dict | None, list[dict], list[dict]]:
+def fetch_report_data(pg: str, hours: int, recent_limit: int, top_market_limit: int) -> tuple[dict, dict | None, list[dict], list[dict], list[dict]]:
     if psycopg is not None:
         with psycopg.connect(pg, connect_timeout=10) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -136,7 +235,9 @@ def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dic
                 recent = cur.fetchall()
                 cur.execute(SQL_CLASSIFICATION_TOTALS, (hours,))
                 classification_rows = cur.fetchall()
-        return summary, latest, recent, classification_rows
+                cur.execute(SQL_TOP_MISMATCH_MARKETS, (hours, top_market_limit))
+                top_mismatch_markets = cur.fetchall()
+        return summary, latest, recent, classification_rows, top_mismatch_markets
 
     with psycopg2.connect(pg, connect_timeout=10) as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -148,7 +249,9 @@ def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dic
             recent = cur.fetchall()
             cur.execute(SQL_CLASSIFICATION_TOTALS, (hours,))
             classification_rows = cur.fetchall()
-    return summary, latest, recent, classification_rows
+            cur.execute(SQL_TOP_MISMATCH_MARKETS, (hours, top_market_limit))
+            top_mismatch_markets = cur.fetchall()
+    return summary, latest, recent, classification_rows, top_mismatch_markets
 
 
 def int_value(row: dict, key: str) -> int:
@@ -194,6 +297,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize hot-vs-legacy delivery parity history.")
     parser.add_argument("--hours", type=int, default=24)
     parser.add_argument("--recent-limit", type=int, default=25)
+    parser.add_argument("--top-market-limit", type=int, default=8)
     parser.add_argument("--output", default="docs/delivery_parity_latest.md")
     args = parser.parse_args()
 
@@ -201,7 +305,12 @@ def main() -> None:
     if not pg:
         raise SystemExit("PG_CONN is required")
 
-    summary, latest, recent, classification_rows = fetch_report_data(pg, args.hours, args.recent_limit)
+    summary, latest, recent, classification_rows, top_mismatch_markets = fetch_report_data(
+        pg,
+        args.hours,
+        args.recent_limit,
+        args.top_market_limit,
+    )
 
     classification_totals: Counter[str] = Counter()
     hot_examples: list[dict] = []
@@ -297,6 +406,19 @@ def main() -> None:
             lines.append(bullet(classification, str(count)))
     else:
         lines.append("- none")
+
+    lines.extend(
+        [
+            "",
+            "## Top Hot-Only Mismatch Markets",
+            "",
+            *fmt_mismatch_market_rows(top_mismatch_markets, "hot_only"),
+            "",
+            "## Top Legacy-Only Mismatch Markets",
+            "",
+            *fmt_mismatch_market_rows(top_mismatch_markets, "legacy_only"),
+        ]
+    )
 
     lines.extend(
         [

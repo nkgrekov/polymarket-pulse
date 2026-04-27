@@ -4,6 +4,40 @@ This document describes the technical architecture.
 
 ---
 
+# Delivery Mismatch Market Rollup (2026-04-27)
+
+The delivery diagnostics report now exposes which concrete markets repeatedly create hot-vs-legacy mismatch rows.
+
+Updated artifacts:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `scripts/ops/delivery_parity_report.py` now expands `payload.hot_only_top` and `payload.legacy_only_top` from `bot.delivery_parity_log`
+• the report aggregates those rows by:
+  - side
+  - market id
+  - classification
+• this produces top-market rollups for:
+  - `hot_only`
+  - `legacy_only`
+• the aggregation remains read-only and uses existing JSON payload data; no table or runtime schema change was introduced
+
+Architectural consequence:
+
+• delivery mismatch is now visible at three levels:
+  - sample counts
+  - classification totals
+  - recurring market ids
+• current evidence shows a small market cluster repeatedly moving between stale-bucket and shock-reversion states
+• the next safe engineering target is to understand and possibly harden bucket timing semantics before any delivery cutover
+• push delivery remains legacy-primary
+
+
 # Delivery Parity Decision Report Refresh (2026-04-27)
 
 The delivery diagnostics layer now produces a stronger decision report over `bot.delivery_parity_log`.

@@ -4,6 +4,50 @@ This document tracks the current state of the project.
 
 ---
 
+# Delivery Mismatch Market Rollup (2026-04-27)
+
+Extended the delivery parity report so mismatch diagnostics identify the repeat market ids behind `hot_only` and `legacy_only`, not just aggregate classifications.
+
+Files updated:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added `Top Hot-Only Mismatch Markets`
+• added `Top Legacy-Only Mismatch Markets`
+• each row now includes:
+  - `market_id`
+  - classification
+  - sample count
+  - max absolute delta
+  - threshold
+  - latest seen timestamp
+  - question text
+• regenerated the 168-hour report from live Railway/Supabase data
+
+Current finding:
+
+• the mismatch is not random across the universe
+• recent examples concentrate around a small cluster:
+  - `1919417`
+  - `1919421`
+  - `1919425`
+  - `2007076`
+• those markets appear in both directions:
+  - `legacy_stale_bucket` when hot leads the legacy bucket
+  - `legacy_shock_reverted` when legacy keeps surfacing a bucket shock after hot cools below threshold
+
+Why this matters:
+
+• the next delivery task should target the stale-bucket / shock-reversion semantics
+• hot-first delivery remains blocked, but the blocker is now narrow enough to investigate by market lifecycle and bucket timing
+• runtime delivery semantics remain unchanged
+
+
 # Delivery Parity Decision Report Refresh (2026-04-27)
 
 Refreshed the delivery parity evidence and tightened the report script so the delivery decision is based on the full selected window, not only recent examples.
