@@ -4,6 +4,70 @@ This document describes the technical architecture.
 
 ---
 
+# Website Watchlist UX Workspace (2026-04-27)
+
+The site now has a first real watchlist workspace layer on top of the hot/live market data surfaces.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• added a new read-only workspace query in `api/main.py`:
+  - `SQL_WATCHLIST_WORKSPACE`
+  - `fetch_watchlist_workspace(...)`
+• the workspace query joins existing internal sources only:
+  - `public.hot_market_registry_latest`
+  - `public.hot_market_quotes_latest`
+  - `public.hot_top_movers_1m`
+  - `public.hot_top_movers_5m`
+  - `public.top_movers_latest`
+  - `public.markets`
+• added `/api/watchlist-workspace` as a site API endpoint for hydrating saved market ids into current market rows
+• added `/watchlist-client.js` as a shared browser-side watchlist controller
+• watchlist persistence in this step is intentionally browser-local:
+  - saved markets
+  - local alert state
+  - local sensitivity
+  - pending Telegram context
+• `/watchlist` now renders a dedicated workspace block that is populated client-side from:
+  - browser-local saved ids
+  - server-side workspace hydration from `/api/watchlist-workspace`
+• homepage and dynamic live-signal surfaces now emit watchlist actions with market context:
+  - market id
+  - question
+  - market URL
+  - Telegram track URL
+  - slug
+  - row source
+• the logged-out flow is lightweight and additive:
+  - add/save happens locally
+  - Telegram prompt appears for persistence / alert follow-up
+  - selected market context is retained in local state
+• category filtering reuses the existing lightweight market taxonomy heuristic already used in bot candidate flows:
+  - `politics`
+  - `macro`
+  - `crypto`
+  - `other`
+
+Architectural consequence:
+
+• the website now owns the saved-market workspace layer instead of delegating the entire watchlist concept to Telegram
+• Telegram still owns identity, alert persistence, and delivery truth
+• no direct frontend calls to Polymarket were introduced
+• no irreversible auth or schema decision was made yet
+• this creates a clean bridge into the next prompts:
+  - Telegram login as website identity
+  - bell-state persistence
+  - cross-device watchlist storage
+
+
 # Global Site Header And Watchlist Entry Surface (2026-04-27)
 
 The public site now has a shared navigation shell and a dedicated watchlist entry page that better matches the two-surface product model.

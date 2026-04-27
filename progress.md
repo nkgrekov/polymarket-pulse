@@ -4,6 +4,84 @@ This document tracks the current state of the project.
 
 ---
 
+# Website Watchlist UX Workspace (2026-04-27)
+
+Implemented the first real web watchlist workflow so saved markets now behave like a website object, while alerts remain a separate Telegram-first layer.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added `Add to watchlist` actions to live market rows on:
+  - homepage live movers board
+  - `/signals`
+  - `/top-movers`
+  - `/analytics`
+  - `/telegram-bot`
+• added browser-backed watchlist storage through a shared client script:
+  - local saved markets
+  - local alert state (`off / on / paused`)
+  - local sensitivity presets
+  - pending Telegram context when user is not logged in
+• added a new read-only API surface:
+  - `/api/watchlist-workspace`
+  which hydrates saved market ids from existing hot/legacy DB surfaces
+• upgraded `/watchlist` from doctrine page into a real workspace surface with:
+  - search
+  - category filter
+  - status filter
+  - alert-state filter
+  - sort by delta / liquidity / spread / freshness / saved time
+  - compact table toggle
+  - mobile card view
+• workspace rows now expose:
+  - question
+  - current mid
+  - delta
+  - 1m / 5m movement
+  - liquidity
+  - spread
+  - freshness
+  - market status
+  - signal quality
+  - alert state
+  - sensitivity
+  - actions
+• logged-out add / alert actions now trigger a lightweight Telegram prompt while keeping the selected market context in local browser state
+
+What did not change:
+
+• no Telegram bot commands changed
+• no DB write path for watchlist identity was introduced yet
+• no frontend direct calls to Polymarket were added
+• no live ingest / ranking / delivery semantics changed
+• alert persistence is still not server-backed; this step stays additive and reversible
+
+Manual test:
+
+• from `/` save a live market with `Add to watchlist`
+• confirm a logged-out Telegram prompt appears
+• open `/watchlist`
+• confirm the row appears with current metrics and actions
+• test search, category filter, status filter, alert-state filter, and sort controls
+• toggle alert state and sensitivity locally
+• remove a market
+• confirm mobile card layout below mobile breakpoint
+
+Risks / follow-up:
+
+• current watchlist persistence is browser-local until the Telegram identity/login layer lands in later prompts
+• alert state shown on the site is currently local planning state, not yet a server-backed Telegram truth source
+• next logical step is the Telegram login / identity handshake so local watchlist state can become cross-device and real
+
+
 # Global Site Header And Watchlist Entry Surface (2026-04-27)
 
 Started the `new horizon` site-model pass by aligning the public web surface with the product doctrine: website as research workspace, Telegram as identity and alert loop.

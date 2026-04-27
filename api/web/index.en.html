@@ -29,6 +29,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
+  <script defer src="/watchlist-client.js"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -539,6 +540,9 @@
       border-radius: 999px;
       border: 1px solid var(--line-soft);
       padding: 0 10px;
+      appearance: none;
+      background: #131714;
+      cursor: pointer;
       color: var(--muted);
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
@@ -559,6 +563,12 @@
     .row-link.primary {
       color: var(--text);
       border-color: rgba(0, 255, 136, 0.26);
+    }
+
+    .row-link.saved {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.42);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.16) inset;
     }
 
     .row-link.placeholder {
@@ -1944,6 +1954,19 @@
               >Open on Polymarket</a>
             `
           : '';
+        const watchlistAction = `
+              <button
+                type="button"
+                class="row-link"
+                data-watchlist-action="toggle_save"
+                data-market-id="${marketId}"
+                data-market-question="${question}"
+                data-market-url="${marketUrl}"
+                data-track-url="${trackUrl}"
+                data-market-slug="${esc(r.slug || '')}"
+                data-market-source="${esc(r.source || '')}"
+              >Add to watchlist</button>
+            `;
         return `
           <div class="row">
             <${rowTag} ${rowMainAttrs}>
@@ -1963,6 +1986,7 @@
             </${rowTag}>
             <div class="row-actions">
               ${primaryAction}
+              ${watchlistAction}
               <a
                 class="row-link"
                 href="${trackUrl}"
@@ -1976,6 +2000,7 @@
           </div>
         `;
       }).join('');
+      window.dispatchEvent(new CustomEvent('pulse:watchlist-sync'));
       if (liveTitle) {
         liveTitle.textContent = 'Top movers · Live DB feed';
       }

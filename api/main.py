@@ -632,6 +632,54 @@ where rn <= %s
 order by market_id, ts_bucket asc;
 """
 
+SQL_WATCHLIST_WORKSPACE = """
+with wanted as (
+  select distinct unnest(%s::text[]) as market_id
+)
+select
+  w.market_id,
+  coalesce(r.question, m.question, tm.question, w.market_id) as question,
+  coalesce(r.slug, m.slug) as slug,
+  coalesce(r.status, m.status, 'unknown') as market_status,
+  coalesce(q.quote_ts, hm5.quote_ts, tm.last_bucket) as quote_ts,
+  coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now)::double precision as yes_mid_now,
+  coalesce(hm5.prev_mid, tm.yes_mid_prev)::double precision as yes_mid_prev_5m,
+  hm1.delta_mid::double precision as delta_1m,
+  hm5.delta_mid::double precision as delta_5m,
+  coalesce(hm5.delta_mid, tm.delta_yes)::double precision as delta_primary,
+  q.liquidity::double precision as liquidity,
+  q.spread::double precision as spread,
+  q.freshness_seconds::double precision as freshness_seconds,
+  q.has_two_sided_quote,
+  case
+    when coalesce(r.status, m.status, 'unknown') <> 'active' then 'market_closed'
+    when coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now) is null then 'no_quotes'
+    when q.freshness_seconds is not null and q.freshness_seconds > %s then 'stale_quotes'
+    when q.spread is not null and q.spread > %s then 'filtered_by_spread'
+    when q.liquidity is not null and q.liquidity < %s then 'filtered_by_liquidity'
+    when q.mid_yes is not null then 'saved'
+    when hm5.current_mid is not null or tm.yes_mid_now is not null then 'legacy_snapshot'
+    else 'no_quotes'
+  end as row_state,
+  case
+    when coalesce(r.status, m.status, 'unknown') <> 'active' then 'market_closed'
+    when coalesce(q.mid_yes, hm5.current_mid, tm.yes_mid_now) is null then 'no_quotes'
+    when q.freshness_seconds is not null and q.freshness_seconds > %s then 'stale_quotes'
+    when q.spread is not null and q.spread > %s then 'filtered_by_spread'
+    when q.liquidity is not null and q.liquidity < %s then 'filtered_by_liquidity'
+    when q.mid_yes is not null then 'live_quality_gated'
+    when hm5.current_mid is not null or tm.yes_mid_now is not null then 'legacy_fallback'
+    else 'no_quotes'
+  end as signal_quality
+from wanted w
+left join public.hot_market_registry_latest r using (market_id)
+left join public.markets m using (market_id)
+left join public.hot_market_quotes_latest q using (market_id)
+left join public.hot_top_movers_1m hm1 using (market_id)
+left join public.hot_top_movers_5m hm5 using (market_id)
+left join public.top_movers_latest tm using (market_id);
+"""
+
 SQL_ENSURE_PAYMENT_EVENTS = """
 create table if not exists app.payment_events (
   id bigserial primary key,
@@ -1085,6 +1133,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     live_signal_block = _render_signal_quality_block(slug, lang)
     hero_live_signal_block = live_signal_block if slug == "signals" else ""
     body_live_signal_block = "" if slug == "signals" else live_signal_block
+    watchlist_workspace_block = _render_watchlist_workspace_block(lang) if slug == "watchlist" else ""
     robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     if noindex_override:
         robots_meta = "noindex,follow"
@@ -1113,6 +1162,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
+  <script defer src="/watchlist-client.js"></script>
   <script type="application/ld+json">{page_schema}</script>
   {faq_schema_tag}
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
@@ -1712,6 +1762,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       gap: 7px;
     }}
     .live-signal-link {{
+      appearance: none;
+      background: #131714;
+      cursor: pointer;
       border: 1px solid var(--line-soft);
       border-radius: 999px;
       padding: 7px 9px;
@@ -1726,11 +1779,220 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       color: var(--text);
       border-color: rgba(0, 255, 136, 0.32);
     }}
+    .live-signal-link.saved {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.42);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.16) inset;
+    }}
     .live-signal-link:hover,
     .live-signal-link:focus-visible {{
       border-color: var(--accent);
       color: var(--text);
       outline: none;
+    }}
+    .watchlist-workspace {{
+      margin-top: 16px;
+      border: 1px solid rgba(0, 255, 136, 0.18);
+      border-radius: 16px;
+      padding: 14px;
+      background:
+        radial-gradient(820px 280px at 10% 0%, rgba(0, 255, 136, 0.07), transparent 58%),
+        #101511;
+    }}
+    .watchlist-workspace-head {{
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 12px;
+    }}
+    .watchlist-workspace-copy,
+    .watchlist-login-copy {{
+      margin: 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      max-width: 620px;
+    }}
+    .watchlist-login-inline {{
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }}
+    .watchlist-root {{
+      display: grid;
+      gap: 12px;
+    }}
+    .watchlist-empty,
+    .watchlist-banner,
+    .watchlist-table-wrap,
+    .watchlist-card-grid {{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #131714;
+    }}
+    .watchlist-empty,
+    .watchlist-banner {{
+      padding: 16px;
+    }}
+    .watchlist-empty h3,
+    .watchlist-banner h3 {{
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.15;
+    }}
+    .watchlist-empty p,
+    .watchlist-banner p {{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }}
+    .watchlist-banner-actions {{
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }}
+    .watchlist-controls {{
+      display: grid;
+      grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(0, 1fr)) auto;
+      gap: 8px;
+      align-items: center;
+    }}
+    .watchlist-input,
+    .watchlist-select,
+    .watchlist-view-btn {{
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: #0f1410;
+      color: var(--text);
+      padding: 10px 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+    }}
+    .watchlist-view-btn {{
+      cursor: pointer;
+      white-space: nowrap;
+    }}
+    .watchlist-table-wrap {{
+      overflow-x: auto;
+    }}
+    .watchlist-table {{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1120px;
+    }}
+    .watchlist-table th,
+    .watchlist-table td {{
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(42, 51, 43, 0.72);
+      text-align: left;
+      vertical-align: top;
+    }}
+    .watchlist-table th {{
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }}
+    .watchlist-table tr:last-child td {{
+      border-bottom: 0;
+    }}
+    .watchlist-table.compact th,
+    .watchlist-table.compact td {{
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }}
+    .watchlist-question {{
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.3;
+    }}
+    .watchlist-question-meta {{
+      margin: 6px 0 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }}
+    .watchlist-chip-row,
+    .watchlist-action-row {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .watchlist-chip {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      padding: 0 8px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: rgba(19, 23, 20, 0.72);
+    }}
+    .watchlist-chip.strong {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.08);
+    }}
+    .watchlist-chip.down {{
+      border-color: rgba(255, 68, 68, 0.28);
+      color: #ffd3d3;
+    }}
+    .watchlist-action {{
+      appearance: none;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      background: #131714;
+      text-decoration: none;
+      cursor: pointer;
+    }}
+    .watchlist-action:hover,
+    .watchlist-action:focus-visible,
+    .watchlist-view-btn:hover,
+    .watchlist-view-btn:focus-visible {{
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }}
+    .watchlist-action.primary {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.32);
+    }}
+    .watchlist-card-grid {{
+      display: none;
+      padding: 10px;
+      gap: 10px;
+    }}
+    .watchlist-card {{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #101511;
+      display: grid;
+      gap: 10px;
+    }}
+    .watchlist-card-top {{
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
     }}
     .faq-grid {{
       margin-top: 10px;
@@ -1812,6 +2074,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .command-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .live-signal-head {{ display: block; }}
       .live-signal-subtitle {{ margin-top: 8px; text-align: left; }}
+      .watchlist-workspace-head {{ display: block; }}
+      .watchlist-login-inline {{ margin-top: 10px; justify-items: start; }}
+      .watchlist-controls {{ grid-template-columns: 1fr 1fr; }}
     }}
     @media (max-width: 640px) {{
       .wrap {{ width: calc(100% - 20px); }}
@@ -1825,6 +2090,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .live-signal-row {{ grid-template-columns: 1fr; }}
       .live-signal-side {{ align-items: start; }}
       .live-signal-actions {{ justify-content: flex-start; }}
+      .watchlist-controls {{ grid-template-columns: 1fr; }}
+      .watchlist-table-wrap {{ display: none; }}
+      .watchlist-card-grid {{ display: grid; }}
     }}
     @media (prefers-reduced-motion: reduce) {{
       *, *::before, *::after {{
@@ -1880,6 +2148,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       <p class="cta-backup-link-wrap">{backup_cta}</p>
       {hero_live_signal_block}
     </article>
+    {watchlist_workspace_block}
     <section class="preview reveal delay-3">
       <p class="links-title">{preview_head}</p>
       <div class="preview-grid">
@@ -2941,6 +3210,137 @@ def _fmt_live_age(value: object) -> str | None:
     return f"{seconds // 60}m quote"
 
 
+def _watchlist_category(question: str | None) -> str:
+    text = (question or "").lower()
+    if any(token in text for token in ("trump", "biden", "election", "senate", "house", "president", "iran", "putin", "zelensky", "congress", "war", "ceasefire", "nato", "israel", "ukraine", "rfk")):
+        return "politics"
+    if any(token in text for token in ("fed", "inflation", "recession", "gdp", "cpi", "interest rate", "oil", "yield", "tariff", "unemployment", "jobs report", "treasury")):
+        return "macro"
+    if any(token in text for token in ("bitcoin", "ethereum", "solana", "xrp", "bnb", "dogecoin", "crypto", "fdv", "btc", "eth", "memecoin")):
+        return "crypto"
+    return "other"
+
+
+def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
+    clean_ids: list[str] = []
+    seen: set[str] = set()
+    for market_id in market_ids:
+        token = _safe_market_token(market_id, max_len=48)
+        if token and token not in seen:
+            seen.add(token)
+            clean_ids.append(token)
+    if not clean_ids or not PG_CONN:
+        return []
+
+    with psycopg.connect(PG_CONN, connect_timeout=5, row_factory=psycopg.rows.dict_row) as conn:
+        with conn.cursor() as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(
+                SQL_WATCHLIST_WORKSPACE,
+                (
+                    clean_ids,
+                    HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+                    HOT_PREVIEW_MAX_SPREAD,
+                    HOT_PREVIEW_MIN_LIQUIDITY,
+                    HOT_PREVIEW_MAX_FRESHNESS_SECONDS,
+                    HOT_PREVIEW_MAX_SPREAD,
+                    HOT_PREVIEW_MIN_LIQUIDITY,
+                ),
+            )
+            rows = cur.fetchall()
+
+    row_map: dict[str, dict] = {}
+    for row in rows:
+        market_id = str(row.get("market_id") or "")
+        if not market_id:
+            continue
+        question = str(row.get("question") or market_id)
+        market_url = _polymarket_market_url(row.get("slug"))
+        payload = {
+            "market_id": market_id,
+            "question": question,
+            "slug": row.get("slug") or "",
+            "market_url": market_url,
+            "track_url": _pulse_track_market_url(market_id),
+            "market_status": str(row.get("market_status") or "unknown"),
+            "status": str(row.get("row_state") or "saved"),
+            "signal_quality": str(row.get("signal_quality") or "legacy_fallback"),
+            "category": _watchlist_category(question),
+            "quote_ts": _to_iso(row.get("quote_ts")),
+            "yes_mid_now": _float_or_none(row.get("yes_mid_now")),
+            "yes_mid_prev_5m": _float_or_none(row.get("yes_mid_prev_5m")),
+            "delta_primary": _float_or_none(row.get("delta_primary")),
+            "delta_1m": _float_or_none(row.get("delta_1m")),
+            "delta_5m": _float_or_none(row.get("delta_5m")),
+            "liquidity": _float_or_none(row.get("liquidity")),
+            "spread": _float_or_none(row.get("spread")),
+            "freshness_seconds": _float_or_none(row.get("freshness_seconds")),
+            "has_two_sided_quote": bool(row.get("has_two_sided_quote")),
+        }
+        row_map[market_id] = payload
+
+    out: list[dict] = []
+    for market_id in clean_ids:
+        payload = row_map.get(market_id)
+        if payload:
+            out.append(payload)
+        else:
+            out.append(
+                {
+                    "market_id": market_id,
+                    "question": market_id,
+                    "slug": "",
+                    "market_url": None,
+                    "track_url": _pulse_track_market_url(market_id),
+                    "market_status": "unknown",
+                    "status": "no_quotes",
+                    "signal_quality": "no_quotes",
+                    "category": "other",
+                    "quote_ts": None,
+                    "yes_mid_now": None,
+                    "yes_mid_prev_5m": None,
+                    "delta_primary": None,
+                    "delta_1m": None,
+                    "delta_5m": None,
+                    "liquidity": None,
+                    "spread": None,
+                    "freshness_seconds": None,
+                    "has_two_sided_quote": False,
+                }
+            )
+    return out
+
+
+def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
+    title = "Watchlist workspace" if lang == "en" else "Watchlist workspace"
+    subtitle = (
+        "Save markets on the site, sort the workspace your way, and use Telegram only when it is time to persist alert behavior."
+        if lang == "en"
+        else "Сохраняйте рынки на сайте, собирайте удобный workspace и подключайте Telegram только тогда, когда пора закреплять alert-поведение."
+    )
+    login_copy = (
+        "Log in with Telegram to save your watchlist."
+        if lang == "en"
+        else "Войдите через Telegram, чтобы сохранить watchlist."
+    )
+    login_cta = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
+    return f"""
+    <section class="watchlist-workspace reveal delay-3">
+      <div class="watchlist-workspace-head">
+        <div>
+          <p class="links-title">{title}</p>
+          <p class="watchlist-workspace-copy">{subtitle}</p>
+        </div>
+        <div class="watchlist-login-inline">
+          <p class="watchlist-login-copy">{login_copy}</p>
+          <a class="site-cta" href="{PULSE_BOT_URL}" target="_blank" rel="noopener noreferrer">{login_cta}</a>
+        </div>
+      </div>
+      <div id="watchlist-workspace-root" data-watchlist-workspace="true" data-watchlist-lang="{lang}"></div>
+    </section>
+"""
+
+
 def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
     if slug not in {"signals", "telegram-bot", "top-movers", "analytics"}:
         return ""
@@ -2970,6 +3370,7 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         )
     track_label = "Track in Telegram" if lang == "en" else "Отслеживать в Telegram"
     open_label = "Open market" if lang == "en" else "Открыть рынок"
+    save_label = "Add to watchlist" if lang == "en" else "Add to watchlist"
 
     cards: list[str] = []
     for row in rows:
@@ -2977,6 +3378,7 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         market_id = html.escape(str(row.get("market_id") or ""))
         market_url = html.escape(str(row.get("market_url") or ""))
         track_url = html.escape(str(row.get("track_url") or ""))
+        market_slug = html.escape(str(row.get("slug") or ""))
         source = str(row.get("source") or "")
         delta = float(row.get("delta_yes") or 0.0)
         delta_cls = "up" if delta >= 0 else "down"
@@ -3007,6 +3409,16 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
                 f'<a class="live-signal-link primary" href="{track_url}" target="_blank" rel="noopener noreferrer" '
                 f'data-market-action="track_telegram" data-market-id="{market_id}">{track_label}</a>'
             )
+        actions += (
+            f'<button type="button" class="live-signal-link watchlist-toggle" '
+            f'data-watchlist-action="toggle_save" '
+            f'data-market-id="{market_id}" '
+            f'data-market-question="{question}" '
+            f'data-market-url="{market_url}" '
+            f'data-track-url="{track_url}" '
+            f'data-market-slug="{market_slug}" '
+            f'data-market-source="{html.escape(source)}">{save_label}</button>'
+        )
         cards.append(
             f"""
         <article class="live-signal-row">
@@ -3307,7 +3719,18 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     detail_lang = merged_details.get("lang")
     event_lang = detail_lang if detail_lang in {"ru", "en"} else req_lang
     resolved_event_path = resolve_site_event_path(request, merged_details)
-    allowed = {"tg_click", "page_view", "waitlist_intent", "checkout_intent", "market_click"}
+    allowed = {
+        "tg_click",
+        "page_view",
+        "waitlist_intent",
+        "checkout_intent",
+        "market_click",
+        "watchlist_add",
+        "watchlist_remove",
+        "watchlist_alert_toggle",
+        "watchlist_prompt_open",
+        "watchlist_sensitivity_change",
+    }
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:
         raise HTTPException(status_code=400, detail="unsupported event_type")
@@ -3372,6 +3795,32 @@ def live_movers_preview(limit: int = 3) -> JSONResponse:
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
     )
+
+
+@app.get("/api/watchlist-workspace")
+def watchlist_workspace(market_ids: str = "") -> JSONResponse:
+    raw_ids = [part.strip() for part in market_ids.split(",") if part.strip()]
+    safe_ids = raw_ids[:40]
+    try:
+        rows = fetch_watchlist_workspace(safe_ids)
+    except Exception:
+        rows = []
+    return JSONResponse(
+        {
+            "ok": True,
+            "rows": rows,
+            "market_ids": safe_ids,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+@app.get("/watchlist-client.js")
+def watchlist_client_script() -> Response:
+    path = WEB_DIR / "watchlist-client.js"
+    if not path.exists():
+        return Response(status_code=404)
+    return Response(content=path.read_text(encoding="utf-8"), media_type="application/javascript")
 
 
 @app.post("/api/stripe/checkout-session")
