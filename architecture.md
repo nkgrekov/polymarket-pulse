@@ -4,6 +4,39 @@ This document describes the technical architecture.
 
 ---
 
+# Delivery Parity Decision Report Refresh (2026-04-27)
+
+The delivery diagnostics layer now produces a stronger decision report over `bot.delivery_parity_log`.
+
+Updated artifacts:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the report script now aggregates `payload.classification_counts` across the full selected window using SQL over `bot.delivery_parity_log`
+• recent examples remain sample-based for readability, but classification totals are no longer limited by `--recent-limit`
+• the generated report includes an explicit `Decision Readout`
+• no bot runtime delivery query, push candidate query, schema object, or ingest path changed
+
+Current decision posture:
+
+• legacy push delivery remains primary
+• hot-first delivery is not ready for cutover because `legacy_only_samples` still materially outweigh `hot_only_samples`
+• the diagnostic layer is now strong enough to distinguish the dominant semantic mismatch:
+  - `legacy_shock_reverted`
+  - `legacy_stale_bucket`
+
+Architectural consequence:
+
+• the next delivery work should focus on reducing/explaining `legacy_only`, not on switching the delivery path
+• hot surfaces remain correct for read/product UX, while push delivery remains intentionally conservative
+• this keeps the live-layer modernization moving without risking alert loss
+
+
 # Telegram Bot Intent Page Pass (2026-04-27)
 
 The `/telegram-bot` page now behaves more like a product/intent bridge for Telegram-first users rather than a generic SEO page.

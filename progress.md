@@ -4,6 +4,42 @@ This document tracks the current state of the project.
 
 ---
 
+# Delivery Parity Decision Report Refresh (2026-04-27)
+
+Refreshed the delivery parity evidence and tightened the report script so the delivery decision is based on the full selected window, not only recent examples.
+
+Files updated:
+
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• regenerated `docs/delivery_parity_latest.md` from live `bot.delivery_parity_log` data for the latest 168-hour window
+• changed `scripts/ops/delivery_parity_report.py` so `Classification Totals` aggregate across the whole report window
+• added a `Decision Readout` section to the report
+• current 168-hour result:
+  - `non_quiet_samples = 999`
+  - `classified_non_quiet_samples = 993`
+  - `hot_only_samples = 105`
+  - `legacy_only_samples = 488`
+  - main classified reason: `legacy_shock_reverted`
+
+Decision:
+
+• keep legacy push delivery as primary for now
+• do not enable hot-first delivery yet
+• continue using hot diagnostics and hybrid/fallback analysis until `legacy_only` no longer materially dominates
+
+Why this matters:
+
+• mismatch diagnostics are now decision-grade enough to say “not yet” with evidence
+• the blocker is semantic/product parity, not lack of telemetry
+• delivery semantics remain unchanged in runtime
+
+
 # Telegram Bot Intent Page Pass (2026-04-27)
 
 Strengthened `/telegram-bot` as the primary search-intent page for users looking for a Polymarket Telegram bot.

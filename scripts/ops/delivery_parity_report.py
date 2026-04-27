@@ -73,6 +73,29 @@ order by sampled_at desc
 limit %s;
 """
 
+SQL_CLASSIFICATION_TOTALS = """
+with recent as (
+  select payload
+  from bot.delivery_parity_log
+  where sampled_at >= now() - (%s::int * interval '1 hour')
+    and payload is not null
+), expanded as (
+  select
+    coalesce(item->>'classification', 'unknown') as classification,
+    coalesce(nullif(item->>'count', '')::bigint, 0) as row_count
+  from recent
+  cross join lateral jsonb_array_elements(
+    coalesce(payload->'classification_counts', '[]'::jsonb)
+  ) item
+)
+select
+  classification,
+  sum(row_count)::bigint as row_count
+from expanded
+group by classification
+order by row_count desc, classification asc;
+"""
+
 
 def bullet(label: str, value: str) -> str:
     return f"- {label}: **{value}**"
@@ -101,7 +124,7 @@ def normalize_payload(value: object) -> dict[str, object]:
     return {}
 
 
-def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dict | None, list[dict]]:
+def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dict | None, list[dict], list[dict]]:
     if psycopg is not None:
         with psycopg.connect(pg, connect_timeout=10) as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -111,7 +134,9 @@ def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dic
                 latest = cur.fetchone()
                 cur.execute(SQL_RECENT_NON_QUIET, (hours, recent_limit))
                 recent = cur.fetchall()
-        return summary, latest, recent
+                cur.execute(SQL_CLASSIFICATION_TOTALS, (hours,))
+                classification_rows = cur.fetchall()
+        return summary, latest, recent, classification_rows
 
     with psycopg2.connect(pg, connect_timeout=10) as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -121,7 +146,48 @@ def fetch_report_data(pg: str, hours: int, recent_limit: int) -> tuple[dict, dic
             latest = cur.fetchone()
             cur.execute(SQL_RECENT_NON_QUIET, (hours, recent_limit))
             recent = cur.fetchall()
-    return summary, latest, recent
+            cur.execute(SQL_CLASSIFICATION_TOTALS, (hours,))
+            classification_rows = cur.fetchall()
+    return summary, latest, recent, classification_rows
+
+
+def int_value(row: dict, key: str) -> int:
+    return int(row.get(key) or 0)
+
+
+def build_decision_readout(summary: dict, classification_totals: Counter[str]) -> list[str]:
+    hot_only_samples = int_value(summary, "hot_only_samples")
+    legacy_only_samples = int_value(summary, "legacy_only_samples")
+    non_quiet_samples = int_value(summary, "non_quiet_samples")
+    classified_non_quiet_samples = int_value(summary, "classified_non_quiet_samples")
+    max_overlap_count = int_value(summary, "max_overlap_count")
+
+    lines = ["## Decision Readout", ""]
+    if non_quiet_samples <= 0:
+        lines.append("- Verdict: keep accumulating parity. The selected window has no non-quiet delivery evidence.")
+        return lines
+
+    coverage = classified_non_quiet_samples / non_quiet_samples if non_quiet_samples else 0.0
+    if legacy_only_samples > max(hot_only_samples * 2, 25):
+        verdict = "keep legacy delivery as primary"
+        reason = "legacy-only windows still materially outweigh hot-only windows"
+    elif max_overlap_count >= 3 and coverage >= 0.90 and legacy_only_samples <= hot_only_samples:
+        verdict = "candidate for limited hot-first rollout"
+        reason = "overlap is healthy and legacy-only evidence is no longer dominant"
+    else:
+        verdict = "continue hybrid/fallback diagnostics"
+        reason = "the window is informative but not yet clean enough for a delivery cutover"
+
+    lines.extend(
+        [
+            f"- Verdict: **{verdict}**.",
+            f"- Reason: {reason}.",
+            f"- Classification coverage: **{coverage:.1%}** of non-quiet samples.",
+            f"- Main classified reason: **{classification_totals.most_common(1)[0][0]}**." if classification_totals else "- Main classified reason: **none yet**.",
+            "- Delivery semantics: unchanged; this report is evidence for the next decision, not a runtime cutover.",
+        ]
+    )
+    return lines
 
 
 def main() -> None:
@@ -135,7 +201,7 @@ def main() -> None:
     if not pg:
         raise SystemExit("PG_CONN is required")
 
-    summary, latest, recent = fetch_report_data(pg, args.hours, args.recent_limit)
+    summary, latest, recent, classification_rows = fetch_report_data(pg, args.hours, args.recent_limit)
 
     classification_totals: Counter[str] = Counter()
     hot_examples: list[dict] = []
@@ -143,12 +209,13 @@ def main() -> None:
     seen_hot: set[tuple[object, object, object]] = set()
     seen_legacy: set[tuple[object, object, object]] = set()
 
+    for row in classification_rows:
+        classification = str(row.get("classification") or "unknown")
+        classification_totals[classification] += int(row.get("row_count") or 0)
+
     for sample in recent:
         payload = normalize_payload(sample.get("payload"))
         sampled_at = sample.get("sampled_at")
-        for item in payload.get("classification_counts", []) or []:
-            classification = str(item.get("classification") or "unknown")
-            classification_totals[classification] += int(item.get("count") or 0)
         for item in payload.get("hot_only_top", []) or []:
             key = (item.get("user_id"), item.get("market_id"), item.get("classification"))
             if key in seen_hot:
@@ -215,6 +282,8 @@ def main() -> None:
         )
     else:
         lines.append("- none")
+
+    lines.extend(["", *build_decision_readout(summary, classification_totals)])
 
     lines.extend(
         [
