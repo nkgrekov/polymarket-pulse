@@ -104,13 +104,13 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
     },
     "telegram-bot": {
         "en": {
-            "title": "Polymarket Telegram Bot - Live Movers, Watchlists & Alerts | Polymarket Pulse",
-            "description": "Looking for a Polymarket Telegram bot? Polymarket Pulse tracks live movers, watchlist markets, and low-noise alerts in Telegram so you can act before dashboard lag.",
-            "h1": "A Polymarket Telegram bot for live movers and watchlist alerts.",
-            "intro": "Open Telegram, add one live market, and let Pulse surface the move when it matters. No dashboard camping and no wallet required for the signal layer.",
-            "k1": "Top movers and one-market watchlist setup in one tap",
-            "k2": "Thresholded alerts that stay quiet until the move is real",
-            "k3": "Telegram-first live loop with email only as backup",
+            "title": "Best Polymarket Telegram Bot for Live Movers & Alerts | Polymarket Pulse",
+            "description": "Looking for the best Polymarket Telegram bot? Polymarket Pulse tracks live movers, watchlist markets, and low-noise alerts in Telegram so you can act before dashboard lag.",
+            "h1": "The Polymarket Telegram bot for live movers, watchlists, and low-noise alerts.",
+            "intro": "Search intent should become signal fast: open Telegram, add one live market, and let Pulse surface the move when it matters. No dashboard camping and no wallet required for the signal layer.",
+            "k1": "/movers shows the fastest live probability shifts",
+            "k2": "/watchlist and /threshold turn noise into a personal signal feed",
+            "k3": "/inbox stays quiet until a tracked move clears your threshold",
         },
         "ru": {
             "title": "Polymarket Telegram bot - live movers и watchlist алерты",
@@ -240,6 +240,10 @@ SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
             {
                 "q": "Is Polymarket Pulse a Telegram bot for Polymarket?",
                 "a": "Yes. Polymarket Pulse is a Telegram-first signal product for Polymarket. It focuses on top movers, watchlist tracking, and low-noise alerts rather than dashboard overload.",
+            },
+            {
+                "q": "What is the best Polymarket Telegram bot for live alerts?",
+                "a": "If you want live movers, watchlists, thresholded alerts, and a Telegram-first workflow without connecting a wallet, Polymarket Pulse is built for that use case.",
             },
             {
                 "q": "What can this Polymarket Telegram bot actually do?",
@@ -870,6 +874,45 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         if slug == "telegram-bot"
         else ""
     )
+    bot_flow_block = (
+        """
+    <section id="bot-command-flow" class="command-flow reveal delay-3">
+      <div class="command-flow-head">
+        <p class="links-title">BOT FLOW</p>
+        <p class="command-flow-subtitle">The fastest useful path is not a dashboard tour. It is one live market, one threshold, and one quiet inbox that only wakes up when the move matters.</p>
+      </div>
+      <div class="command-grid">
+        <article class="command-card">
+          <p class="command-name">/start</p>
+          <h3 class="command-title">Open the signal layer</h3>
+          <p class="command-copy">Start in Telegram without wallet setup. Pulse is analytics-first; trading execution is a separate product layer.</p>
+        </article>
+        <article class="command-card">
+          <p class="command-name">/movers</p>
+          <h3 class="command-title">See what is repricing now</h3>
+          <p class="command-copy">Use live movers to find a market worth tracking instead of guessing which Polymarket tab deserves attention.</p>
+        </article>
+        <article class="command-card">
+          <p class="command-name">/watchlist</p>
+          <h3 class="command-title">Pin the market</h3>
+          <p class="command-copy">Track the markets you actually care about and keep the rest of Polymarket out of your alert stream.</p>
+        </article>
+        <article class="command-card">
+          <p class="command-name">/threshold</p>
+          <h3 class="command-title">Set your noise filter</h3>
+          <p class="command-copy">A 0.03 threshold means 3 percentage points. Inbox alerts only when abs(delta) clears your personal level.</p>
+        </article>
+        <article class="command-card strong">
+          <p class="command-name">/inbox</p>
+          <h3 class="command-title">Act only when it matters</h3>
+          <p class="command-copy">Watchlist may move while Inbox stays empty. That is intentional: quiet is a product state, not a bug.</p>
+        </article>
+      </div>
+    </section>
+"""
+        if slug == "telegram-bot" and lang == "en"
+        else ""
+    )
     bridge_block = (
         """
     <section class="links-wrap reveal delay-4">
@@ -1239,6 +1282,66 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       padding: 14px;
       background: #131714;
     }}
+    .command-flow {{
+      margin-top: 16px;
+      border: 1px solid rgba(0, 255, 136, 0.18);
+      border-radius: 16px;
+      padding: 14px;
+      background:
+        radial-gradient(700px 220px at 10% 0%, rgba(0, 255, 136, 0.08), transparent 58%),
+        #101511;
+    }}
+    .command-flow-head {{
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 10px;
+    }}
+    .command-flow-subtitle {{
+      margin: 0;
+      max-width: 520px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      text-align: right;
+    }}
+    .command-grid {{
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 9px;
+    }}
+    .command-card {{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #131714;
+    }}
+    .command-card.strong {{
+      border-color: rgba(0, 255, 136, 0.34);
+      background: linear-gradient(180deg, rgba(0, 255, 136, 0.055), rgba(19, 23, 20, 0.95));
+    }}
+    .command-name {{
+      margin: 0;
+      color: var(--accent);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }}
+    .command-title {{
+      margin: 9px 0 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.1;
+    }}
+    .command-copy {{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      line-height: 1.45;
+    }}
     .live-signal-board {{
       margin-top: 16px;
       border: 1px solid rgba(0, 255, 136, 0.2);
@@ -1427,6 +1530,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .preview-grid {{ grid-template-columns: 1fr 1fr; }}
       .links {{ grid-template-columns: 1fr 1fr; }}
       .faq-grid {{ grid-template-columns: 1fr; }}
+      .command-flow-head {{ display: block; }}
+      .command-flow-subtitle {{ margin-top: 8px; text-align: left; }}
+      .command-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .live-signal-head {{ display: block; }}
       .live-signal-subtitle {{ margin-top: 8px; text-align: left; }}
     }}
@@ -1438,6 +1544,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .cta-secondary {{ width: 100%; }}
       .preview-grid {{ grid-template-columns: 1fr; }}
       .links {{ grid-template-columns: 1fr; }}
+      .command-grid {{ grid-template-columns: 1fr; }}
       .live-signal-row {{ grid-template-columns: 1fr; }}
       .live-signal-side {{ align-items: start; }}
       .live-signal-actions {{ justify-content: flex-start; }}
@@ -1524,6 +1631,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         </article>
       </div>
     </section>
+    {bot_flow_block}
     {body_live_signal_block}
     {compare_block}
     {bridge_block}
@@ -2562,7 +2670,7 @@ def _fmt_live_age(value: object) -> str | None:
 
 
 def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
-    if slug not in {"signals", "top-movers", "analytics"}:
+    if slug not in {"signals", "telegram-bot", "top-movers", "analytics"}:
         return ""
 
     try:
@@ -2574,12 +2682,20 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
     if not rows:
         return ""
 
-    title = "Live signal board" if lang == "en" else "Live-доска сигналов"
-    subtitle = (
-        "Current hot movers with freshness, liquidity, and spread context."
-        if lang == "en"
-        else "Текущие hot movers со свежестью, ликвидностью и spread-контекстом."
-    )
+    if slug == "telegram-bot":
+        title = "Markets you can track right now" if lang == "en" else "Рынки, которые можно отслеживать сейчас"
+        subtitle = (
+            "Open one current mover in Telegram and turn it into a watchlist alert."
+            if lang == "en"
+            else "Откройте текущий mover в Telegram и превратите его в watchlist-алерт."
+        )
+    else:
+        title = "Live signal board" if lang == "en" else "Live-доска сигналов"
+        subtitle = (
+            "Current hot movers with freshness, liquidity, and spread context."
+            if lang == "en"
+            else "Текущие hot movers со свежестью, ликвидностью и spread-контекстом."
+        )
     track_label = "Track in Telegram" if lang == "en" else "Отслеживать в Telegram"
     open_label = "Open market" if lang == "en" else "Открыть рынок"
 

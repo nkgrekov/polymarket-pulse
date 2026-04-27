@@ -4,6 +4,36 @@ This document describes the technical architecture.
 
 ---
 
+# Telegram Bot Intent Page Pass (2026-04-27)
+
+The `/telegram-bot` page now behaves more like a product/intent bridge for Telegram-first users rather than a generic SEO page.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `SEO_PAGES["telegram-bot"]["en"]` now targets the exact Polymarket Telegram bot search intent more directly
+• `render_seo_page(...)` can render a `bot-command-flow` section for the English `/telegram-bot` page
+• the command-flow section is static, server-rendered HTML and documents the existing bot command path:
+  - `/start`
+  - `/movers`
+  - `/watchlist`
+  - `/threshold`
+  - `/inbox`
+• `_render_signal_quality_block(...)` now supports `slug == "telegram-bot"` with Telegram-specific title/subtitle copy
+• the live board still uses the existing `fetch_live_movers_preview(...)` hot-first read path and existing `seo_live_signal_board` click tracking
+
+Architectural consequence:
+
+• no new endpoint, table, ingest path, callback, or delivery path was introduced
+• `/telegram-bot` now exposes both the static command model and a current live-market handoff into Telegram
+• this keeps growth work aligned with the product architecture: search intent -> live signal evidence -> Telegram tracking
+
+
 # Signals Page Board Promotion (2026-04-27)
 
 The `/signals` page now treats the live signal board as a primary product surface instead of a secondary supporting section.

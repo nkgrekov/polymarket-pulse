@@ -4,6 +4,38 @@ This document tracks the current state of the project.
 
 ---
 
+# Telegram Bot Intent Page Pass (2026-04-27)
+
+Strengthened `/telegram-bot` as the primary search-intent page for users looking for a Polymarket Telegram bot.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• updated English title, description, H1, intro, and feature rows around the exact `Polymarket Telegram bot` intent
+• added a dedicated command-flow block covering:
+  - `/start`
+  - `/movers`
+  - `/watchlist`
+  - `/threshold`
+  - `/inbox`
+• added a FAQ item for `best Polymarket Telegram bot` intent
+• enabled the live signal board on `/telegram-bot` with Telegram-specific copy:
+  - `Markets you can track right now`
+  - `Track in Telegram`
+
+Why this matters:
+
+• GSC already shows `/telegram-bot` impressions for bot-intent queries, but CTR is still thin
+• the page now explains the actual bot workflow instead of only describing the product at a high level
+• live rows make the page feel like a working product surface and give visitors an immediate action path into Telegram
+• this is additive and does not change bot behavior, delivery semantics, ingest, or database schema
+
+
 # Signals Page Board Promotion (2026-04-27)
 
 Promoted the live signal board from a supporting section into a primary product surface on `/signals`.
