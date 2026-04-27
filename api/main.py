@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import secrets
 import hashlib
 import hmac
@@ -19,6 +20,8 @@ from pydantic import BaseModel, EmailStr
 from psycopg.types.json import Jsonb
 
 load_dotenv()
+
+logger = logging.getLogger("polymarket_pulse_site")
 
 PG_CONN = os.environ.get("PG_CONN", "")
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
@@ -898,6 +901,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         if slug == "telegram-bot" and lang == "en"
         else ""
     )
+    live_signal_block = _render_signal_quality_block(slug, lang)
     robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     if noindex_override:
         robots_meta = "noindex,follow"
@@ -1233,6 +1237,113 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       padding: 14px;
       background: #131714;
     }}
+    .live-signal-board {{
+      margin-top: 16px;
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 16px;
+      padding: 14px;
+      background: #101511;
+    }}
+    .live-signal-head {{
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 10px;
+    }}
+    .live-signal-subtitle {{
+      margin: 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: right;
+      max-width: 420px;
+    }}
+    .live-signal-list {{
+      display: grid;
+      gap: 10px;
+    }}
+    .live-signal-row {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #131714;
+    }}
+    .live-signal-question {{
+      margin: 0;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.25;
+    }}
+    .live-signal-meta {{
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }}
+    .live-signal-quality {{
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .live-signal-pill {{
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 4px 7px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }}
+    .live-signal-side {{
+      display: flex;
+      flex-direction: column;
+      align-items: end;
+      justify-content: space-between;
+      gap: 10px;
+    }}
+    .live-signal-delta {{
+      font-family: "JetBrains Mono", monospace;
+      font-size: 20px;
+      line-height: 1;
+    }}
+    .live-signal-delta.up {{ color: var(--accent); }}
+    .live-signal-delta.down {{ color: var(--negative); }}
+    .live-signal-actions {{
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 7px;
+    }}
+    .live-signal-link {{
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 9px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      text-decoration: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }}
+    .live-signal-link.primary {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.32);
+    }}
+    .live-signal-link:hover,
+    .live-signal-link:focus-visible {{
+      border-color: var(--accent);
+      color: var(--text);
+      outline: none;
+    }}
     .faq-grid {{
       margin-top: 10px;
       display: grid;
@@ -1298,6 +1409,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .preview-grid {{ grid-template-columns: 1fr 1fr; }}
       .links {{ grid-template-columns: 1fr 1fr; }}
       .faq-grid {{ grid-template-columns: 1fr; }}
+      .live-signal-head {{ display: block; }}
+      .live-signal-subtitle {{ margin-top: 8px; text-align: left; }}
     }}
     @media (max-width: 640px) {{
       .wrap {{ width: calc(100% - 20px); }}
@@ -1307,6 +1420,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .cta-secondary {{ width: 100%; }}
       .preview-grid {{ grid-template-columns: 1fr; }}
       .links {{ grid-template-columns: 1fr; }}
+      .live-signal-row {{ grid-template-columns: 1fr; }}
+      .live-signal-side {{ align-items: start; }}
+      .live-signal-actions {{ justify-content: flex-start; }}
     }}
     @media (prefers-reduced-motion: reduce) {{
       *, *::before, *::after {{
@@ -1389,6 +1505,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         </article>
       </div>
     </section>
+    {live_signal_block}
     {compare_block}
     {bridge_block}
     {faq_block}
@@ -1432,6 +1549,20 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       utm_campaign: p.get('utm_campaign') || ''
     }};
     trackEvent('page_view', details);
+    document.getElementById('live-signal-surface')?.addEventListener('click', (event) => {{
+      const target = event.target instanceof Element ? event.target.closest('[data-market-action]') : null;
+      if (!target) return;
+      const action = target.getAttribute('data-market-action') || '';
+      const marketId = target.getAttribute('data-market-id') || '';
+      const payload = {{ ...details, placement: 'seo_live_signal_board', action, market_id: marketId }};
+      if (action === 'track_telegram') {{
+        trackEvent('tg_click', payload);
+        return;
+      }}
+      if (action === 'open_polymarket') {{
+        trackEvent('market_click', payload);
+      }}
+    }});
     const seoBridge = document.getElementById('seo-bridge');
     if ('IntersectionObserver' in window && seoBridge) {{
       const observer = new IntersectionObserver((entries) => {{
@@ -2369,6 +2500,128 @@ def _pulse_track_market_url(market_id: str | None) -> str:
     token = _safe_market_token(market_id)
     payload = f"site_track_{token}" if token else "site_track"
     return f"https://t.me/polymarket_pulse_bot?start={payload}"
+
+
+def _fmt_live_pct(value: object) -> str:
+    try:
+        return f"{float(value) * 100:.1f}%"
+    except (TypeError, ValueError):
+        return "n/a"
+
+
+def _fmt_live_pp(value: object, *, signed: bool = True) -> str:
+    try:
+        num = float(value) * 100
+        prefix = "+" if signed and num >= 0 else ""
+        return f"{prefix}{num:.1f}pp"
+    except (TypeError, ValueError):
+        return "n/a"
+
+
+def _fmt_live_liquidity(value: object) -> str | None:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    if num <= 0:
+        return None
+    if num >= 1_000_000:
+        return f"${num / 1_000_000:.1f}m liq"
+    if num >= 1_000:
+        return f"${round(num / 1_000)}k liq"
+    return f"${round(num)} liq"
+
+
+def _fmt_live_age(value: object) -> str | None:
+    try:
+        seconds = int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+    if seconds < 60:
+        return f"{seconds}s quote"
+    return f"{seconds // 60}m quote"
+
+
+def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
+    if slug not in {"signals", "top-movers", "analytics"}:
+        return ""
+
+    try:
+        rows = fetch_live_movers_preview(limit=4, spark_snapshots=12, max_points=12, min_distinct_points=2)
+    except Exception:
+        logger.exception("live signal block render failed")
+        rows = []
+
+    if not rows:
+        return ""
+
+    title = "Live signal board" if lang == "en" else "Live-доска сигналов"
+    subtitle = (
+        "Current hot movers with freshness, liquidity, and spread context."
+        if lang == "en"
+        else "Текущие hot movers со свежестью, ликвидностью и spread-контекстом."
+    )
+    track_label = "Track in Telegram" if lang == "en" else "Отслеживать в Telegram"
+    open_label = "Open market" if lang == "en" else "Открыть рынок"
+
+    cards: list[str] = []
+    for row in rows:
+        question = html.escape(str(row.get("question") or "n/a"))
+        market_id = html.escape(str(row.get("market_id") or ""))
+        market_url = html.escape(str(row.get("market_url") or ""))
+        track_url = html.escape(str(row.get("track_url") or ""))
+        source = str(row.get("source") or "")
+        delta = float(row.get("delta_yes") or 0.0)
+        delta_cls = "up" if delta >= 0 else "down"
+        age = _fmt_live_age(row.get("freshness_seconds"))
+        liq = _fmt_live_liquidity(row.get("liquidity"))
+        spread = _fmt_live_pp(row.get("spread"), signed=False) if row.get("spread") is not None else None
+        quality = ["live gated" if source == "hot" else "historical fallback"]
+        if age:
+            quality.append(age)
+        if liq:
+            quality.append(liq)
+        if spread:
+            quality.append(f"{spread} spread")
+        quality_html = "".join(f'<span class="live-signal-pill">{html.escape(item)}</span>' for item in quality)
+        actions = ""
+        if market_url:
+            actions += (
+                f'<a class="live-signal-link" href="{market_url}" target="_blank" rel="noopener noreferrer" '
+                f'data-market-action="open_polymarket" data-market-id="{market_id}">{open_label}</a>'
+            )
+        if track_url:
+            actions += (
+                f'<a class="live-signal-link primary" href="{track_url}" target="_blank" rel="noopener noreferrer" '
+                f'data-market-action="track_telegram" data-market-id="{market_id}">{track_label}</a>'
+            )
+        cards.append(
+            f"""
+        <article class="live-signal-row">
+          <div>
+            <p class="live-signal-question">{question}</p>
+            <p class="live-signal-meta">market {market_id} · {_fmt_live_pct(row.get("yes_mid_prev"))} -> {_fmt_live_pct(row.get("yes_mid_now"))}</p>
+            <div class="live-signal-quality">{quality_html}</div>
+          </div>
+          <div class="live-signal-side">
+            <span class="live-signal-delta {delta_cls}">{_fmt_live_pp(row.get("delta_yes"))}</span>
+            <div class="live-signal-actions">{actions}</div>
+          </div>
+        </article>
+"""
+        )
+
+    return f"""
+    <section id="live-signal-surface" class="live-signal-board reveal delay-3">
+      <div class="live-signal-head">
+        <p class="links-title">{title}</p>
+        <p class="live-signal-subtitle">{subtitle}</p>
+      </div>
+      <div class="live-signal-list">
+        {''.join(cards)}
+      </div>
+    </section>
+"""
 
 
 def _float_or_none(value: object) -> float | None:

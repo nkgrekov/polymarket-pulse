@@ -4,6 +4,39 @@ This document tracks the current state of the project.
 
 ---
 
+# Signals Page Live Board (2026-04-27)
+
+Turned the quality-context work into a real site surface instead of keeping it only inside the homepage preview.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/signals`, `/top-movers`, and `/analytics` can now server-render a live signal board
+• the live board uses `/api/live-movers-preview` data through `fetch_live_movers_preview(...)`
+• each row shows:
+  - market question
+  - mid previous/current
+  - probability-point delta
+  - quality context
+  - `Open market`
+  - `Track in Telegram`
+• clicks inside the board are tracked as:
+  - `market_click`
+  - `tg_click`
+  with placement `seo_live_signal_board`
+
+Why this matters:
+
+• the site now has a stronger live analytics surface for search-intent pages
+• `/signals` can show real market movement immediately, not only describe what the bot does
+• server-rendering keeps the content visible to users and crawlers even before client JS runs
+
+
 # Homepage Live Signal Quality Context (2026-04-27)
 
 Started the week with a small analytics-quality improvement on the public live preview and the `Pulse` movers surface.

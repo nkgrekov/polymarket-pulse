@@ -4,6 +4,36 @@ This document describes the technical architecture.
 
 ---
 
+# Signals Page Live Board (2026-04-27)
+
+The SEO/intent pages can now expose a server-rendered live analytics board when the page intent benefits from showing current market movement.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `render_seo_page(...)` now calls `_render_signal_quality_block(...)`
+• the block is enabled for:
+  - `/signals`
+  - `/top-movers`
+  - `/analytics`
+• the board uses the existing `fetch_live_movers_preview(...)` read path, so it inherits the same hot-first quality gates and legacy fallback labeling
+• live board actions reuse existing handoff links:
+  - Polymarket market URL
+  - Telegram `site_track_<market_id>` URL
+• click tracking is attached to the board with placement `seo_live_signal_board`
+
+Architectural consequence:
+
+• the search-intent pages now behave more like product surfaces rather than static landing pages
+• no new ingest path, table, or bot delivery logic was introduced
+• this keeps the site improvement aligned with the existing hot-layer contract and Telegram handoff flow
+
+
 # Homepage Live Signal Quality Context (2026-04-27)
 
 The homepage live preview and `Pulse` movers surface now expose a small quality-context layer on top of the existing hot-first mover feed.
