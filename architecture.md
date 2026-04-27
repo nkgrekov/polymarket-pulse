@@ -4,6 +4,59 @@ This document describes the technical architecture.
 
 ---
 
+# Global Site Header And Watchlist Entry Surface (2026-04-27)
+
+The public site now has a shared navigation shell and a dedicated watchlist entry page that better matches the two-surface product model.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/how-it-works.en.html`
+• `api/web/how-it-works.ru.html`
+• `api/web/commands.en.html`
+• `api/web/commands.ru.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• added site-level navigation primitives in `api/main.py`:
+  - `SITE_NAV_ITEMS`
+  - `SITE_NAV_ACTIVE_ALIASES`
+  - `SITE_PAGE_LABELS`
+  - `_site_page_label(...)`
+  - `_render_site_header(...)`
+• `render_seo_page(...)` now renders a shared sticky header before the page card instead of the old minimal top strip
+• the sticky header keeps a shared information architecture across dynamic SEO/product pages:
+  - `Live Movers`
+  - `Signals`
+  - `Watchlist`
+  - `Commands`
+  - `Pricing`
+  - primary Telegram CTA
+• added a new dynamic `/watchlist` route implicitly through `SEO_PAGES`
+• `/watchlist` is intentionally doctrine-first:
+  - watchlist and alerts are separate concepts
+  - Telegram remains the current identity, threshold, and alert-delivery control surface
+• static pages (`/`, `/how-it-works`, `/commands`) now mirror the same header structure with local HTML/CSS rather than remaining on a separate topbar pattern
+• homepage pricing is now addressable through `/#pricing`, which lets the shared header link into the existing pricing section without a routing change
+• concise internal-link labels on dynamic pages now come from page-label metadata instead of long SEO H1 strings
+
+Architectural consequence:
+
+• the public site now behaves more like one product workspace and less like a collection of disconnected landing pages
+• navigation is no longer dependent on footer-only crosslinks
+• the watchlist concept now has a first-class web URL before the full saved-market workspace exists
+• this remains additive and reversible:
+  - no bot contract changed
+  - no DB shape changed
+  - no live/hot read path changed
+  - no alert-delivery logic changed
+• this lays the foundation for the next prompts where watchlist state, bell state, and Telegram identity become explicit product objects on the web surface
+
+
 # Legacy Push Shock Hardening (2026-04-27)
 
 The bot push loop now applies a narrow hot-aware suppression pass on top of the existing legacy delivery query.

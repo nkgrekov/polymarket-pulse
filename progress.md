@@ -4,6 +4,73 @@ This document tracks the current state of the project.
 
 ---
 
+# Global Site Header And Watchlist Entry Surface (2026-04-27)
+
+Started the `new horizon` site-model pass by aligning the public web surface with the product doctrine: website as research workspace, Telegram as identity and alert loop.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/how-it-works.en.html`
+• `api/web/how-it-works.ru.html`
+• `api/web/commands.en.html`
+• `api/web/commands.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added a consistent sticky global header across:
+  - `/`
+  - `/signals`
+  - `/top-movers`
+  - `/analytics`
+  - `/telegram-bot`
+  - `/watchlist-alerts`
+  - `/dashboard`
+  - `/how-it-works`
+  - `/commands`
+• header now standardizes:
+  - `Live Movers`
+  - `Signals`
+  - `Watchlist`
+  - `Commands`
+  - `Pricing`
+  - primary `Open Telegram Bot` CTA
+• added compact mobile navigation through a `details` menu instead of a separate JS nav system
+• introduced a new `/watchlist` SEO/product page as a safe entry surface for the watchlist concept
+• `/watchlist` copy now makes the product doctrine explicit:
+  - watchlist and alerts are separate concepts
+  - Telegram remains the current identity / threshold / alert control loop
+• added `#pricing` anchor targeting on the homepage and wired the new header pricing link to it
+• cleaned related-link copy on dynamic SEO pages so internal links use concise product labels instead of long H1 strings
+
+What did not change:
+
+• no Telegram bot command behavior changed
+• no ingest, hot-surface, DB schema, or delivery semantics changed
+• no live market ranking logic changed
+• no homepage visual identity rewrite happened; the dark terminal language remains intact
+
+Manual test:
+
+• open `/`, `/signals`, `/top-movers`, `/analytics`, `/telegram-bot`, `/watchlist`, `/watchlist-alerts`, `/dashboard`, `/how-it-works`, `/commands`
+• confirm sticky header is visible
+• confirm `Open Telegram Bot` works from header and mobile menu
+• confirm `Pricing` lands on the homepage pricing block
+• confirm `Commands` is active on `/commands`
+• confirm `Watchlist` is active on `/watchlist` and `/watchlist-alerts`
+• confirm mobile menu does not overlap the hero permanently
+
+Risks / follow-up:
+
+• local `api.main` render smoke is currently limited by missing `psycopg` in the shell environment, so final validation should happen on deployed Railway site
+• `/watchlist` is currently a product-structure page, not the full saved-market workspace from later prompts
+• next logical prompt is the actual watchlist-vs-alert interaction model on web, not another design pass
+
+
 # Legacy Push Shock Hardening (2026-04-27)
 
 Added a conservative suppression layer in the bot push loop so legacy watchlist alerts do not send when hot state already says the market is closed or the legacy bucket shock has already cooled below threshold.

@@ -90,6 +90,164 @@
       z-index: 1;
     }
 
+    .site-header {
+      position: sticky;
+      top: 12px;
+      z-index: 24;
+      margin-bottom: 18px;
+    }
+
+    .site-header-inner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(42, 51, 43, 0.92);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: rgba(13, 15, 14, 0.84);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+    }
+
+    .site-brand {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+      text-decoration: none;
+    }
+
+    .site-brand-mark {
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .site-brand-copy {
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .site-nav {
+      display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .site-nav-link,
+    .site-guide-link,
+    .site-page-chip,
+    .site-menu-link {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1;
+      text-decoration: none;
+      background: rgba(19, 23, 20, 0.72);
+      white-space: nowrap;
+    }
+
+    .site-page-chip {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .site-nav-link:hover,
+    .site-nav-link:focus-visible,
+    .site-guide-link:hover,
+    .site-guide-link:focus-visible,
+    .site-menu-link:hover,
+    .site-menu-link:focus-visible {
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    .site-nav-link.active,
+    .site-guide-link.active,
+    .site-menu-link.active {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.42);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.16) inset;
+    }
+
+    .site-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .site-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--bg-2);
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border: 1px solid var(--accent);
+      white-space: nowrap;
+    }
+
+    .site-menu {
+      display: none;
+      margin-left: auto;
+      position: relative;
+    }
+
+    .site-menu[open] {
+      z-index: 30;
+    }
+
+    .site-menu-summary {
+      list-style: none;
+      cursor: pointer;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      background: rgba(19, 23, 20, 0.92);
+    }
+
+    .site-menu-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .site-menu-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 240px;
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(13, 15, 14, 0.98);
+      box-shadow: 0 20px 54px rgba(0, 0, 0, 0.42);
+    }
+
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -274,6 +432,19 @@
       outline: none;
     }
 
+    @media (max-width: 900px) {
+      .site-header-inner {
+        align-items: start;
+      }
+      .site-nav,
+      .site-actions {
+        display: none;
+      }
+      .site-menu {
+        display: block;
+      }
+    }
+
     @media (max-width: 640px) {
       .wrap { width: calc(100% - 20px); }
       .hero { padding: 18px; border-radius: 16px; }
@@ -294,9 +465,39 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="topbar reveal delay-1">
-      <a class="logo" href="/">Polymarket Pulse // How it works</a>
-    </div>
+    <header class="site-header reveal delay-1">
+      <div class="site-header-inner">
+        <a class="site-brand" href="/">
+          <span class="site-brand-mark">Polymarket Pulse</span>
+          <span class="site-brand-copy">Signal terminal</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a class="site-nav-link" href="/top-movers">Live Movers</a>
+          <a class="site-nav-link" href="/signals">Signals</a>
+          <a class="site-nav-link" href="/watchlist">Watchlist</a>
+          <a class="site-nav-link" href="/commands">Commands</a>
+          <a class="site-nav-link" href="/#pricing">Pricing</a>
+        </nav>
+        <div class="site-actions">
+          <span class="site-page-chip">How It Works</span>
+          <a class="site-guide-link active" href="/how-it-works?placement=header_how_en" aria-current="page">How it works</a>
+          <a class="site-cta" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=guide_en_header">Open Telegram Bot</a>
+        </div>
+        <details class="site-menu">
+          <summary class="site-menu-summary">Menu</summary>
+          <div class="site-menu-panel">
+            <span class="site-page-chip">How It Works</span>
+            <a class="site-menu-link" href="/top-movers">Live Movers</a>
+            <a class="site-menu-link" href="/signals">Signals</a>
+            <a class="site-menu-link" href="/watchlist">Watchlist</a>
+            <a class="site-menu-link" href="/commands">Commands</a>
+            <a class="site-menu-link" href="/#pricing">Pricing</a>
+            <a class="site-menu-link active" href="/how-it-works?placement=header_how_en" aria-current="page">How it works</a>
+            <a class="site-cta" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=guide_en_header">Open Telegram Bot</a>
+          </div>
+        </details>
+      </div>
+    </header>
 
     <section class="hero reveal delay-2">
       <p class="hero-kicker">Scenario-first bot guide</p>

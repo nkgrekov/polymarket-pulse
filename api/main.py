@@ -142,6 +142,26 @@ SEO_PAGES: dict[str, dict[str, dict[str, str]]] = {
             "k3": "Прямой сценарий добавления в watchlist",
         },
     },
+    "watchlist": {
+        "en": {
+            "title": "Polymarket Watchlist - Save Markets First, Alerts Second",
+            "description": "Build a Polymarket watchlist for the markets you care about, then enable Telegram alerts separately when a saved market is worth waking up for.",
+            "h1": "Build a watchlist first. Turn alerts on second.",
+            "intro": "A watchlist is your saved market set. Alerts are a separate choice. Pulse keeps those layers clean so you can track markets without turning every saved line into a ping.",
+            "k1": "Saved markets stay separate from alert delivery",
+            "k2": "Telegram holds identity, threshold, and alert settings",
+            "k3": "Choose one market, then decide whether it deserves a bell",
+        },
+        "ru": {
+            "title": "Polymarket Watchlist - сначала рынки, потом алерты",
+            "description": "Соберите watchlist Polymarket для важных рынков и включайте Telegram-алерты отдельно, только когда рынок действительно стоит шума.",
+            "h1": "Сначала watchlist. Потом алерты.",
+            "intro": "Watchlist - это набор сохранённых рынков. Alerts - отдельное решение. Pulse специально разделяет эти слои, чтобы вы могли следить за рынками без лишних пингов.",
+            "k1": "Сохранённые рынки отделены от доставки алертов",
+            "k2": "Telegram хранит identity, threshold и alert-настройки",
+            "k3": "Сначала выберите рынок, потом решите, нужен ли ему bell",
+        },
+    },
     "watchlist-alerts": {
         "en": {
             "title": "Polymarket Watchlist Alerts - Low-Noise Market Tracking in Telegram",
@@ -287,6 +307,28 @@ SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
             },
         ],
     },
+    "watchlist": {
+        "en": [
+            {
+                "q": "Does adding a market to watchlist automatically enable alerts?",
+                "a": "No. Watchlist and alerts are separate concepts. A saved market does not need to become a Telegram alert until you decide it should.",
+            },
+            {
+                "q": "Where do threshold and alert settings live?",
+                "a": "Telegram is the current control loop for identity, threshold, and alert delivery. The watchlist is the market set; Telegram decides when to wake you up.",
+            },
+        ],
+        "ru": [
+            {
+                "q": "Добавление рынка в watchlist автоматически включает алерты?",
+                "a": "Нет. Watchlist и alerts - разные вещи. Сохранённый рынок не обязан сразу становиться Telegram-алертом.",
+            },
+            {
+                "q": "Где живут threshold и alert-настройки?",
+                "a": "Сейчас Telegram - основной контур для identity, threshold и доставки алертов. Watchlist задаёт набор рынков, а Telegram решает, когда вас будить.",
+            },
+        ],
+    },
     "watchlist-alerts": {
         "en": [
             {
@@ -312,12 +354,13 @@ SEO_PAGE_FAQ: dict[str, dict[str, list[dict[str, str]]]] = {
 }
 
 SEO_PAGE_LINKS: dict[str, list[str]] = {
-    "analytics": ["signals", "top-movers", "telegram-bot", "watchlist-alerts"],
-    "dashboard": ["analytics", "telegram-bot", "signals", "watchlist-alerts"],
-    "signals": ["telegram-bot", "watchlist-alerts", "top-movers", "analytics"],
-    "telegram-bot": ["signals", "top-movers", "watchlist-alerts", "analytics"],
-    "top-movers": ["watchlist-alerts", "telegram-bot", "signals", "analytics"],
-    "watchlist-alerts": ["signals", "telegram-bot", "top-movers", "analytics"],
+    "analytics": ["signals", "top-movers", "watchlist", "telegram-bot"],
+    "dashboard": ["analytics", "signals", "watchlist", "telegram-bot"],
+    "signals": ["telegram-bot", "watchlist", "top-movers", "analytics"],
+    "telegram-bot": ["signals", "top-movers", "watchlist", "analytics"],
+    "top-movers": ["watchlist", "telegram-bot", "signals", "analytics"],
+    "watchlist": ["watchlist-alerts", "signals", "telegram-bot", "top-movers"],
+    "watchlist-alerts": ["watchlist", "signals", "telegram-bot", "analytics"],
 }
 
 SEO_PAGE_CTA_NOTE: dict[str, dict[str, str]] = {
@@ -341,11 +384,100 @@ SEO_PAGE_CTA_NOTE: dict[str, dict[str, str]] = {
         "en": "When the short window wakes up, the fastest route to action is one tap into the bot.",
         "ru": "Когда короткое окно оживает, самый быстрый путь к действию — один тап в бота.",
     },
+    "watchlist": {
+        "en": "Use the watchlist to decide what deserves attention. Enable Telegram alerts only after the saved market set feels right.",
+        "ru": "Используйте watchlist, чтобы сначала решить, что вообще заслуживает внимания. Telegram-алерты включайте уже после этого.",
+    },
     "watchlist-alerts": {
         "en": "Use Telegram for action now, keep email as backup for digest and launch updates.",
         "ru": "Используйте Telegram для действий сейчас, а email оставьте как backup для дайджеста и обновлений.",
     },
 }
+
+SITE_NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
+    ("top-movers", "/top-movers", "Live Movers"),
+    ("signals", "/signals", "Signals"),
+    ("watchlist", "/watchlist", "Watchlist"),
+    ("commands", "/commands", "Commands"),
+    ("pricing", "/#pricing", "Pricing"),
+)
+
+SITE_NAV_ACTIVE_ALIASES: dict[str, str] = {
+    "top-movers": "top-movers",
+    "signals": "signals",
+    "watchlist": "watchlist",
+    "watchlist-alerts": "watchlist",
+    "commands": "commands",
+}
+
+SITE_PAGE_LABELS: dict[str, dict[str, str]] = {
+    "index": {"en": "Homepage", "ru": "Главная"},
+    "analytics": {"en": "Analytics", "ru": "Аналитика"},
+    "dashboard": {"en": "Dashboard", "ru": "Dashboard"},
+    "signals": {"en": "Signals", "ru": "Сигналы"},
+    "telegram-bot": {"en": "Telegram Bot", "ru": "Telegram-бот"},
+    "top-movers": {"en": "Live Movers", "ru": "Live Movers"},
+    "watchlist": {"en": "Watchlist", "ru": "Watchlist"},
+    "watchlist-alerts": {"en": "Watchlist Alerts", "ru": "Watchlist alerts"},
+    "how-it-works": {"en": "How It Works", "ru": "Как это работает"},
+    "commands": {"en": "Commands", "ru": "Команды"},
+}
+
+
+def _site_page_label(page_key: str, lang: Literal["ru", "en"]) -> str:
+    return SITE_PAGE_LABELS.get(page_key, {}).get(lang) or page_key.replace("-", " ").title()
+
+
+def _render_site_header(
+    *,
+    current_page: str,
+    lang: Literal["ru", "en"],
+    telegram_href: str,
+    guide_href: str,
+    guide_text: str,
+) -> str:
+    active_nav = SITE_NAV_ACTIVE_ALIASES.get(current_page, "")
+    page_chip = html.escape(_site_page_label(current_page, lang))
+    cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
+    nav_html = []
+    menu_html = []
+    for item_key, href, label in SITE_NAV_ITEMS:
+        active_attr = ' aria-current="page"' if active_nav == item_key else ""
+        active_cls = " active" if active_nav == item_key else ""
+        nav_html.append(
+            f'<a class="site-nav-link{active_cls}" href="{href}"{active_attr}>{label}</a>'
+        )
+        menu_html.append(
+            f'<a class="site-menu-link{active_cls}" href="{href}"{active_attr}>{label}</a>'
+        )
+
+    return f"""
+    <header class="site-header reveal delay-1">
+      <div class="site-header-inner">
+        <a class="site-brand" href="/">
+          <span class="site-brand-mark">Polymarket Pulse</span>
+          <span class="site-brand-copy">Signal terminal</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          {''.join(nav_html)}
+        </nav>
+        <div class="site-actions">
+          <span class="site-page-chip">{page_chip}</span>
+          <a class="site-guide-link{' active' if current_page == 'how-it-works' else ''}" href="{guide_href}">{guide_text}</a>
+          <a class="site-cta" href="{telegram_href}" target="_blank" rel="noopener noreferrer">{cta_text}</a>
+        </div>
+        <details class="site-menu">
+          <summary class="site-menu-summary">Menu</summary>
+          <div class="site-menu-panel">
+            <span class="site-page-chip">{page_chip}</span>
+            {''.join(menu_html)}
+            <a class="site-menu-link{' active' if current_page == 'how-it-works' else ''}" href="{guide_href}">{guide_text}</a>
+            <a class="site-cta" href="{telegram_href}" target="_blank" rel="noopener noreferrer">{cta_text}</a>
+          </div>
+        </details>
+      </div>
+    </header>
+"""
 
 
 class WaitlistRequest(BaseModel):
@@ -713,9 +845,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     page = SEO_PAGES[slug][lang]
     faq_items = SEO_PAGE_FAQ.get(slug, {}).get(lang, [])
     related_page_slugs = SEO_PAGE_LINKS.get(slug, [name for name in SEO_PAGES if name != slug])
-    page_label = slug.replace("-", " ").upper()
     cta_text = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
-    cta_guide_text = "See the bot flow" if lang == "en" else "Как это работает?"
+    cta_guide_text = "How it works" if lang == "en" else "Как это работает?"
     cta_backup_link_text = "Keep email as backup" if lang == "en" else "Email как backup"
     back_text = "Back to homepage" if lang == "en" else "На главную"
     links_head = "Related pages" if lang == "en" else "Связанные страницы"
@@ -819,7 +950,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     )
 
     links = "".join(
-        f'<a href="/{name}">{SEO_PAGES[name]["en"]["h1"]}</a>'
+        f'<a href="/{name}">{html.escape(_site_page_label(name, lang))}</a>'
         for name in related_page_slugs
         if name in SEO_PAGES and name != slug and name != "trader-bot"
     )
@@ -827,6 +958,13 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     backup_href = f"/?placement=seo_{slug}_backup#waitlist-form"
     guide_cta = f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
     backup_cta = f'<a id="backup-link" class="cta-backup-link" href="{backup_href}">{cta_backup_link_text}</a>'
+    header_html = _render_site_header(
+        current_page=slug,
+        lang=lang,
+        telegram_href=f"https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}_header",
+        guide_href=guide_href,
+        guide_text=cta_guide_text,
+    )
     compare_head = "Why Pulse instead of another dashboard" if lang == "en" else "Почему Pulse, а не ещё один dashboard"
     compare_title = (
         "Open the bot. Track one market. Ignore the dashboard bloat."
@@ -1041,18 +1179,147 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       position: relative;
       z-index: 1;
     }}
-    .top {{
-      display:flex; justify-content:space-between; align-items:center; gap: 12px;
-      font-family:"JetBrains Mono", monospace; font-size:12px; color: var(--muted);
+    .site-header {{
+      position: sticky;
+      top: 12px;
+      z-index: 24;
+      margin-bottom: 18px;
     }}
-    .top a {{
-      color: var(--muted);
+    .site-header-inner {{
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid rgba(42, 51, 43, 0.92);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: rgba(13, 15, 14, 0.84);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+    }}
+    .site-brand {{
+      min-width: 0;
+      display: grid;
+      gap: 2px;
       text-decoration: none;
-      border:1px solid var(--line-soft);
-      border-radius:999px;
-      padding:6px 10px;
     }}
-    .top a:hover, .top a:focus-visible {{ border-color: var(--accent); color: var(--text); outline: none; }}
+    .site-brand-mark {{
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      line-height: 1;
+    }}
+    .site-brand-copy {{
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .site-nav {{
+      display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }}
+    .site-nav-link,
+    .site-guide-link,
+    .site-page-chip,
+    .site-menu-link {{
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1;
+      text-decoration: none;
+      background: rgba(19, 23, 20, 0.72);
+      white-space: nowrap;
+    }}
+    .site-page-chip {{
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.08);
+    }}
+    .site-nav-link:hover,
+    .site-nav-link:focus-visible,
+    .site-guide-link:hover,
+    .site-guide-link:focus-visible,
+    .site-menu-link:hover,
+    .site-menu-link:focus-visible {{
+      color: var(--text);
+      border-color: var(--accent);
+      outline: none;
+    }}
+    .site-nav-link.active,
+    .site-guide-link.active,
+    .site-menu-link.active {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.42);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.16) inset;
+    }}
+    .site-actions {{
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+    }}
+    .site-cta {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--bg-2);
+      background: linear-gradient(180deg, #00ff88 0%, #00d874 100%);
+      border: 1px solid var(--accent);
+      white-space: nowrap;
+    }}
+    .site-menu {{
+      display: none;
+      margin-left: auto;
+      position: relative;
+    }}
+    .site-menu[open] {{
+      z-index: 30;
+    }}
+    .site-menu-summary {{
+      list-style: none;
+      cursor: pointer;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      background: rgba(19, 23, 20, 0.92);
+    }}
+    .site-menu-summary::-webkit-details-marker {{
+      display: none;
+    }}
+    .site-menu-panel {{
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 240px;
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(13, 15, 14, 0.98);
+      box-shadow: 0 20px 54px rgba(0, 0, 0, 0.42);
+    }}
     .card {{
       margin-top: 16px;
       background: var(--panel);
@@ -1526,6 +1793,16 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     }}
     .back:hover, .back:focus-visible {{ color: var(--text); outline: none; }}
     @media (max-width: 900px) {{
+      .site-header-inner {{
+        align-items: start;
+      }}
+      .site-nav,
+      .site-actions {{
+        display: none;
+      }}
+      .site-menu {{
+        display: block;
+      }}
       .stats {{ grid-template-columns: 1fr; }}
       .preview-grid {{ grid-template-columns: 1fr 1fr; }}
       .links {{ grid-template-columns: 1fr 1fr; }}
@@ -1559,12 +1836,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
 </head>
 <body>
   <div class="wrap">
-    <div class="top reveal delay-1">
-      <span>POLYMARKET PULSE // {page_label}</span>
-      <div>
-        <a href="/{slug}">EN</a>
-      </div>
-    </div>
+    {header_html}
     <article class="card reveal delay-2">
       <div class="badge-row">
         <span class="badge active">{badge_1}</span>
