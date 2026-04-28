@@ -1,3 +1,65 @@
+# Watchlist Truthfulness + Post-Login Sync Fix (2026-04-28)
+
+Closed the first real watchlist UX bug loop after live user feedback.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• fixed the misleading logged-out `Add to watchlist` state:
+  - the row action no longer pretends a browser-local pending item is fully persisted
+  - pending rows/buttons now read as `Pending login` instead of indistinguishable `Saved`
+  - a second click on a pending row reopens the Telegram bridge instead of silently redirecting
+• added post-login pending reconciliation on the website:
+  - after a valid Telegram website session appears, the client now attempts to sync locally pending markets into the server-backed watchlist
+  - successful sync clears local pending state and refreshes the real workspace
+  - if some pending items still fail to sync, they remain visible in the workspace as pending instead of disappearing
+• made the Telegram bridge copy more explicit:
+  - bot replies now tell the user to tap `Return to site` to finish the website session loop
+  - the site prompt now also explains that Telegram login is not finished until the user returns to the website
+• promoted the real watchlist workspace to the top of `/watchlist`:
+  - workspace now renders before the large explainer hero
+  - the watchlist hero is compacted
+  - the redundant preview block is removed for `/watchlist`
+• made the workspace itself easier to scan:
+  - added a top summary strip for `saved`, `bell on`, and `pending login`
+  - logged-out banners now distinguish plain logged-out browsing from unsynced local pending markets
+  - workspace header copy now clearly says that the real saved-market surface is the table/card workspace, not the explainer copy
+
+What did not change:
+
+• no DB schema change
+• no public grant or auth surface expansion
+• no delivery semantics change
+• no direct frontend-to-Polymarket runtime fetch
+• RU homepage was not touched
+
+Manual test focus:
+
+• logged out:
+  - click `Add to watchlist` on a live row
+  - confirm the button changes to `Pending login`, not plain `Saved`
+  - open `/watchlist` and confirm the pending row is visible immediately
+• Telegram bridge:
+  - complete login through the bot
+  - tap `Return to site`
+  - confirm pending rows become real saved rows on the site
+• watchlist page:
+  - confirm the workspace table/cards appear above the explainer card
+  - confirm summary counters render
+  - confirm filters/sorting still work
+
+Risks / follow-up:
+
+• the website can now reconcile pending rows after login, but we still need one fresh live user pass to verify behavior across Telegram app/browser combinations
+• if Telegram opens the return link in a different browser context, the user can still miss the cookie attach step; the copy is clearer now, but a later fallback UX may still help
+
 # Prompt 8-10 UX + Instrumentation Pass (2026-04-28)
 
 Implemented the next `new horizon` cycle across the web UI, Telegram bot UX, and measurement layer.

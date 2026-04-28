@@ -4025,11 +4025,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     (
                         "Site watchlist login confirmed.\n"
                         "This market is now saved to your website watchlist.\n"
-                        "Alerts stay OFF until you enable the bell in Telegram."
+                        "Alerts stay OFF until you enable the bell in Telegram.\n"
+                        "Tap Return to site below to finish the website login loop."
                         if locale == "en"
                         else "Вход для website watchlist подтверждён.\n"
                         "Этот рынок теперь сохранён в вашем watchlist на сайте.\n"
-                        "Алерты пока ВЫКЛ, пока вы отдельно не включите bell через Telegram."
+                        "Алерты пока ВЫКЛ, пока вы отдельно не включите bell через Telegram.\n"
+                        "Нажмите Return to site ниже, чтобы завершить login-цикл сайта."
                     ),
                     reply_markup=return_markup,
                 )
@@ -4062,18 +4064,20 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     (
                         "Site alert bridge confirmed.\n"
                         "Choose sensitivity for this market. Watchlist stays saved separately; the bell decides if Telegram can wake you up."
+                        "\nAfter that, tap Return to site below to finish the website loop."
                         if locale == "en"
                         else "Bridge для site alert подтверждён.\n"
                         "Выберите чувствительность для этого рынка. Watchlist остаётся отдельным слоем; bell решает, может ли Telegram вас будить."
+                        "\nПосле этого нажмите Return to site ниже, чтобы завершить цикл сайта."
                     ),
                     reply_markup=combined_markup,
                 )
                 return
             await update.message.reply_text(
                 (
-                    "Telegram identity confirmed for the website. Return to the site and your watchlist will persist there now."
+                    "Telegram identity confirmed for the website. Tap Return to site below so the website can attach the session and persist your watchlist there."
                     if locale == "en"
-                    else "Telegram identity для сайта подтверждён. Вернитесь на сайт, и watchlist теперь будет сохраняться там."
+                    else "Telegram identity для сайта подтверждён. Нажмите Return to site ниже, чтобы сайт прикрепил сессию и начал сохранять ваш watchlist там."
                 ),
                 reply_markup=return_markup,
             )

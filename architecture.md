@@ -100,6 +100,61 @@ This document describes the technical architecture.
 
 ---
 
+# Watchlist Truthfulness + Post-Login Sync Fix (2026-04-28)
+
+The first production version of the web watchlist exposed a semantic bug:
+
+• browser-local pending state looked too similar to server-persisted saved state
+• Telegram login completion did not guarantee that locally pending rows were reconciled into the server-backed watchlist on the next site load
+• `/watchlist` visually prioritized explanation over the actual workspace surface
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the client-side watchlist model is now explicitly three-state instead of effectively boolean:
+  - `new`
+  - `pending` (browser-local, not yet persisted)
+  - `saved` (server-backed via Telegram identity/session)
+• `watchlist-client.js` now performs post-login reconciliation:
+  - after `loadSession()` confirms a valid website session, locally pending markets are posted into `/api/watchlist/save`
+  - successful reconciliation clears the corresponding local pending entries
+  - unsuccessful entries remain visible as pending rows so the UI does not imply silent loss
+• live row save buttons now read from the same three-state model:
+  - `Add to watchlist`
+  - `Pending login`
+  - `Saved`
+• the Telegram bridge contract is now clearer at the bot layer:
+  - bot responses explicitly instruct the user to tap `Return to site`
+  - this matters because the actual website session cookie is attached only through `/auth/telegram/complete`
+• `/watchlist` layout is now product-first instead of explanation-first:
+  - the real workspace block renders before the hero explainer
+  - the watchlist hero is compacted
+  - the generic preview section is removed for that route
+  - the workspace now owns the first-screen interaction budget
+• the workspace now exposes a compact summary layer above filters/table/cards:
+  - total saved rows
+  - bell-enabled rows
+  - pending-login rows
+
+Architectural consequence:
+
+• the web watchlist now better matches the intended doctrine:
+  - site = real research/saved-market workspace
+  - Telegram = identity, bell configuration, and delivery
+• browser-local pending state is still intentionally allowed for low-friction exploration, but it is now represented honestly and reconciled explicitly instead of being mistaken for final persistence
+• no server-side contracts changed:
+  - no new endpoints
+  - no schema change
+  - no delivery-path change
+  - no hot-surface change
+
 # SEO Intent Pages First-Screen Split (2026-04-28)
 
 The English dynamic intent pages no longer rely on one generic above-the-fold template for every search intent.

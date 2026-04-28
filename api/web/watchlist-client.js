@@ -8,6 +8,8 @@
       add: "Add to watchlist",
       saved: "Saved",
       savedShort: "Saved",
+      pending: "Pending login",
+      pendingShort: "Pending",
       bellOff: "🔕 Bell off",
       bellOn: "🔔 Bell on",
       bellPaused: "⏸ Bell paused",
@@ -75,7 +77,9 @@
       liqUnit: "liq",
       sensitivityShort: "pp",
       loginBannerTitle: "Telegram is the identity and bell layer.",
-      loginBannerCopy: "Browse the web freely. Persist watchlist and alert behavior through Telegram identity.",
+      loginBannerCopy: "Browse and compare freely on the site. Real persistence starts only after Telegram login and return-to-site completion.",
+      pendingBannerTitle: "Some markets are still waiting for Telegram login.",
+      pendingBannerCopy: "They are only stored in this browser right now. Finish Telegram login to persist them on the site and across devices.",
       statusUnknown: "Unknown",
       pendingSaved: "Pending after Telegram login",
       lastAlert: "Last alert",
@@ -88,11 +92,19 @@
       unavailableCopy: "The workspace API did not return cleanly. Retry in a few seconds or continue in Telegram.",
       filteredEmptyTitle: "No markets match these filters.",
       filteredEmptyCopy: "Clear one filter or open Live Movers to save a different market.",
+      summarySaved: "saved",
+      summaryBellOn: "bell on",
+      summaryPending: "pending login",
+      loginFinishNote: "Finish login in Telegram, then tap Return to site in the bot.",
+      pendingTooltip: "Saved only in this browser for now. Finish Telegram login to persist it on the site.",
+      saveTooltip: "Save this market to your website watchlist.",
     },
     ru: {
       add: "Add to watchlist",
       saved: "Saved",
       savedShort: "Saved",
+      pending: "Ждёт login",
+      pendingShort: "Ждёт",
       bellOff: "🔕 Bell off",
       bellOn: "🔔 Bell on",
       bellPaused: "⏸ Bell paused",
@@ -160,7 +172,9 @@
       liqUnit: "liq",
       sensitivityShort: "pp",
       loginBannerTitle: "Telegram остаётся identity- и bell-слоем.",
-      loginBannerCopy: "На сайте можно свободно смотреть рынки. Persistence watchlist и alert-поведение закрепляются через Telegram identity.",
+      loginBannerCopy: "На сайте можно свободно смотреть и сравнивать рынки. Настоящее сохранение начинается только после Telegram login и возврата на сайт.",
+      pendingBannerTitle: "Часть рынков всё ещё ждёт Telegram login.",
+      pendingBannerCopy: "Пока они лежат только в этом браузере. Завершите Telegram login, чтобы закрепить их на сайте и между устройствами.",
       statusUnknown: "Unknown",
       pendingSaved: "Ждёт Telegram login",
       lastAlert: "Последний алерт",
@@ -173,6 +187,12 @@
       unavailableCopy: "Workspace API сейчас ответил неудачно. Повторите через несколько секунд или продолжайте через Telegram.",
       filteredEmptyTitle: "Под эти фильтры ничего не подходит.",
       filteredEmptyCopy: "Снимите один фильтр или откройте Live Movers и сохраните другой рынок.",
+      summarySaved: "saved",
+      summaryBellOn: "bell on",
+      summaryPending: "ждут login",
+      loginFinishNote: "Завершите login в Telegram, затем нажмите Return to site в боте.",
+      pendingTooltip: "Пока сохранено только в этом браузере. Завершите Telegram login, чтобы закрепить рынок на сайте.",
+      saveTooltip: "Сохранить этот рынок в watchlist на сайте.",
     },
   };
   const copy = TEXT[LOCALE];
@@ -414,6 +434,10 @@
     return Object.values(state.pendingItems || {}).sort((a, b) => String(b.saved_at || "").localeCompare(String(a.saved_at || "")));
   }
 
+  function pendingCount() {
+    return pendingItems(readState()).length;
+  }
+
   function savePendingMarket(market) {
     const state = readState();
     const next = buildPendingItem(market);
@@ -542,7 +566,7 @@
     writeState(state);
     titleEl.textContent = intent === "alert" ? copy.alertSetup : copy.loginTitle;
     marketEl.textContent = market && market.question ? `${copy.watchlist}: ${market.question}` : "";
-    copyEl.textContent = copy.loginCopy;
+    copyEl.textContent = `${copy.loginCopy} ${copy.loginFinishNote}`;
     openEl.href = telegramUrl || DEFAULT_TELEGRAM_URL;
     prompt.classList.add("open");
     trackEvent("watchlist_prompt_open", {
@@ -613,9 +637,15 @@
     if (dirty) writeState(state);
   }
 
+  function watchlistStateForMarket(marketId) {
+    const key = String(marketId || "");
+    if (SESSION.loggedIn && serverRowsMap().has(key)) return "saved";
+    if (readState().pendingItems[key]) return "pending";
+    return "new";
+  }
+
   function isSaved(marketId) {
-    if (SESSION.loggedIn) return serverRowsMap().has(String(marketId || ""));
-    return Boolean(readState().pendingItems[String(marketId || "")]);
+    return watchlistStateForMarket(marketId) !== "new";
   }
 
   function rowForMarket(marketId) {
@@ -628,12 +658,17 @@
     const scope = root || document;
     scope.querySelectorAll('[data-watchlist-action="toggle_save"]').forEach((button) => {
       const marketId = String(button.getAttribute("data-market-id") || "");
-      const saved = isSaved(marketId);
+      const state = watchlistStateForMarket(marketId);
+      const saved = state !== "new";
       button.classList.toggle("saved", saved);
-      button.classList.toggle("primary", !saved);
+      button.classList.toggle("primary", state === "new");
       button.setAttribute("aria-pressed", saved ? "true" : "false");
-      button.textContent = saved ? copy.saved : copy.add;
-      button.title = saved ? copy.syncSaved : "Save this market to your website watchlist.";
+      button.textContent = state === "saved" ? copy.saved : state === "pending" ? copy.pending : copy.add;
+      button.title = state === "saved"
+        ? copy.syncSaved
+        : state === "pending"
+          ? copy.pendingTooltip
+          : copy.saveTooltip;
     });
     scope.querySelectorAll('[data-watchlist-action="toggle_alert"]').forEach((button) => {
       const marketId = String(button.getAttribute("data-market-id") || "");
@@ -651,6 +686,8 @@
       const data = await jsonFetch("/api/watchlist-workspace", { method: "GET" });
       SERVER_ROWS = Array.isArray(data.rows) ? data.rows : [];
       clearSyncedPending();
+      const unsynced = pendingRows().filter((row) => !serverRowsMap().has(String(row.market_id || "")));
+      if (unsynced.length) SERVER_ROWS = SERVER_ROWS.concat(unsynced);
       return;
     }
     const items = pendingItems(readState());
@@ -674,6 +711,27 @@
       last_alert_at: null,
       status: (rowMap.get(String(item.market_id)) || {}).status || "pending",
     }));
+  }
+
+  async function syncPendingToServer() {
+    if (!SESSION.loggedIn) return 0;
+    const state = readState();
+    const items = pendingItems(state);
+    if (!items.length) return 0;
+    let synced = 0;
+    for (const item of items) {
+      try {
+        await saveMarketServer(item, { track: false });
+        delete state.pendingItems[String(item.market_id || "")];
+        synced += 1;
+      } catch (_) {}
+    }
+    if (synced > 0) {
+      writeState(state);
+      trackEvent("watchlist_pending_sync_success", baseEventDetails({ synced_count: synced, watchlist_state: "saved" }));
+      window.dispatchEvent(new CustomEvent("pulse:watchlist-sync"));
+    }
+    return synced;
   }
 
   function optionHtml(entries, selected) {
@@ -753,6 +811,19 @@
     ].join("");
   }
 
+  function workspaceSummary(rows) {
+    const total = rows.length;
+    const bellOn = rows.filter((row) => String(row.alert_state || "off") === "on").length;
+    const pending = rows.filter((row) => String(row.status || "") === "pending").length;
+    return [
+      '<section class="watchlist-summary">',
+      `<article class="watchlist-summary-card"><strong>${esc(String(total))}</strong><span>${esc(copy.summarySaved)}</span></article>`,
+      `<article class="watchlist-summary-card"><strong>${esc(String(bellOn))}</strong><span>${esc(copy.summaryBellOn)}</span></article>`,
+      `<article class="watchlist-summary-card"><strong>${esc(String(pending))}</strong><span>${esc(copy.summaryPending)}</span></article>`,
+      "</section>",
+    ].join("");
+  }
+
   function renderWorkspace(root, rows) {
     const filtered = rows.filter((row) => {
       const query = VIEW_STATE.query.trim().toLowerCase();
@@ -770,10 +841,11 @@
       return 0;
     });
 
+    const pendingLocal = pendingCount();
     const banner = !SESSION.loggedIn ? [
       '<section class="watchlist-banner">',
-      `<h3>${esc(copy.loginBannerTitle)}</h3>`,
-      `<p>${esc(copy.loginBannerCopy)}</p>`,
+      `<h3>${esc(pendingLocal ? copy.pendingBannerTitle : copy.loginBannerTitle)}</h3>`,
+      `<p>${esc(pendingLocal ? copy.pendingBannerCopy : copy.loginBannerCopy)}</p>`,
       '<div class="watchlist-banner-actions">',
       `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">${esc(copy.openBot)}</a>`,
       "</div>",
@@ -797,6 +869,7 @@
     root.className = "watchlist-root";
     root.innerHTML = [
       banner,
+      workspaceSummary(rows),
       controls,
       '<section class="watchlist-table-wrap">',
       `<table class="watchlist-table${VIEW_STATE.compact ? " compact" : ""}">`,
@@ -865,7 +938,7 @@
     }
   }
 
-  async function saveMarketServer(market) {
+  async function saveMarketServer(market, options) {
     await jsonFetch("/api/watchlist/save", {
       method: "POST",
       body: JSON.stringify({
@@ -875,8 +948,10 @@
         source: "site",
       }),
     });
-    trackEvent("watchlist_add", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "saved" }));
-    trackEvent("watchlist_add_success", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "saved" }));
+    if (options && options.track === false) return;
+    const watchlistState = options && options.watchlistState ? String(options.watchlistState) : "saved";
+    trackEvent("watchlist_add", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: watchlistState }));
+    trackEvent("watchlist_add_success", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: watchlistState }));
   }
 
   async function removeMarketServer(marketId) {
@@ -913,8 +988,19 @@
     if (action === "toggle_save") {
       const market = marketFromElement(target);
       if (!market.market_id) return;
-      if (isSaved(market.market_id)) {
+      const currentSaveState = watchlistStateForMarket(market.market_id);
+      if (currentSaveState === "saved") {
         window.location.href = "/watchlist";
+        return;
+      }
+      if (currentSaveState === "pending") {
+        try {
+          const telegramUrl = await startAuthFlow("watchlist_add", market);
+          trackEvent("telegram_login_click", baseEventDetails({ intent: "watchlist_add", market_id: market.market_id, slug: market.slug || "", watchlist_state: "pending" }));
+          showBridgePrompt(market, telegramUrl, "watchlist_add");
+        } catch (_) {
+          showBridgePrompt(market, defaultTrackUrl(market.market_id), "watchlist_add");
+        }
         return;
       }
       trackEvent("watchlist_add_click", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "new" }));
@@ -1006,6 +1092,7 @@
 
   window.addEventListener("storage", async () => {
     await loadSession();
+    if (SESSION.loggedIn) await syncPendingToServer();
     syncSessionCopy();
     syncWatchlistButtons(document);
     refreshWorkspace();
@@ -1018,6 +1105,7 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     await loadSession();
+    if (SESSION.loggedIn) await syncPendingToServer();
     syncSessionCopy();
     await refreshWorkspace();
     syncWatchlistButtons(document);

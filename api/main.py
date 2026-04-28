@@ -1519,6 +1519,72 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     hero_live_signal_block = live_signal_block if slug in {"signals", "top-movers"} else ""
     body_live_signal_block = "" if slug in {"signals", "top-movers"} else live_signal_block
     watchlist_workspace_block = _render_watchlist_workspace_block(lang) if slug == "watchlist" else ""
+    watchlist_workspace_lead = watchlist_workspace_block if slug == "watchlist" else ""
+    watchlist_workspace_tail = "" if slug == "watchlist" else watchlist_workspace_block
+    hero_card_class = "card reveal delay-2 watchlist-card-compact" if slug == "watchlist" else "card reveal delay-2"
+    hero_stats_block = (
+        ""
+        if slug == "watchlist"
+        else f"""
+      <div class="stats">
+        <article class="stat">
+          <p class="stat-label">{stat_1_label}</p>
+          <p class="stat-value">{stat_1_value}</p>
+          <p class="stat-copy">{stat_1_copy}</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">{stat_2_label}</p>
+          <p class="stat-value">{stat_2_value}</p>
+          <p class="stat-copy">{stat_2_copy}</p>
+        </article>
+        <article class="stat">
+          <p class="stat-label">{stat_3_label}</p>
+          <p class="stat-value">{stat_3_value}</p>
+          <p class="stat-copy">{stat_3_copy}</p>
+        </article>
+      </div>
+"""
+    )
+    hero_feature_rows = (
+        ""
+        if slug == "watchlist"
+        else f"""
+      <div class="feature-rows">
+        <div class="feature-row">{page["k1"]}</div>
+        <div class="feature-row">{page["k2"]}</div>
+        <div class="feature-row">{page["k3"]}</div>
+      </div>
+"""
+    )
+    preview_block = (
+        ""
+        if slug == "watchlist"
+        else f"""
+    <section class="preview reveal delay-3">
+      <p class="links-title">{preview_head}</p>
+      <div class="preview-grid">
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 01</p>
+          <h3 class="preview-title">{page["k1"]}</h3>
+          <p class="preview-copy">{preview_copy_1}</p>
+          <div class="preview-bar" style="--w:72%;"><span></span></div>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 02</p>
+          <h3 class="preview-title">{page["k2"]}</h3>
+          <p class="preview-copy">{preview_copy_2}</p>
+          <div class="preview-bar" style="--w:58%;"><span></span></div>
+        </article>
+        <article class="preview-card">
+          <p class="preview-kicker">{screen_label} 03</p>
+          <h3 class="preview-title">{page["k3"]}</h3>
+          <p class="preview-copy">{preview_copy_3}</p>
+          <div class="preview-bar down" style="--w:36%;"><span></span></div>
+        </article>
+      </div>
+    </section>
+"""
+    )
     robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     if noindex_override:
         robots_meta = "noindex,follow"
@@ -2221,6 +2287,32 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       display: grid;
       gap: 12px;
     }}
+    .watchlist-summary {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }}
+    .watchlist-summary-card {{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #131714;
+      padding: 14px;
+      display: grid;
+      gap: 6px;
+    }}
+    .watchlist-summary-card strong {{
+      font-size: clamp(20px, 3vw, 28px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }}
+    .watchlist-summary-card span {{
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
     .watchlist-empty,
     .watchlist-banner,
     .watchlist-table-wrap,
@@ -2382,6 +2474,17 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       padding: 10px;
       gap: 10px;
     }}
+    .watchlist-card-compact {{
+      padding-top: 20px;
+      padding-bottom: 20px;
+    }}
+    .watchlist-card-compact h1 {{
+      font-size: clamp(30px, 5vw, 48px);
+    }}
+    .watchlist-card-compact .intro {{
+      max-width: 980px;
+      font-size: clamp(14px, 1.6vw, 18px);
+    }}
     .watchlist-card {{
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -2493,6 +2596,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .live-signal-side {{ align-items: start; }}
       .live-signal-actions {{ justify-content: flex-start; }}
       .watchlist-controls {{ grid-template-columns: 1fr; }}
+      .watchlist-summary {{ grid-template-columns: 1fr; }}
       .watchlist-table-wrap {{ display: none; }}
       .watchlist-card-grid {{ display: grid; }}
     }}
@@ -2507,35 +2611,16 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
 <body>
   <div class="wrap">
     {header_html}
-    <article class="card reveal delay-2">
+    {watchlist_workspace_lead}
+    <article class="{hero_card_class}">
       <div class="badge-row">
         <span class="badge active">{badge_1}</span>
         <span class="badge">{badge_3}</span>
       </div>
       <h1>{page["h1"]}</h1>
       <p class="intro">{page["intro"]}</p>
-      <div class="stats">
-        <article class="stat">
-          <p class="stat-label">{stat_1_label}</p>
-          <p class="stat-value">{stat_1_value}</p>
-          <p class="stat-copy">{stat_1_copy}</p>
-        </article>
-        <article class="stat">
-          <p class="stat-label">{stat_2_label}</p>
-          <p class="stat-value">{stat_2_value}</p>
-          <p class="stat-copy">{stat_2_copy}</p>
-        </article>
-        <article class="stat">
-          <p class="stat-label">{stat_3_label}</p>
-          <p class="stat-value">{stat_3_value}</p>
-          <p class="stat-copy">{stat_3_copy}</p>
-        </article>
-      </div>
-      <div class="feature-rows">
-        <div class="feature-row">{page["k1"]}</div>
-        <div class="feature-row">{page["k2"]}</div>
-        <div class="feature-row">{page["k3"]}</div>
-      </div>
+      {hero_stats_block}
+      {hero_feature_rows}
       {hero_focus_block}
       <div class="cta-row">
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} →</a>
@@ -2551,30 +2636,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       <p class="cta-backup-link-wrap">{backup_cta}</p>
       {hero_live_signal_block}
     </article>
-    {watchlist_workspace_block}
-    <section class="preview reveal delay-3">
-      <p class="links-title">{preview_head}</p>
-      <div class="preview-grid">
-        <article class="preview-card">
-          <p class="preview-kicker">{screen_label} 01</p>
-          <h3 class="preview-title">{page["k1"]}</h3>
-          <p class="preview-copy">{preview_copy_1}</p>
-          <div class="preview-bar" style="--w:72%;"><span></span></div>
-        </article>
-        <article class="preview-card">
-          <p class="preview-kicker">{screen_label} 02</p>
-          <h3 class="preview-title">{page["k2"]}</h3>
-          <p class="preview-copy">{preview_copy_2}</p>
-          <div class="preview-bar" style="--w:58%;"><span></span></div>
-        </article>
-        <article class="preview-card">
-          <p class="preview-kicker">{screen_label} 03</p>
-          <h3 class="preview-title">{page["k3"]}</h3>
-          <p class="preview-copy">{preview_copy_3}</p>
-          <div class="preview-bar down" style="--w:36%;"><span></span></div>
-        </article>
-      </div>
-    </section>
+    {watchlist_workspace_tail}
+    {preview_block}
     {bot_flow_block}
     {body_live_signal_block}
     {compare_block}
@@ -3832,14 +3895,14 @@ def remove_site_watchlist_market(*, user_id: str, market_id: str) -> int:
 def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
     title = "Watchlist workspace" if lang == "en" else "Watchlist workspace"
     subtitle = (
-        "Save markets on the site, sort the workspace your way, and use Telegram only when it is time to persist alert behavior."
+        "Your actual saved-market workspace lives here: sort by delta, liquidity, spread, freshness, and bell state. Telegram only finishes identity and alert delivery."
         if lang == "en"
-        else "Сохраняйте рынки на сайте, собирайте удобный workspace и подключайте Telegram только тогда, когда пора закреплять alert-поведение."
+        else "Именно здесь живёт ваш реальный workspace сохранённых рынков: сортировки по delta, liquidity, spread, freshness и bell state. Telegram нужен только для identity и доставки алертов."
     )
     login_copy = (
-        "Log in with Telegram to save your watchlist."
+        "Log in with Telegram to persist this watchlist across devices."
         if lang == "en"
-        else "Войдите через Telegram, чтобы сохранить watchlist."
+        else "Войдите через Telegram, чтобы закрепить этот watchlist между устройствами."
     )
     login_cta = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     return f"""
