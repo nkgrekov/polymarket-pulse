@@ -146,6 +146,9 @@ Architectural changes:
   - pages reference `/watchlist-client.js?v=...`
   - `/watchlist-client.js` now returns an explicit shorter `Cache-Control`
   - this reduces the chance of stale UI logic surviving a fresh backend/site deploy
+• the watchlist workspace now exposes two additional trust signals:
+  - a visible post-login success banner after `tg_auth=1`
+  - mini sparkline series per market row derived from recent snapshot history plus current hot mid when available
 
 Architectural consequence:
 

@@ -34,6 +34,12 @@ What changed:
   - added a top summary strip for `saved`, `bell on`, and `pending login`
   - logged-out banners now distinguish plain logged-out browsing from unsynced local pending markets
   - workspace header copy now clearly says that the real saved-market surface is the table/card workspace, not the explainer copy
+• added another polish layer for watchlist confidence:
+  - workspace rows now render mini sparkline charts from recent market snapshot history when available
+  - the first site load after `tg_auth=1` now shows an explicit success banner:
+    - `Telegram connected`
+    - or `Telegram connected. Watchlist synced.`
+  - this makes the post-login bridge visible instead of implicit
 
 What did not change:
 

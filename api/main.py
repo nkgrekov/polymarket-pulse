@@ -535,7 +535,9 @@ class WatchlistSaveRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260428b"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260428c"
+WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
+WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
 
 
 SQL_HOT_LIVE_MOVERS_PREVIEW = """
@@ -2326,6 +2328,10 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     .watchlist-banner {{
       padding: 16px;
     }}
+    .watchlist-banner.success {{
+      border-color: rgba(0, 255, 136, 0.32);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.12) inset;
+    }}
     .watchlist-empty h3,
     .watchlist-banner h3 {{
       margin: 0;
@@ -2410,6 +2416,24 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
       line-height: 1.4;
+    }}
+    .watchlist-spark {{
+      margin-top: 10px;
+      width: 152px;
+      height: 36px;
+      display: block;
+    }}
+    .watchlist-spark polyline {{
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }}
+    .watchlist-spark.down polyline {{
+      stroke: #ff5b5b;
+    }}
+    .watchlist-spark.up polyline {{
+      stroke: var(--accent);
     }}
     .watchlist-chip-row,
     .watchlist-action-row {{
@@ -3725,6 +3749,38 @@ def _workspace_rows_from_query(query: str, params: tuple) -> list[dict]:
             return cur.fetchall()
 
 
+def _workspace_spark_map(row_map: dict[str, dict]) -> dict[str, list[float]]:
+    market_ids = [market_id for market_id in row_map if market_id]
+    if not PG_CONN or not market_ids:
+        return {}
+    with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute("set statement_timeout = '8000ms'")
+            cur.execute(SQL_LIVE_SPARKLINE_POINTS, (market_ids, max(2, WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS)))
+            points = cur.fetchall()
+
+    series_by_market: dict[str, list[float]] = defaultdict(list)
+    for row in points:
+        market_id = str(row.get("market_id") or "")
+        mid = row.get("mid")
+        if market_id and mid is not None:
+            series_by_market[market_id].append(float(mid))
+
+    out: dict[str, list[float]] = {}
+    for market_id, payload in row_map.items():
+        spark_source = list(series_by_market.get(market_id, []))
+        now_mid = payload.get("yes_mid_now")
+        if now_mid is not None:
+            now_mid_f = float(now_mid)
+            if not spark_source or abs(float(spark_source[-1]) - now_mid_f) > 1e-9:
+                spark_source.append(now_mid_f)
+        spark = _compact_series(spark_source, max_points=max(4, WATCHLIST_WORKSPACE_SPARK_POINTS))
+        if len(spark) < 2 or len({round(v, 6) for v in spark}) < 2:
+            spark = []
+        out[market_id] = spark
+    return out
+
+
 def fetch_watchlist_workspace(market_ids: list[str]) -> list[dict]:
     clean_ids = _clean_watchlist_market_ids(market_ids)
     if not clean_ids:
@@ -3811,6 +3867,10 @@ def _hydrate_watchlist_workspace_rows(rows: list[dict], *, ordered_market_ids: l
         }
         row_map[market_id] = payload
 
+    spark_map = _workspace_spark_map(row_map)
+    for market_id, payload in row_map.items():
+        payload["spark"] = spark_map.get(market_id, [])
+
     out: list[dict] = []
     for market_id in ordered_market_ids:
         payload = row_map.get(market_id)
@@ -3845,6 +3905,7 @@ def _hydrate_watchlist_workspace_rows(rows: list[dict], *, ordered_market_ids: l
                     "alert_threshold_value": None,
                     "effective_threshold_value": None,
                     "last_alert_at": None,
+                    "spark": [],
                 }
             )
     return out

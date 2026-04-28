@@ -98,6 +98,10 @@
       loginFinishNote: "Finish login in Telegram, then tap Return to site in the bot.",
       pendingTooltip: "Saved only in this browser for now. Finish Telegram login to persist it on the site.",
       saveTooltip: "Save this market to your website watchlist.",
+      syncSuccessTitle: "Telegram connected. Watchlist synced.",
+      syncSuccessCopy: "Pending markets were persisted into your website watchlist.",
+      loginSuccessTitle: "Telegram connected.",
+      loginSuccessCopy: "This website is now linked to your Telegram identity.",
     },
     ru: {
       add: "Add to watchlist",
@@ -193,6 +197,10 @@
       loginFinishNote: "Завершите login в Telegram, затем нажмите Return to site в боте.",
       pendingTooltip: "Пока сохранено только в этом браузере. Завершите Telegram login, чтобы закрепить рынок на сайте.",
       saveTooltip: "Сохранить этот рынок в watchlist на сайте.",
+      syncSuccessTitle: "Telegram подключён. Watchlist синхронизирован.",
+      syncSuccessCopy: "Pending-рынки закреплены в website watchlist.",
+      loginSuccessTitle: "Telegram подключён.",
+      loginSuccessCopy: "Этот сайт теперь связан с вашей Telegram identity.",
     },
   };
   const copy = TEXT[LOCALE];
@@ -205,6 +213,7 @@
     compact: false,
   };
   const SESSION = { loaded: false, loggedIn: false, user: null };
+  const FLASH = { title: "", copy: "", tone: "" };
   let SERVER_ROWS = [];
 
   function esc(value) {
@@ -235,6 +244,12 @@
 
   function nowIso() {
     return new Date().toISOString();
+  }
+
+  function setFlash(title, copyText, tone) {
+    FLASH.title = title || "";
+    FLASH.copy = copyText || "";
+    FLASH.tone = tone || "";
   }
 
   function trackEvent(eventType, details) {
@@ -727,6 +742,7 @@
       } catch (_) {}
     }
     if (synced > 0) {
+      state.pendingContext = null;
       writeState(state);
       trackEvent("watchlist_pending_sync_success", baseEventDetails({ synced_count: synced, watchlist_state: "saved" }));
       window.dispatchEvent(new CustomEvent("pulse:watchlist-sync"));
@@ -772,12 +788,29 @@
     ].join("");
   }
 
+  function sparkSvg(row) {
+    const series = Array.isArray(row.spark) ? row.spark.map((value) => Number(value)).filter((value) => Number.isFinite(value)) : [];
+    if (series.length < 2) return "";
+    const width = 152;
+    const height = 36;
+    const min = Math.min(...series);
+    const max = Math.max(...series);
+    const span = Math.max(max - min, 0.0001);
+    const points = series.map((value, index) => {
+      const x = series.length === 1 ? width / 2 : (index / (series.length - 1)) * width;
+      const y = height - (((value - min) / span) * (height - 4) + 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    const tone = Number(row.delta_primary || 0) < 0 ? "down" : "up";
+    return `<svg class="watchlist-spark ${tone}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${esc(points)}"></polyline></svg>`;
+  }
+
   function tableRow(row) {
     const sensitivity = row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--";
     const lastAlert = formatLastAlert(row.last_alert_at);
     return [
       "<tr>",
-      `<td><p class="watchlist-question">${esc(row.question)}</p><p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p></td>`,
+      `<td><p class="watchlist-question">${esc(row.question)}</p><p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p>${sparkSvg(row)}</td>`,
       `<td>${esc(formatPct(row.yes_mid_now))}</td>`,
       `<td title="Current move in percentage points.">${esc(formatPp(row.delta_primary))}</td>`,
       `<td title="Fast 1 minute cue for urgency.">${esc(formatPp(row.delta_1m))}</td>`,
@@ -802,6 +835,7 @@
       `<span class="watchlist-chip${row.alert_state === "on" ? " strong" : ""}" title="${esc(bellTooltip(row))}">${esc(alertStateLabel(row.alert_state || "off"))}</span>`,
       "</div>",
       `<p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p>`,
+      sparkSvg(row),
       `<div class="watchlist-chip-row">${chipWithTitle(formatPct(row.yes_mid_now), "Current probability.", "strong")}${chipWithTitle(formatPp(row.delta_primary), "Current move in percentage points.", Number(row.delta_primary || 0) < 0 ? "down" : "")}${chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", "")}${chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", "")}</div>`,
       `<div class="watchlist-chip-row">${chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", "")}${chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", "")}${chipWithTitle(`${formatFreshness(row.freshness_seconds)} ${copy.quote}`, "Quote freshness. Stale quotes reduce urgency.", "")}</div>`,
       `<div class="watchlist-chip-row">${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : "")}${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")}</div>`,
@@ -851,6 +885,12 @@
       "</div>",
       "</section>",
     ].join("") : "";
+    const flash = FLASH.title ? [
+      `<section class="watchlist-banner success">`,
+      `<h3>${esc(FLASH.title)}</h3>`,
+      `<p>${esc(FLASH.copy)}</p>`,
+      `</section>`,
+    ].join("") : "";
 
     const controls = [
       '<section class="watchlist-controls">',
@@ -868,6 +908,7 @@
     const noMatchBlock = renderEmptyBlock(copy.filteredEmptyTitle, copy.filteredEmptyCopy, "");
     root.className = "watchlist-root";
     root.innerHTML = [
+      flash,
       banner,
       workspaceSummary(rows),
       controls,
@@ -1105,7 +1146,15 @@
 
   document.addEventListener("DOMContentLoaded", async () => {
     await loadSession();
-    if (SESSION.loggedIn) await syncPendingToServer();
+    let syncedCount = 0;
+    if (SESSION.loggedIn) syncedCount = await syncPendingToServer();
+    if (window.location.search.includes("tg_auth=1") && SESSION.loggedIn) {
+      if (syncedCount > 0) {
+        setFlash(copy.syncSuccessTitle, copy.syncSuccessCopy, "success");
+      } else {
+        setFlash(copy.loginSuccessTitle, copy.loginSuccessCopy, "success");
+      }
+    }
     syncSessionCopy();
     await refreshWorkspace();
     syncWatchlistButtons(document);
