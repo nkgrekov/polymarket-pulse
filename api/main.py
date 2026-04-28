@@ -535,6 +535,7 @@ class WatchlistSaveRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
+WATCHLIST_CLIENT_ASSET_VERSION = "20260428b"
 
 
 SQL_HOT_LIVE_MOVERS_PREVIEW = """
@@ -1613,7 +1614,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
-  <script defer src="/watchlist-client.js"></script>
+  <script defer src="/watchlist-client.js?v={WATCHLIST_CLIENT_ASSET_VERSION}"></script>
   <script type="application/ld+json">{page_schema}</script>
   {faq_schema_tag}
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
@@ -4741,7 +4742,11 @@ def watchlist_client_script() -> Response:
     path = WEB_DIR / "watchlist-client.js"
     if not path.exists():
         return Response(status_code=404)
-    return Response(content=path.read_text(encoding="utf-8"), media_type="application/javascript")
+    return Response(
+        content=path.read_text(encoding="utf-8"),
+        media_type="application/javascript",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @app.post("/api/stripe/checkout-session")

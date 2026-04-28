@@ -27,6 +27,9 @@ What changed:
   - workspace now renders before the large explainer hero
   - the watchlist hero is compacted
   - the redundant preview block is removed for `/watchlist`
+• fixed rollout correctness for the watchlist client:
+  - the website now loads `watchlist-client.js` through a versioned asset URL
+  - the JS endpoint now advertises a shorter cache window so UI logic updates do not stay stale for hours behind edge cache
 • made the workspace itself easier to scan:
   - added a top summary strip for `saved`, `bell on`, and `pending login`
   - logged-out banners now distinguish plain logged-out browsing from unsynced local pending markets

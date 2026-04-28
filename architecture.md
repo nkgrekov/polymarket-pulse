@@ -142,6 +142,10 @@ Architectural changes:
   - total saved rows
   - bell-enabled rows
   - pending-login rows
+• watchlist client asset delivery is now versioned at the HTML layer and shortened at the response-cache layer:
+  - pages reference `/watchlist-client.js?v=...`
+  - `/watchlist-client.js` now returns an explicit shorter `Cache-Control`
+  - this reduces the chance of stale UI logic surviving a fresh backend/site deploy
 
 Architectural consequence:
 
