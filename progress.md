@@ -4,6 +4,66 @@ This document tracks the current state of the project.
 
 ---
 
+# Homepage Workspace Clarity Pass (2026-04-28)
+
+Implemented `PROMPT 2` from `new horizon` and tightened the homepage so it explains the new product model without requiring scroll: website as live market workspace, Telegram as login + bell + alert layer.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• rewrote the English homepage hero around the new core promise:
+  - see live movers now
+  - save markets to watchlist
+  - use Telegram only when the bell and thresholded alerts are needed
+• added a new above-the-fold CTA hierarchy:
+  - primary `Open Telegram Bot`
+  - secondary `View live movers`
+  - email pushed down into backup-only role
+• changed hero metrics so they explain:
+  - what moved
+  - what watchlist means
+  - what bell / threshold means
+• added a compact website-vs-Telegram explainer strip directly in the hero
+• rewrote the right-side hero panel so it no longer reads like a pure Telegram landing panel:
+  - live workspace copy
+  - bell semantics copy
+  - early Free vs Pro teaser
+• demoted email signup to explicit backup positioning:
+  - “Don’t use Telegram? Get digest updates by email.”
+• moved pricing clarity higher in the journey and updated the full pricing section copy so it reflects:
+  - site research first
+  - plan limits matter when saving markets and enabling bells
+What did not change:
+
+• no bot runtime changed
+• no ingest logic changed
+• no DB schema or API contract changed
+• no watchlist persistence semantics changed
+• no alert delivery semantics changed
+• no RU homepage copy or structure changed in this step
+
+Manual test:
+
+• open the English homepage
+• confirm above the fold now explains:
+  - what moved
+  - what watchlist does
+  - what bell does
+  - why Telegram is still needed
+• confirm `Open Telegram Bot` and `View live movers` are both visible before scroll
+• confirm email reads as backup-only, not equal primary CTA
+• confirm pricing teaser appears in the hero panel and full pricing still anchors from `/#pricing`
+
+Risks / follow-up:
+
+• homepage copy is now aligned with the new model, but the deeper SEO/intent pages still need their own distinct first-screen redesign in later prompts
+• plan copy stays truthful to current runtime limits; this step does not introduce broader “unlimited web watchlist” claims that the backend does not yet enforce
+
 # Telegram Identity Bridge + Bell Model + Hot Alert Alignment (2026-04-27)
 
 Implemented the next `new horizon` core step: website watchlist persistence now has a real Telegram identity bridge, bell alerts are separated from saved markets at the model level, and hot alert candidates no longer treat every saved watchlist row as alert-eligible by default.

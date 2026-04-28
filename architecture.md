@@ -4,6 +4,46 @@ This document describes the technical architecture.
 
 ---
 
+# Homepage Workspace Clarity Pass (2026-04-28)
+
+The homepage now explicitly presents the two-surface product model instead of behaving like a generic Telegram landing page.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the homepage hero now teaches the runtime split directly above the fold:
+  - website = live market workspace
+  - watchlist = saved market layer
+  - Telegram = identity, bell configuration, and alert delivery
+• CTA hierarchy is now aligned with the product model:
+  - primary `Open Telegram Bot`
+  - secondary `View live movers`
+  - tertiary email backup only
+• hero metrics and explainer cards now encode the core semantics the system already uses underneath:
+  - live mover freshness
+  - saved watchlist != automatic alert
+  - bell alerts are threshold-led
+• early pricing communication now appears inside the hero panel, so plan limits are framed around saved markets and alert delivery instead of looking like a generic upgrade ad
+Architectural consequence:
+
+• the public homepage now matches the actual system we have already built in prompts `3-6`
+• users get the right mental model before touching Telegram:
+  - inspect live movement on the site
+  - save markets into watchlist
+  - enable bell in Telegram only when alerts are desired
+• no runtime contracts changed in this step:
+  - no bot flow rewrite
+  - no API shape change
+  - no DB change
+  - no ingest or delivery change
+  - no RU homepage change
+• this reduces product-story mismatch before the next page-distinction pass across `/signals`, `/top-movers`, `/analytics`, `/telegram-bot`, and related intent pages
+
 # Telegram Identity Bridge + Bell Model + Hot Alert Alignment (2026-04-27)
 
 The watchlist model is no longer “saved market == implicit alert.”
