@@ -1502,7 +1502,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         </article>
       </div>
       <div class="cta-row" style="margin-top:14px;">
-        <a id="tg-link-bridge" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_telegram-bot_bridge_en" target="_blank" rel="noopener noreferrer">Open Telegram Bot -></a>
+        <a id="tg-link-bridge" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_telegram-bot_bridge_en" target="_blank" rel="noopener noreferrer">Open Telegram Bot →</a>
         <a id="guide-link-bridge" class="cta-secondary" href="/how-it-works?placement=seo_telegram-bot_bridge_guide">See the bot flow</a>
       </div>
       <p class="cta-note">The goal here is not another dashboard. It is one clean move from search intent to a live market in Telegram.</p>
@@ -2157,7 +2157,6 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
       text-decoration: none;
-      text-transform: uppercase;
       white-space: nowrap;
     }}
     .live-signal-link.primary {{
@@ -2168,6 +2167,19 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       color: var(--text);
       border-color: rgba(0, 255, 136, 0.42);
       box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.16) inset;
+    }}
+    .live-signal-empty {{
+      border: 1px dashed var(--line-soft);
+      border-radius: 12px;
+      padding: 16px;
+      background: rgba(19, 23, 20, 0.72);
+    }}
+    .live-signal-empty p {{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
     }}
     .live-signal-link:hover,
     .live-signal-link:focus-visible {{
@@ -2360,6 +2372,11 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       color: var(--text);
       border-color: rgba(0, 255, 136, 0.32);
     }}
+    .watchlist-action.saved {{
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.22);
+      box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.12) inset;
+    }}
     .watchlist-card-grid {{
       display: none;
       padding: 10px;
@@ -2521,7 +2538,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       </div>
       {hero_focus_block}
       <div class="cta-row">
-        <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
+        <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} →</a>
         {guide_cta}
       </div>
       <div class="cta-trust" aria-label="Telegram trust strip">
@@ -2603,7 +2620,23 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       utm_campaign: p.get('utm_campaign') || ''
     }};
     trackEvent('page_view', details);
-    document.getElementById('live-signal-surface')?.addEventListener('click', (event) => {{
+    const liveSignalSurface = document.getElementById('live-signal-surface');
+    if (liveSignalSurface) {{
+      const emitLiveBoardSeen = () => trackEvent('live_board_impression', {{ ...details, placement: 'seo_live_signal_board' }});
+      if ('IntersectionObserver' in window) {{
+        const liveBoardObserver = new IntersectionObserver((entries) => {{
+          entries.forEach((entry) => {{
+            if (!entry.isIntersecting) return;
+            emitLiveBoardSeen();
+            liveBoardObserver.disconnect();
+          }});
+        }}, {{ threshold: 0.35 }});
+        liveBoardObserver.observe(liveSignalSurface);
+      }} else {{
+        emitLiveBoardSeen();
+      }}
+    }}
+    liveSignalSurface?.addEventListener('click', (event) => {{
       const target = event.target instanceof Element ? event.target.closest('[data-market-action]') : null;
       if (!target) return;
       const action = target.getAttribute('data-market-action') || '';
@@ -3843,7 +3876,23 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         rows = []
 
     if not rows:
-        return ""
+        empty_title = "Live board is quiet right now" if lang == "en" else "Live board сейчас тихий"
+        empty_copy = (
+            "No mover cleared the current quality gates, or the API is catching up. Retry in a minute or open Telegram for thresholded alerts."
+            if lang == "en"
+            else "Сейчас ни один mover не прошёл quality gates, либо API догоняет поток. Повторите через минуту или откройте Telegram для threshold-алертов."
+        )
+        return f"""
+    <section id="live-signal-surface" class="live-signal-board reveal delay-3">
+      <div class="live-signal-head">
+        <p class="links-title">Live signal board</p>
+      </div>
+      <div class="live-signal-empty">
+        <strong>{html.escape(empty_title)}</strong>
+        <p>{html.escape(empty_copy)}</p>
+      </div>
+    </section>
+"""
 
     if slug == "telegram-bot":
         title = "Markets you can track right now" if lang == "en" else "Рынки, которые можно отслеживать сейчас"
@@ -3892,31 +3941,41 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         age = _fmt_live_age(row.get("freshness_seconds"))
         liq = _fmt_live_liquidity(row.get("liquidity"))
         spread = _fmt_live_pp(row.get("spread"), signed=False) if row.get("spread") is not None else None
-        quality = ["live gated" if source == "hot" else "historical fallback"]
+        quality: list[tuple[str, str]] = [
+            (
+                "live gated" if source == "hot" else "historical fallback",
+                "Current row passed the live quality gates." if source == "hot" else "Fallback data is shown while hot data catches up.",
+            )
+        ]
         if age:
-            quality.append(age)
+            quality.append((age, "Quote freshness. Older quotes weaken urgency."))
         if liq:
-            quality.append(liq)
+            quality.append((liq, "Higher liquidity usually means cleaner execution."))
         if spread:
-            quality.append(f"{spread} spread")
+            quality.append((f"{spread} spread", "Lower spread is better. Wide spread can distort urgency."))
         quality_html = "".join(
-            f'<span class="live-signal-pill{" strong" if idx == 0 else ""}">{html.escape(item)}</span>'
-            for idx, item in enumerate(quality)
+            f'<span class="live-signal-pill{" strong" if idx == 0 else ""}" title="{html.escape(tooltip)}">{html.escape(label)}</span>'
+            for idx, (label, tooltip) in enumerate(quality)
         )
-        tape_html = f'<span class="live-signal-tape">1m {_fmt_live_pp(delta_1m)}</span>' if abs(delta_1m) > 0 else ""
+        tape_html = (
+            f'<span class="live-signal-tape" title="Fast 1 minute cue for urgency.">1m {_fmt_live_pp(delta_1m)}</span>'
+            if abs(delta_1m) > 0
+            else ""
+        )
         actions = ""
         if market_url:
             actions += (
                 f'<a class="live-signal-link" href="{market_url}" target="_blank" rel="noopener noreferrer" '
-                f'data-market-action="open_polymarket" data-market-id="{market_id}">{open_label}</a>'
+                f'title="Open this market on Polymarket." data-market-action="open_polymarket" data-market-id="{market_id}">{open_label}</a>'
             )
         if track_url:
             actions += (
                 f'<a class="live-signal-link primary" href="{track_url}" target="_blank" rel="noopener noreferrer" '
-                f'data-market-action="track_telegram" data-market-id="{market_id}">{track_label}</a>'
+                f'title="Open Telegram for the alert layer." data-market-action="track_telegram" data-market-id="{market_id}">{track_label}</a>'
             )
         actions += (
             f'<button type="button" class="live-signal-link watchlist-toggle" '
+            f'title="Save this market to your website watchlist." '
             f'data-watchlist-action="toggle_save" '
             f'data-market-id="{market_id}" '
             f'data-market-question="{question}" '
@@ -3927,6 +3986,7 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         )
         actions += (
             f'<button type="button" class="live-signal-link" '
+            f'title="Turn Telegram alerts on only when this market deserves interruption." '
             f'data-watchlist-action="toggle_alert" '
             f'data-market-id="{market_id}" '
             f'data-market-question="{question}" '
@@ -3940,12 +4000,12 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
         <article class="live-signal-row">
           <div>
             <p class="live-signal-question">{question}</p>
-            <p class="live-signal-meta">market {market_id} · {_fmt_live_pct(row.get("yes_mid_prev"))} -> {_fmt_live_pct(row.get("yes_mid_now"))}</p>
+            <p class="live-signal-meta">market {market_id} · {_fmt_live_pct(row.get("yes_mid_prev"))} → {_fmt_live_pct(row.get("yes_mid_now"))}</p>
             <div class="live-signal-quality">{quality_html}</div>
           </div>
           <div class="live-signal-side">
             <div>
-              <span class="live-signal-delta {delta_cls}">{_fmt_live_pp(row.get("delta_yes"))}</span>
+              <span class="live-signal-delta {delta_cls}" title="Current move in percentage points.">{_fmt_live_pp(row.get("delta_yes"))}</span>
               {tape_html}
             </div>
             <div class="live-signal-actions">{actions}</div>
@@ -3988,11 +4048,11 @@ def _seo_page_stats(slug: str, lang: Literal["ru", "en"]) -> list[tuple[str, str
         ],
         "analytics": [
             ("Category lens", "market grouped", "See whether politics, macro, or crypto is waking up first."),
-            ("Research flow", "site -> bell", "Research happens on the web before Telegram becomes relevant."),
+            ("Research flow", "site → bell", "Research happens on the web before Telegram becomes relevant."),
             ("Live scope", "200 markets", "Balanced active-only universe without dashboard sprawl."),
         ],
         "telegram-bot": [
-            ("First value", "< 60 sec", "/start -> /movers -> one market -> one useful alert path."),
+            ("First value", "< 60 sec", "/start → /movers → one market → one useful alert path."),
             ("Free plan", "3 / 20", "Three tracked markets and twenty alerts per day before upgrade."),
             ("Telegram role", "bell + inbox", "The bot is for activation and delivery, not endless browsing."),
         ],
@@ -4002,7 +4062,7 @@ def _seo_page_stats(slug: str, lang: Literal["ru", "en"]) -> list[tuple[str, str
             ("Delivery", "low-noise", "Quiet windows are product behavior, not a broken inbox."),
         ],
         "dashboard": [
-            ("Tab count", "20 -> 1", "Move from widget sprawl into one research and alert workflow."),
+            ("Tab count", "20 → 1", "Move from widget sprawl into one research and alert workflow."),
             ("Workspace split", "site + Telegram", "Watchlist lives on the web, bell behavior lives in Telegram."),
             ("Quiet state", "honest", "If nothing meaningful moved, Pulse stays quiet on purpose."),
         ],
@@ -4382,15 +4442,23 @@ def site_event(data: SiteEventRequest, request: Request) -> JSONResponse:
     allowed = {
         "tg_click",
         "page_view",
+        "live_board_impression",
         "waitlist_intent",
         "checkout_intent",
         "market_click",
         "watchlist_add",
+        "watchlist_add_click",
+        "watchlist_add_success",
         "watchlist_remove",
         "watchlist_alert_toggle",
+        "bell_click",
+        "telegram_login_click",
         "watchlist_auth_complete",
         "watchlist_prompt_open",
         "watchlist_sensitivity_change",
+        "pricing_seen",
+        "pricing_cta_click",
+        "alert_click_back_to_site",
     }
     event_type = (data.event_type or "").strip().lower()
     if event_type not in allowed:

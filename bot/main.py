@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import psycopg
 from dotenv import load_dotenv
@@ -893,6 +893,24 @@ set alert_enabled = excluded.alert_enabled,
     updated_at = now();
 """
 
+SQL_WATCHLIST_ALERT_OVERVIEW = """
+select
+  count(*)::int as saved_total,
+  count(*) filter (
+    where coalesce(s.alert_enabled, false)
+      and not coalesce(s.alert_paused, false)
+  )::int as alert_on_total,
+  count(*) filter (
+    where coalesce(s.alert_enabled, false)
+      and coalesce(s.alert_paused, false)
+  )::int as alert_paused_total
+from bot.watchlist w
+left join bot.watchlist_alert_settings s
+  on s.user_id = w.user_id
+ and s.market_id = w.market_id
+where w.user_id = %s::uuid;
+"""
+
 SQL_ALERT_SETTINGS_TOUCH_LAST_ALERT = """
 update bot.watchlist_alert_settings
 set last_alert_at = now(),
@@ -1594,6 +1612,71 @@ def log_telegram_start_sync(update: Update, user_ctx: dict, *, locale: str, star
     )
 
 
+def log_bot_metric_event_sync(
+    source_ctx: Any,
+    user_ctx: dict,
+    *,
+    locale: str,
+    event_type: str,
+    path: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    tg_user = getattr(source_ctx, "effective_user", None) or getattr(source_ctx, "from_user", None)
+    tg_chat = getattr(source_ctx, "effective_chat", None) or getattr(source_ctx, "chat", None)
+    payload = {
+        "app_user_id": user_ctx.get("user_id"),
+        "telegram_id": tg_user.id if tg_user else None,
+        "chat_id": tg_chat.id if tg_chat else None,
+        "username": tg_user.username if tg_user else None,
+        "first_name": tg_user.first_name if tg_user else None,
+        "language_code": tg_user.language_code if tg_user else None,
+        "plan": user_ctx.get("plan"),
+        "threshold": str(user_ctx.get("threshold")),
+        "watchlist_count": user_ctx.get("watchlist_count"),
+    }
+    if details:
+        payload.update(details)
+    execute_db_write(
+        SQL_SITE_EVENT_INSERT,
+        (
+            event_type,
+            None,
+            "telegram_bot",
+            locale,
+            path,
+            "telegram-bot",
+            None,
+            Jsonb(payload),
+        ),
+    )
+
+
+def log_system_metric_event_sync(
+    *,
+    user_id: str,
+    locale: str,
+    event_type: str,
+    path: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    payload = {"app_user_id": user_id}
+    if details:
+        payload.update(details)
+    execute_db_write(
+        SQL_SITE_EVENT_INSERT,
+        (
+            event_type,
+            None,
+            "telegram_bot",
+            locale,
+            path,
+            "telegram-bot",
+            None,
+            Jsonb(payload),
+        ),
+    )
+
+
 def log_watchlist_add_sync(
     update: Update,
     user_ctx: dict,
@@ -1687,13 +1770,12 @@ def save_watchlist_market_sync(
     threshold_value: Decimal | None = None,
     source: str,
 ) -> None:
-    save_watchlist_market_sync(
-        user_ctx,
-        market_id,
-        alert_enabled=True,
-        threshold_value=None,
-        source="telegram",
-    )
+    if not bool(run_db_query(SQL_WATCHLIST_EXISTS, (user_ctx["user_id"], market_id))):
+        execute_db_write(SQL_WATCHLIST_ADD, (user_ctx["user_id"], market_id))
+        try:
+            user_ctx["watchlist_count"] = int(user_ctx.get("watchlist_count") or 0) + 1
+        except Exception:
+            pass
     execute_db_write(
         SQL_ALERT_SETTINGS_UPSERT,
         (
@@ -1713,10 +1795,15 @@ def alert_manage_url(market_id: str) -> str:
     return f"https://t.me/polymarket_pulse_bot?start={quote(payload)}"
 
 
-def site_watchlist_url(market_id: str | None = None) -> str:
+def site_watchlist_url(market_id: str | None = None, *, source: str | None = None) -> str:
+    params: list[tuple[str, str]] = []
     if market_id:
-        return f"{SITE_BASE_URL}/watchlist?market_id={quote(str(market_id))}"
-    return f"{SITE_BASE_URL}/watchlist"
+        params.append(("market_id", str(market_id)))
+    if source:
+        params.append(("from", source))
+    if not params:
+        return f"{SITE_BASE_URL}/watchlist"
+    return f"{SITE_BASE_URL}/watchlist?{urlencode(params)}"
 
 
 def web_auth_return_url(token: str) -> str:
@@ -1742,6 +1829,37 @@ def alert_sensitivity_keyboard(locale: str, market_id: str) -> InlineKeyboardMar
         ],
     ]
     return InlineKeyboardMarkup(rows)
+
+
+def alert_enabled_inline(locale: str, market_id: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Back to website" if locale == "en" else "Назад на сайт",
+                    url=site_watchlist_url(source="alert"),
+                ),
+                InlineKeyboardButton(
+                    "Open market page" if locale == "en" else "Открыть рынок",
+                    url=site_watchlist_url(market_id, source="alert"),
+                ),
+            ],
+            [
+                InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
+                InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
+            ],
+        ]
+    )
+
+
+def fetch_watchlist_alert_overview_sync(user_id: str) -> dict[str, int]:
+    rows = run_db_query(SQL_WATCHLIST_ALERT_OVERVIEW, (user_id,), row_factory=dict_row)
+    row = rows[0] if rows else {}
+    return {
+        "saved_total": int(row.get("saved_total") or 0),
+        "alert_on_total": int(row.get("alert_on_total") or 0),
+        "alert_paused_total": int(row.get("alert_paused_total") or 0),
+    }
 
 
 def ensure_payment_schema_sync() -> None:
@@ -1873,7 +1991,10 @@ def alert_message_markup(row: dict, *, locale: str = "en") -> InlineKeyboardMark
     market_slug = str(row.get("market_slug") or "").strip()
     market_url = f"https://polymarket.com/market/{quote(market_slug, safe='-_~')}" if market_slug else None
     buttons: list[InlineKeyboardButton] = [
-        InlineKeyboardButton("Open on site" if locale == "en" else "Открыть на сайте", url=site_watchlist_url(market_id)),
+        InlineKeyboardButton(
+            "Open on site" if locale == "en" else "Открыть на сайте",
+            url=site_watchlist_url(market_id, source="alert"),
+        ),
     ]
     if market_url:
         buttons.append(InlineKeyboardButton("Open on Polymarket", url=market_url))
@@ -1910,6 +2031,9 @@ def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
     closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
     alerts_today = int(user_ctx.get("alerts_sent_today") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    alert_overview = fetch_watchlist_alert_overview_sync(str(user_ctx.get("user_id")))
+    alert_on_total = int(alert_overview.get("alert_on_total") or 0)
+    alert_paused_total = int(alert_overview.get("alert_paused_total") or 0)
     closed_line = ""
     if closed_count > 0:
         closed_line = (
@@ -1921,30 +2045,34 @@ def user_limits_block(user_ctx: dict, *, locale: str = "ru") -> str:
         if locale == "en":
             return (
                 "Plan: PRO\n"
-                f"Threshold: {threshold}\n"
-                f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
+                f"Global threshold: {threshold}\n"
+                f"Saved markets: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
+                f"Bell on: {alert_on_total} | paused: {alert_paused_total}\n"
                 f"Alerts today: {alerts_today} (unlimited)"
                 f"{closed_line}"
             )
         return (
             "План: PRO\n"
-            f"Threshold: {threshold}\n"
-            f"Watchlist: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
+            f"Глобальный threshold: {threshold}\n"
+            f"Сохранено рынков: {watchlist_count}/{PRO_WATCHLIST_LIMIT}\n"
+            f"Bell включён: {alert_on_total} | на паузе: {alert_paused_total}\n"
             f"Alerts today: {alerts_today} (без лимита)"
             f"{closed_line}"
         )
     if locale == "en":
         return (
             "Plan: FREE\n"
-            f"Threshold: {threshold}\n"
-            f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+            f"Global threshold: {threshold}\n"
+            f"Saved markets: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+            f"Bell on: {alert_on_total} | paused: {alert_paused_total}\n"
             f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
             f"{closed_line}"
         )
     return (
         "План: FREE\n"
-        f"Threshold: {threshold}\n"
-        f"Watchlist: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+        f"Глобальный threshold: {threshold}\n"
+        f"Сохранено рынков: {watchlist_count}/{FREE_WATCHLIST_LIMIT}\n"
+        f"Bell включён: {alert_on_total} | на паузе: {alert_paused_total}\n"
         f"Alerts today: {alerts_today}/{FREE_DAILY_ALERT_LIMIT}"
         f"{closed_line}"
     )
@@ -2078,6 +2206,9 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
     watchlist_left = max(0, watchlist_limit - watchlist_count)
     closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    alert_overview = fetch_watchlist_alert_overview_sync(str(user_ctx.get("user_id")))
+    alert_on_total = int(alert_overview.get("alert_on_total") or 0)
+    alert_paused_total = int(alert_overview.get("alert_paused_total") or 0)
 
     if is_pro:
         if locale == "en":
@@ -2092,7 +2223,8 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
             return (
                 "Current plan: PRO\n\n"
                 f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-                f"Threshold now: {threshold}\n"
+                f"Saved markets stay on the website watchlist. Telegram alerts run only for bell-enabled rows.\n"
+                f"Bell on now: {alert_on_total} | paused: {alert_paused_total}\n"
                 f"Open watchlist capacity: {watchlist_left}\n"
                 f"{next_line}{closed_line}"
             )
@@ -2105,7 +2237,8 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
         return (
             "Текущий план: PRO\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-            f"Текущий threshold: {threshold}\n"
+            "Сохранённые рынки живут в watchlist на сайте. Telegram шлёт алерты только по bell-enabled строкам.\n"
+            f"Bell включён сейчас: {alert_on_total} | на паузе: {alert_paused_total}\n"
             f"Свободных слотов в watchlist: {watchlist_left}\n"
             f"{next_line}{closed_line}"
         )
@@ -2124,9 +2257,10 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
         return (
             "Current plan: FREE\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-            f"Threshold now: {threshold}\n"
+            "Saved markets do not alert by default. Telegram wakes up only for bell-enabled rows above threshold.\n"
+            f"Bell on now: {alert_on_total} | paused: {alert_paused_total}\n"
             f"{urgency}\n"
-            f"PRO unlocks {PRO_WATCHLIST_LIMIT} markets, unlimited alerts, and email digest.\n"
+            f"PRO expands saved-market capacity, daily alert headroom, and email digest.\n"
             f"Today you already used {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot alerts."
             f"{closed_line}"
         )
@@ -2144,9 +2278,10 @@ def plan_message_text(user_ctx: dict, *, locale: str = "ru") -> str:
     return (
         "Текущий план: FREE\n\n"
         f"{user_limits_block(user_ctx, locale=locale)}\n\n"
-        f"Текущий threshold: {threshold}\n"
+        "Сохранённые рынки сами по себе не шлют алерты. Telegram будит вас только по bell-enabled строкам выше threshold.\n"
+        f"Bell включён сейчас: {alert_on_total} | на паузе: {alert_paused_total}\n"
         f"{urgency}\n"
-        f"PRO открывает {PRO_WATCHLIST_LIMIT} рынков, безлимитные алерты и email-дайджест.\n"
+        f"PRO расширяет ёмкость сохранённых рынков, дневной запас алертов и email-дайджест.\n"
         f"Сегодня уже использовано {alerts_sent_today} / {FREE_DAILY_ALERT_LIMIT} bot-алертов."
         f"{closed_line}"
     )
@@ -2862,6 +2997,18 @@ async def send_inbox_view(
     show_loader: bool = True,
     context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
+    try:
+        await asyncio.to_thread(
+            log_bot_metric_event_sync,
+            message,
+            user_ctx,
+            locale=locale,
+            event_type="inbox_opened",
+            path="/inbox",
+            details={"placement": "bot_inbox", "view": "inbox"},
+        )
+    except Exception:
+        log.exception("inbox_opened analytics insert failed")
     if int(user_ctx.get("watchlist_count") or 0) == 0:
         await message.reply_text(
             (
@@ -2975,6 +3122,23 @@ async def send_watchlist_view(
     show_loader: bool = True,
     context: ContextTypes.DEFAULT_TYPE | None = None,
 ) -> None:
+    try:
+        await asyncio.to_thread(
+            log_bot_metric_event_sync,
+            message,
+            user_ctx,
+            locale=locale,
+            event_type="watchlist_opened",
+            path="/watchlist",
+            details={"placement": "bot_watchlist", "view": "watchlist"},
+        )
+    except Exception:
+        log.exception("watchlist_opened analytics insert failed")
+    alert_overview = {"saved_total": int(user_ctx.get("watchlist_count") or 0), "alert_on_total": 0, "alert_paused_total": 0}
+    try:
+        alert_overview = await asyncio.to_thread(fetch_watchlist_alert_overview_sync, str(user_ctx["user_id"]))
+    except Exception:
+        log.exception("watchlist alert overview failed")
     if int(user_ctx.get("watchlist_count") or 0) == 0:
         await message.reply_text(
             (
@@ -3071,21 +3235,36 @@ async def send_watchlist_view(
         await message.reply_text(
             (
                 "No live changes in your watchlist right now.\n"
+                f"saved: {alert_overview.get('saved_total', 0)} | bell on: {alert_overview.get('alert_on_total', 0)} | "
+                f"bell paused: {alert_overview.get('alert_paused_total', 0)} | "
                 f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
                 f"closed: {diag.get('wl_closed', 0)} | with quotes in last+prev: {diag.get('wl_with_quotes_both', 0)}"
                 if locale == "en"
                 else "По вашему watchlist сейчас нет live-изменений.\n"
+                f"saved: {alert_overview.get('saved_total', 0)} | bell on: {alert_overview.get('alert_on_total', 0)} | "
+                f"bell paused: {alert_overview.get('alert_paused_total', 0)} | "
                 f"watchlist: {diag.get('wl_total', 0)} | active: {diag.get('wl_active', 0)} | "
                 f"closed: {diag.get('wl_closed', 0)} | с котировками в last+prev: {diag.get('wl_with_quotes_both', 0)}"
             )
             + "\n"
+            + (
+                "Saved markets stay here even while only bell-enabled rows can wake up Telegram.\n"
+                if locale == "en"
+                else "Сохранённые рынки остаются здесь, даже если разбудить Telegram могут только bell-enabled строки.\n"
+            )
             + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, view="watchlist"),
             reply_markup=reply_markup,
         )
         return
 
     await message.reply_text(
-        ("Watchlist live changes:\n\n" if locale == "en" else "Live-изменения watchlist:\n\n")
+        (
+            "Watchlist live changes:\n"
+            f"saved: {alert_overview.get('saved_total', 0)} | bell on: {alert_overview.get('alert_on_total', 0)} | bell paused: {alert_overview.get('alert_paused_total', 0)}\n\n"
+            if locale == "en"
+            else "Live-изменения watchlist:\n"
+            f"saved: {alert_overview.get('saved_total', 0)} | bell on: {alert_overview.get('alert_on_total', 0)} | bell paused: {alert_overview.get('alert_paused_total', 0)}\n\n"
+        )
         + "\n\n".join(fmt_mover_row(r) for r in rows)
         + "\n\n"
         + active_followup_text(locale, user_ctx=user_ctx, view="watchlist", shown_count=len(rows)),
@@ -3713,6 +3892,23 @@ async def dispatch_push_alerts(application: Application) -> None:
             continue
         await asyncio.to_thread(upsert_event_sync, user_id, row)
         await asyncio.to_thread(log_sent_sync, "bot", user_id, recipient, row)
+        try:
+            await asyncio.to_thread(
+                log_system_metric_event_sync,
+                user_id=user_id,
+                locale="en",
+                event_type="alert_sent",
+                path="/push",
+                details={
+                    "market_id": market_id,
+                    "alert_type": alert_type,
+                    "plan": plan,
+                    "chat_id": recipient,
+                    "threshold_value": str(row.get("alert_threshold_value") or row.get("hot_threshold_value") or ""),
+                },
+            )
+        except Exception:
+            log.exception("alert_sent analytics insert failed")
         sent_today_cache[user_id] += 1
         sent_count += 1
 
@@ -3766,20 +3962,22 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         (
             "Profile activated.\n\n"
+            "Website = research workspace. Telegram = identity, bell setup, and delivery.\n\n"
             "What the bot does:\n"
             "• shows top live movers\n"
-            "• tracks your watchlist markets\n"
-            "• sends push alerts on probability shifts\n\n"
+            "• keeps saved markets aligned with your website watchlist\n"
+            "• sends push alerts only for bell-enabled markets above threshold\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Useful next:\n"
             "/help — command reference\n"
             "/upgrade — move to PRO"
             if locale == "en"
             else "Профиль активирован.\n\n"
+            "Сайт = исследовательский workspace. Telegram = identity, настройка bell и доставка.\n\n"
             "Что бот делает:\n"
             "• показывает top live movers\n"
-            "• отслеживает ваши рынки в watchlist\n"
-            "• присылает push по движению вероятностей\n\n"
+            "• держит сохранённые рынки синхронно с вашим watchlist на сайте\n"
+            "• шлёт push только по bell-enabled рынкам выше threshold\n\n"
             f"{user_limits_block(user_ctx, locale=locale)}\n\n"
             "Полезно дальше:\n"
             "/help — все команды и расширенные опции\n"
@@ -3811,6 +4009,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     threshold_value=None,
                     source="site_bridge",
                 )
+                try:
+                    await asyncio.to_thread(
+                        log_bot_metric_event_sync,
+                        update,
+                        user_ctx,
+                        locale=locale,
+                        event_type="watchlist_add_from_site_payload",
+                        path="/start",
+                        details={"market_id": site_market_id, "site_attributed_start": True},
+                    )
+                except Exception:
+                    log.exception("watchlist_add_from_site_payload analytics insert failed")
                 await update.message.reply_text(
                     (
                         "Site watchlist login confirmed.\n"
@@ -3832,6 +4042,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     threshold_value=None,
                     source="site_bridge",
                 )
+                try:
+                    await asyncio.to_thread(
+                        log_bot_metric_event_sync,
+                        update,
+                        user_ctx,
+                        locale=locale,
+                        event_type="alert_setup_started",
+                        path="/start",
+                        details={"market_id": site_market_id, "site_attributed_start": True},
+                    )
+                except Exception:
+                    log.exception("alert_setup_started analytics insert failed")
                 combined_markup = merge_inline_markups(
                     alert_sensitivity_keyboard(locale, site_market_id),
                     return_markup,
@@ -3855,6 +4077,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ),
                 reply_markup=return_markup,
             )
+            try:
+                await asyncio.to_thread(
+                    log_bot_metric_event_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    event_type="site_login_completed",
+                    path="/start",
+                    details={"site_attributed_start": True, "intent": site_kind},
+                )
+            except Exception:
+                log.exception("site_login_completed analytics insert failed")
             return
 
     if site_start and str(site_start.get("kind") or "") == "alert" and site_start.get("market_id"):
@@ -3866,6 +4100,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             threshold_value=None,
             source="telegram",
         )
+        try:
+            await asyncio.to_thread(
+                log_bot_metric_event_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                event_type="alert_setup_started",
+                path="/start",
+                details={"market_id": site_market_id, "site_attributed_start": False},
+            )
+        except Exception:
+            log.exception("alert_setup_started direct analytics insert failed")
         await update.message.reply_text(
             (
                 "Manage bell for this market.\nChoose sensitivity now."
@@ -4588,6 +4834,27 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             threshold_value=threshold_value,
             source="telegram",
         )
+        try:
+            await asyncio.to_thread(
+                log_bot_metric_event_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                event_type="alert_sensitivity_selected",
+                path="/alertcfg",
+                details={"market_id": market_id, "threshold_value": str(threshold_value)},
+            )
+            await asyncio.to_thread(
+                log_bot_metric_event_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                event_type="alert_enabled",
+                path="/alertcfg",
+                details={"market_id": market_id, "threshold_value": str(threshold_value)},
+            )
+        except Exception:
+            log.exception("alert_enabled analytics insert failed")
         await query.message.reply_text(
             (
                 f"Alert enabled for market {market_id}.\n"
@@ -4598,7 +4865,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Чувствительность: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
                 "После обновления сайта этот bell в watchlist будет показан как ON."
             ),
-            reply_markup=watchlist_added_inline(locale),
+            reply_markup=alert_enabled_inline(locale, market_id),
         )
         return
 

@@ -1,3 +1,99 @@
+# Prompt 8-10 UX + Instrumentation Pass (2026-04-28)
+
+Implemented the next `new horizon` cycle across the web UI, Telegram bot UX, and measurement layer.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/watchlist-client.js`
+• `bot/main.py`
+• `scripts/growth/weekly_kpi_report.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• fixed a critical recursion bug in `bot.main.save_watchlist_market_sync(...)`
+  - site bridge save / bell flows now persist watchlist membership + alert settings safely
+  - removed the accidental self-call loop risk before taking the new UX deeper into production
+• aligned Telegram bot copy with the website-first watchlist model:
+  - `/start` now explains website = workspace, Telegram = identity + bell + delivery
+  - `/watchlist` now surfaces saved vs bell-on vs bell-paused counts inline
+  - `/inbox` keeps threshold clarity and now logs `inbox_opened`
+  - `/plan` and plan summary copy now explicitly distinguish saved markets from bell-enabled alerts
+• improved alert setup completion flow in Telegram:
+  - after sensitivity selection, users now get a tighter return action set
+  - website return from alert is now attributable through `from=alert`
+• polished component roles on the site without changing the design identity:
+  - action buttons no longer overuse uppercase
+  - metadata chips gained explanatory tooltips for freshness / liquidity / spread / quality / state
+  - live boards now use clearer empty / unavailable / filtered states instead of going blank or vague
+  - homepage live board label is now product-native (`Markets moving now`) instead of dev-facing wording
+• expanded website instrumentation:
+  - `live_board_impression`
+  - `watchlist_add_click`
+  - `watchlist_add_success`
+  - `bell_click`
+  - `telegram_login_click`
+  - `pricing_seen`
+  - `pricing_cta_click`
+  - `alert_click_back_to_site`
+• expanded Telegram / bot-side instrumentation:
+  - `site_login_completed`
+  - `watchlist_add_from_site_payload`
+  - `alert_setup_started`
+  - `alert_sensitivity_selected`
+  - `alert_enabled`
+  - `watchlist_opened`
+  - `inbox_opened`
+  - `alert_sent`
+• updated weekly KPI reporting:
+  - legacy funnel stays intact
+  - added a dedicated website -> Telegram watchlist loop section
+  - added pricing visibility / CTA visibility checks
+  - added alert-enabled / alert-sent / click-back loop readout
+
+What did not change:
+
+• no direct frontend-to-Polymarket fetches were introduced
+• no public Supabase grants were reopened
+• no hot-first delivery cutover happened
+• RU homepage was not redesigned
+• no broad schema rewrite happened
+• trader services remain outside this pass
+
+Manual test:
+
+• open homepage and confirm:
+  - live board still renders
+  - row actions are visually distinct from metadata
+  - pricing section is still intact
+• open `/signals`, `/top-movers`, `/analytics`, `/telegram-bot`, `/watchlist`, `/watchlist-alerts`
+  - confirm live board / workspace empty states are honest and actionable
+  - confirm watchlist / bell buttons still exist
+• from the site:
+  - click `Add to watchlist`
+  - click bell
+  - complete Telegram login / sensitivity path
+  - return to `/watchlist`
+  - confirm event loop and bell state remain coherent
+• in Telegram:
+  - `/start` with plain open
+  - `/start` from login payload
+  - `/start` from site watchlist add payload
+  - `/start` from site bell payload
+  - `/watchlist`
+  - `/inbox`
+  - `/plan`
+• run `python3 scripts/growth/weekly_kpi_report.py --days 7`
+
+Risks / follow-up:
+
+• website and bot event taxonomies are now broader, so the next useful step is a live KPI snapshot after a few real user sessions
+• alert pause / disable remains a narrower flow than full alert-state management; the copy is now honest, but the control surface can still improve later
+• homepage instrumentation now records pricing visibility and board impressions, but GA/GSC review is still needed for external traffic interpretation
+
 # Polymarket Pulse — Implementation Progress
 
 This document tracks the current state of the project.

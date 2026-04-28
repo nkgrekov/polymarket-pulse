@@ -219,6 +219,18 @@ def main() -> None:
     page_view = funnel.get("page_view", 0)
     tg_click = funnel.get("tg_click", 0)
     tg_start = funnel.get("tg_start", 0)
+    live_board_impression = funnel.get("live_board_impression", 0)
+    watchlist_add_click = funnel.get("watchlist_add_click", 0)
+    watchlist_add_success = funnel.get("watchlist_add_success", 0)
+    telegram_login_click = funnel.get("telegram_login_click", 0)
+    bell_click = funnel.get("bell_click", 0)
+    site_login_completed = funnel.get("site_login_completed", 0)
+    alert_setup_started = funnel.get("alert_setup_started", 0)
+    alert_enabled = funnel.get("alert_enabled", 0)
+    alert_sent = funnel.get("alert_sent", 0)
+    alert_click_back_to_site = funnel.get("alert_click_back_to_site", 0)
+    pricing_seen = funnel.get("pricing_seen", 0)
+    pricing_cta_click = funnel.get("pricing_cta_click", 0)
     watchlist_add_events = int(watchlist_add_row.get("watchlist_add_events") or 0)
     watchlist_add_users = int(watchlist_add_row.get("watchlist_add_users") or 0)
     site_watchlist_add_users = int(watchlist_add_row.get("site_watchlist_add_users") or 0)
@@ -253,6 +265,23 @@ def main() -> None:
         f"- first_watchlist_add users: **{first_watchlist_add_users}** (`{pct(first_watchlist_add_users, tg_start)}` from tg_start)",
         f"- waitlist_submit: **{waitlist_submit}** (`{pct(waitlist_submit, page_view)}` from page_view)",
         f"- confirm_success: **{confirm_success}** (`{pct(confirm_success, waitlist_submit)}` from waitlist_submit)",
+        "",
+        "## Website -> Telegram Watchlist Loop",
+        "",
+        f"- page_view: **{page_view}**",
+        f"- live_board_impression: **{live_board_impression}** (`{pct(live_board_impression, page_view)}` from page_view)",
+        f"- watchlist_add_click: **{watchlist_add_click}** (`{pct(watchlist_add_click, page_view)}` from page_view)",
+        f"- watchlist_add_success: **{watchlist_add_success}** (`{pct(watchlist_add_success, watchlist_add_click)}` from watchlist_add_click)",
+        f"- telegram_login_click: **{telegram_login_click}** (`{pct(telegram_login_click, watchlist_add_click)}` from watchlist_add_click)",
+        f"- site_login_completed: **{site_login_completed}** (`{pct(site_login_completed, telegram_login_click)}` from telegram_login_click)",
+        f"- tg_start: **{tg_start}**",
+        f"- bell_click: **{bell_click}** (`{pct(bell_click, watchlist_add_success)}` from watchlist_add_success)",
+        f"- alert_setup_started: **{alert_setup_started}** (`{pct(alert_setup_started, bell_click)}` from bell_click)",
+        f"- alert_enabled: **{alert_enabled}** (`{pct(alert_enabled, bell_click)}` from bell_click)",
+        f"- alert_sent: **{alert_sent}** (`{pct(alert_sent, alert_enabled)}` from alert_enabled)",
+        f"- alert_click_back_to_site: **{alert_click_back_to_site}** (`{pct(alert_click_back_to_site, alert_sent)}` from alert_sent)",
+        f"- pricing_seen: **{pricing_seen}**",
+        f"- pricing_cta_click: **{pricing_cta_click}** (`{pct(pricing_cta_click, pricing_seen)}` from pricing_seen)",
         "",
         "## Telegram Activation Cross-Check",
         "",
@@ -331,6 +360,10 @@ def main() -> None:
         "- Scale sources with highest tg_click share (`x`, `threads`, or direct).",
         "- If `tg_start/tg_click` is low: inspect Telegram deep-link friction and social CTA clarity.",
         "- If `watchlist_add/tg_start` is low: simplify first add, quiet-state recovery, and returning-user resume paths.",
+        "- If `watchlist_add_success/watchlist_add_click` is low: inspect web save friction, auth prompt clarity, and workspace error states.",
+        "- If `bell_click/watchlist_add_success` is low: the site may still be underselling the bell as a second deliberate action.",
+        "- If `alert_enabled/bell_click` is low: inspect Telegram sensitivity setup and payload handoff.",
+        "- If `alert_click_back_to_site/alert_enabled` is low: strengthen the return loop from alert into the website watchlist.",
         "- If one `start_payload` consistently wins: keep posting into that pain theme.",
         "- If `tg_click/page_view` is low: iterate hero and CTA copy on landing.",
         "- If `confirm_success/waitlist_submit` is low: review email deliverability and confirm page UX.",

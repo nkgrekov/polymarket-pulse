@@ -82,6 +82,12 @@
       noAlertYet: "No alert yet",
       majorMoves: "Major moves only",
       syncSaved: "Saved to your watchlist",
+      loadingTitle: "Loading watchlist...",
+      loadingCopy: "Refreshing saved markets and bell states from the current workspace.",
+      unavailableTitle: "Watchlist is temporarily unavailable.",
+      unavailableCopy: "The workspace API did not return cleanly. Retry in a few seconds or continue in Telegram.",
+      filteredEmptyTitle: "No markets match these filters.",
+      filteredEmptyCopy: "Clear one filter or open Live Movers to save a different market.",
     },
     ru: {
       add: "Add to watchlist",
@@ -161,6 +167,12 @@
       noAlertYet: "Алертов ещё не было",
       majorMoves: "Только major moves",
       syncSaved: "Сохранено в вашем watchlist",
+      loadingTitle: "Загружаю watchlist...",
+      loadingCopy: "Обновляю сохранённые рынки и bell-состояния из текущего workspace.",
+      unavailableTitle: "Watchlist временно недоступен.",
+      unavailableCopy: "Workspace API сейчас ответил неудачно. Повторите через несколько секунд или продолжайте через Telegram.",
+      filteredEmptyTitle: "Под эти фильтры ничего не подходит.",
+      filteredEmptyCopy: "Снимите один фильтр или откройте Live Movers и сохраните другой рынок.",
     },
   };
   const copy = TEXT[LOCALE];
@@ -231,6 +243,21 @@
     } catch (_) {}
   }
 
+  function pagePlacement() {
+    return window.location.pathname;
+  }
+
+  function baseEventDetails(details) {
+    return Object.assign(
+      {
+        placement: pagePlacement(),
+        source_page: pagePlacement(),
+        user_logged_in: SESSION.loggedIn,
+      },
+      details || {}
+    );
+  }
+
   function formatPct(value) {
     const num = Number(value);
     return Number.isFinite(num) ? `${(num * 100).toFixed(1)}%` : "n/a";
@@ -295,6 +322,20 @@
     }[code] || copy.statusUnknown;
   }
 
+  function statusTooltip(code) {
+    return {
+      saved: "Saved to the site watchlist. This alone does not turn Telegram alerts on.",
+      below_threshold: "The market is still saved, but the move is below your threshold right now.",
+      market_closed: "This market looks closed, so alerts may stay quiet until you replace it.",
+      stale_quotes: "Quotes are too old right now. Treat this row as context, not urgency.",
+      no_quotes: "No fresh two-sided quote is available in the current window.",
+      filtered_by_spread: "Spread is too wide for a clean live signal right now.",
+      filtered_by_liquidity: "Liquidity is too thin for a strong live signal right now.",
+      legacy_snapshot: "This row is filled from fallback data while the hot surface is incomplete.",
+      pending: "Saved locally for now. Log in with Telegram to persist it across devices.",
+    }[code] || "Current row state.";
+  }
+
   function qualityLabel(code) {
     return {
       live_quality_gated: copy.liveQuality,
@@ -305,6 +346,27 @@
       filtered_by_spread: copy.filteredSpread,
       filtered_by_liquidity: copy.filteredLiquidity,
     }[code] || copy.statusUnknown;
+  }
+
+  function qualityTooltip(code) {
+    return {
+      live_quality_gated: "Freshness, spread, and liquidity are good enough for the live workspace.",
+      legacy_fallback: "Fallback data is shown so the row stays readable while hot data catches up.",
+      market_closed: "Closed markets stay visible for context, but they should not drive new alerts.",
+      stale_quotes: "Quotes are stale, so the move may no longer be actionable.",
+      no_quotes: "No clean quote is available for this market right now.",
+      filtered_by_spread: "Spread is too wide, so this move is filtered for quality.",
+      filtered_by_liquidity: "Liquidity is too low, so this move is filtered for quality.",
+    }[code] || "Signal quality state.";
+  }
+
+  function bellTooltip(row) {
+    const state = String(row.alert_state || "off");
+    if (state === "on") return "Telegram alerts are enabled for this saved market.";
+    if (state === "paused") return "This bell is paused. The market stays saved, but Telegram stays quiet.";
+    if (state === "limit") return "Your current plan hit an alert limit. Upgrade or free space before adding more bells.";
+    if (!SESSION.loggedIn) return "Log in with Telegram to enable alerts for this saved market.";
+    return "This market is saved, but Telegram alerts are still off until you turn the bell on.";
   }
 
   function bellLabel(row) {
@@ -568,13 +630,19 @@
       const marketId = String(button.getAttribute("data-market-id") || "");
       const saved = isSaved(marketId);
       button.classList.toggle("saved", saved);
+      button.classList.toggle("primary", !saved);
       button.setAttribute("aria-pressed", saved ? "true" : "false");
       button.textContent = saved ? copy.saved : copy.add;
+      button.title = saved ? copy.syncSaved : "Save this market to your website watchlist.";
     });
     scope.querySelectorAll('[data-watchlist-action="toggle_alert"]').forEach((button) => {
       const marketId = String(button.getAttribute("data-market-id") || "");
       const row = rowForMarket(marketId) || {};
+      const state = String(row.alert_state || "off");
+      button.classList.toggle("primary", state === "on");
+      button.classList.toggle("saved", state === "paused");
       button.textContent = bellLabel(row);
+      button.title = bellTooltip(row);
     });
   }
 
@@ -621,12 +689,26 @@
     return `<span class="watchlist-chip${extraClass ? ` ${extraClass}` : ""}">${esc(label)}</span>`;
   }
 
+  function chipWithTitle(label, title, extraClass) {
+    return `<span class="watchlist-chip${extraClass ? ` ${extraClass}` : ""}" title="${esc(title || "")}">${esc(label)}</span>`;
+  }
+
+  function renderEmptyBlock(title, copyText, actionsHtml) {
+    return [
+      '<section class="watchlist-empty">',
+      `<h3>${esc(title)}</h3>`,
+      `<p>${esc(copyText)}</p>`,
+      actionsHtml || "",
+      "</section>",
+    ].join("");
+  }
+
   function actionRow(row) {
     return [
       '<div class="watchlist-action-row">',
-      row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer">${esc(copy.openMarket)}</a>` : "",
-      `<button type="button" class="watchlist-action" data-watchlist-action="toggle_alert" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(bellLabel(row))}</button>`,
-      `<a class="watchlist-action primary" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" data-watchlist-action="configure_telegram" data-market-id="${esc(row.market_id)}">${esc(copy.configureTelegram)}</a>`,
+      row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer" title="Open this market on Polymarket.">${esc(copy.openMarket)}</a>` : "",
+      `<button type="button" class="watchlist-action${row.alert_state === "on" ? " primary" : row.alert_state === "paused" ? " saved" : ""}" title="${esc(bellTooltip(row))}" data-watchlist-action="toggle_alert" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(bellLabel(row))}</button>`,
+      `<a class="watchlist-action" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="Open Telegram to configure this market bell." data-watchlist-action="configure_telegram" data-market-id="${esc(row.market_id)}">${esc(copy.configureTelegram)}</a>`,
       `<button type="button" class="watchlist-action" data-watchlist-action="remove" data-market-id="${esc(row.market_id)}">${esc(copy.remove)}</button>`,
       "</div>",
     ].join("");
@@ -639,15 +721,15 @@
       "<tr>",
       `<td><p class="watchlist-question">${esc(row.question)}</p><p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p></td>`,
       `<td>${esc(formatPct(row.yes_mid_now))}</td>`,
-      `<td>${esc(formatPp(row.delta_primary))}</td>`,
-      `<td>${esc(formatPp(row.delta_1m))}</td>`,
-      `<td>${esc(formatPp(row.delta_5m))}</td>`,
-      `<td>${esc(formatLiq(row.liquidity))}</td>`,
-      `<td>${esc(formatSpread(row.spread))}</td>`,
-      `<td>${esc(formatFreshness(row.freshness_seconds))}</td>`,
-      `<td><div class="watchlist-chip-row">${chip(statusLabel(row.status), row.status === "saved" ? "strong" : row.status === "market_closed" ? "down" : "")}</div></td>`,
-      `<td><div class="watchlist-chip-row">${chip(qualityLabel(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}</div></td>`,
-      `<td><div class="watchlist-chip-row">${chip(alertStateLabel(row.alert_state || "off"), row.alert_state === "on" ? "strong" : "")}</div><p class="watchlist-question-meta">${esc(lastAlert)}</p></td>`,
+      `<td title="Current move in percentage points.">${esc(formatPp(row.delta_primary))}</td>`,
+      `<td title="Fast 1 minute cue for urgency.">${esc(formatPp(row.delta_1m))}</td>`,
+      `<td title="Broader 5 minute move for context.">${esc(formatPp(row.delta_5m))}</td>`,
+      `<td title="Higher liquidity usually means cleaner execution.">${esc(formatLiq(row.liquidity))}</td>`,
+      `<td title="Lower spread is better. Wide spread can make signals less trustworthy.">${esc(formatSpread(row.spread))}</td>`,
+      `<td title="Quote freshness. Stale quotes weaken urgency.">${esc(formatFreshness(row.freshness_seconds))}</td>`,
+      `<td><div class="watchlist-chip-row">${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : row.status === "market_closed" ? "down" : "")}</div></td>`,
+      `<td><div class="watchlist-chip-row">${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}</div></td>`,
+      `<td><div class="watchlist-chip-row">${chipWithTitle(alertStateLabel(row.alert_state || "off"), bellTooltip(row), row.alert_state === "on" ? "strong" : "")}</div><p class="watchlist-question-meta">${esc(lastAlert)}</p></td>`,
       `<td>${esc(sensitivity)}</td>`,
       `<td>${actionRow(row)}</td>`,
       "</tr>",
@@ -659,12 +741,12 @@
       '<article class="watchlist-card">',
       '<div class="watchlist-card-top">',
       `<p class="watchlist-question">${esc(row.question)}</p>`,
-      `<span class="watchlist-chip${row.alert_state === "on" ? " strong" : ""}">${esc(alertStateLabel(row.alert_state || "off"))}</span>`,
+      `<span class="watchlist-chip${row.alert_state === "on" ? " strong" : ""}" title="${esc(bellTooltip(row))}">${esc(alertStateLabel(row.alert_state || "off"))}</span>`,
       "</div>",
       `<p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p>`,
-      `<div class="watchlist-chip-row">${chip(formatPct(row.yes_mid_now), "strong")}${chip(formatPp(row.delta_primary), Number(row.delta_primary || 0) < 0 ? "down" : "")}${chip(formatPp(row.delta_1m), "")}${chip(formatPp(row.delta_5m), "")}</div>`,
-      `<div class="watchlist-chip-row">${chip(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "")}${chip(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "")}${chip(`${formatFreshness(row.freshness_seconds)} ${copy.quote}`, "")}</div>`,
-      `<div class="watchlist-chip-row">${chip(statusLabel(row.status), row.status === "saved" ? "strong" : "")}${chip(qualityLabel(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chip(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "")}</div>`,
+      `<div class="watchlist-chip-row">${chipWithTitle(formatPct(row.yes_mid_now), "Current probability.", "strong")}${chipWithTitle(formatPp(row.delta_primary), "Current move in percentage points.", Number(row.delta_primary || 0) < 0 ? "down" : "")}${chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", "")}${chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", "")}</div>`,
+      `<div class="watchlist-chip-row">${chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", "")}${chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", "")}${chipWithTitle(`${formatFreshness(row.freshness_seconds)} ${copy.quote}`, "Quote freshness. Stale quotes reduce urgency.", "")}</div>`,
+      `<div class="watchlist-chip-row">${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : "")}${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")}</div>`,
       `<p class="watchlist-question-meta">${esc(formatLastAlert(row.last_alert_at))}</p>`,
       actionRow(row),
       "</article>",
@@ -711,6 +793,7 @@
 
     const tableRows = filtered.map((row) => tableRow(row)).join("");
     const cardRows = filtered.map((row) => cardRow(row)).join("");
+    const noMatchBlock = renderEmptyBlock(copy.filteredEmptyTitle, copy.filteredEmptyCopy, "");
     root.className = "watchlist-root";
     root.innerHTML = [
       banner,
@@ -732,10 +815,10 @@
       `<th>${esc(copy.colSensitivity)}</th>`,
       `<th>${esc(copy.colActions)}</th>`,
       "</tr></thead>",
-      `<tbody>${tableRows || `<tr><td colspan="13">${esc(copy.emptyCopy)}</td></tr>`}</tbody>`,
+      `<tbody>${tableRows || `<tr><td colspan="13">${noMatchBlock}</td></tr>`}</tbody>`,
       "</table>",
       "</section>",
-      `<section class="watchlist-card-grid">${cardRows || `<div class="watchlist-card"><p>${esc(copy.emptyCopy)}</p></div>`}</section>`,
+      `<section class="watchlist-card-grid">${cardRows || `<div class="watchlist-card"><h3>${esc(copy.filteredEmptyTitle)}</h3><p>${esc(copy.filteredEmptyCopy)}</p></div>`}</section>`,
     ].join("");
     syncWatchlistButtons(root);
   }
@@ -749,25 +832,36 @@
         return;
       }
       root.className = "watchlist-root";
-      root.innerHTML = `<section class="watchlist-banner"><h3>${esc(copy.watchlist)}</h3><p>${esc(copy.search)}...</p></section>`;
+      root.innerHTML = `<section class="watchlist-banner"><h3>${esc(copy.loadingTitle)}</h3><p>${esc(copy.loadingCopy)}</p></section>`;
       const rows = currentRows();
       if (!rows.length) {
         root.className = "watchlist-root";
-        root.innerHTML = [
-          '<section class="watchlist-empty">',
-          `<h3>${esc(copy.emptyTitle)}</h3>`,
-          `<p>${esc(copy.emptyCopy)}</p>`,
-          '<div class="watchlist-banner-actions">',
-          `<a class="watchlist-action" href="/top-movers">${esc(copy.openMovers)}</a>`,
-          `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">${esc(copy.openBot)}</a>`,
-          "</div>",
-          "</section>",
-        ].join("");
+        root.innerHTML = renderEmptyBlock(
+          copy.emptyTitle,
+          copy.emptyCopy,
+          [
+            '<div class="watchlist-banner-actions">',
+            `<a class="watchlist-action" href="/top-movers">${esc(copy.openMovers)}</a>`,
+            `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">${esc(copy.openBot)}</a>`,
+            "</div>",
+          ].join("")
+        );
         return;
       }
       renderWorkspace(root, rows);
     } catch (_) {
-      root.innerHTML = `<section class="watchlist-empty"><h3>${esc(copy.watchlist)}</h3><p>${esc(copy.statusUnknown)}</p></section>`;
+      if (root) {
+        root.innerHTML = renderEmptyBlock(
+          copy.unavailableTitle,
+          copy.unavailableCopy,
+          [
+            '<div class="watchlist-banner-actions">',
+            `<a class="watchlist-action" href="/top-movers">${esc(copy.openMovers)}</a>`,
+            `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer">${esc(copy.openBot)}</a>`,
+            "</div>",
+          ].join("")
+        );
+      }
     }
   }
 
@@ -781,7 +875,8 @@
         source: "site",
       }),
     });
-    trackEvent("watchlist_add", { market_id: market.market_id, question: market.question, placement: window.location.pathname });
+    trackEvent("watchlist_add", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "saved" }));
+    trackEvent("watchlist_add_success", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "saved" }));
   }
 
   async function removeMarketServer(marketId) {
@@ -789,12 +884,13 @@
       method: "POST",
       body: JSON.stringify({ market_id: marketId, source: "site" }),
     });
-    trackEvent("watchlist_remove", { market_id: marketId, placement: window.location.pathname });
+    trackEvent("watchlist_remove", baseEventDetails({ market_id: marketId, watchlist_state: "removed" }));
   }
 
   async function handleAuthClick(anchor) {
     const returnPath = anchor.getAttribute("data-watchlist-return") || `${window.location.pathname}${window.location.search}`;
     const telegramUrl = await startAuthFlow("login", { market_id: null, question: "", return_path: returnPath });
+    trackEvent("telegram_login_click", baseEventDetails({ intent: "login", watchlist_state: "logged_out" }));
     showBridgePrompt(null, telegramUrl, "login");
   }
 
@@ -821,12 +917,15 @@
         window.location.href = "/watchlist";
         return;
       }
+      trackEvent("watchlist_add_click", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "new" }));
       if (!SESSION.loggedIn) {
         savePendingMarket(market);
+        trackEvent("watchlist_add_success", baseEventDetails({ market_id: market.market_id, question: market.question, slug: market.slug || "", watchlist_state: "pending" }));
         syncWatchlistButtons(document);
         refreshWorkspace();
         try {
           const telegramUrl = await startAuthFlow("watchlist_add", market);
+          trackEvent("telegram_login_click", baseEventDetails({ intent: "watchlist_add", market_id: market.market_id, slug: market.slug || "", watchlist_state: "pending" }));
           showBridgePrompt(market, telegramUrl, "watchlist_add");
         } catch (_) {
           showBridgePrompt(market, defaultTrackUrl(market.market_id), "watchlist_add");
@@ -863,9 +962,12 @@
     }
 
     if (action === "toggle_alert" || action === "configure_telegram") {
-      trackEvent("watchlist_alert_toggle", { market_id: marketId, placement: window.location.pathname, logged_in: SESSION.loggedIn });
+      const currentRow = rowForMarket(marketId) || {};
+      trackEvent("watchlist_alert_toggle", baseEventDetails({ market_id: marketId, slug: market.slug || "", alert_state: String(currentRow.alert_state || "off") }));
+      trackEvent("bell_click", baseEventDetails({ market_id: marketId, slug: market.slug || "", alert_state: String(currentRow.alert_state || "off"), watchlist_state: isSaved(marketId) ? "saved" : "pending" }));
       try {
         const telegramUrl = await startAuthFlow("alert", market);
+        trackEvent("telegram_login_click", baseEventDetails({ intent: "alert", market_id: marketId, slug: market.slug || "", alert_state: String(currentRow.alert_state || "off") }));
         showBridgePrompt(market, telegramUrl, "alert");
       } catch (_) {
         showBridgePrompt(market, defaultTrackUrl(marketId), "alert");
@@ -919,8 +1021,14 @@
     syncSessionCopy();
     await refreshWorkspace();
     syncWatchlistButtons(document);
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("from") === "alert") {
+        trackEvent("alert_click_back_to_site", baseEventDetails({ placement: "watchlist_alert_return" }));
+      }
+    } catch (_) {}
     if (window.location.search.includes("tg_auth=1")) {
-      trackEvent("watchlist_auth_complete", { placement: window.location.pathname });
+      trackEvent("watchlist_auth_complete", baseEventDetails({ placement: pagePlacement() }));
       try {
         const url = new URL(window.location.href);
         url.searchParams.delete("tg_auth");

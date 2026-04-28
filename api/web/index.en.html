@@ -572,7 +572,6 @@
       font-size: 11px;
       letter-spacing: 0.04em;
       text-decoration: none;
-      text-transform: uppercase;
       transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
     }
 
@@ -1928,6 +1927,7 @@
     const guideLinkBridge = document.getElementById('guide-link-bridge');
     const heroPanel = document.getElementById('hero-panel');
     const proofBridge = document.getElementById('proof-bridge');
+    const pricingSection = document.getElementById('pricing');
     const checkoutBtn = document.getElementById('checkout-btn');
     const proEmail = document.getElementById('pro-email');
     const proMsg = document.getElementById('pro-msg');
@@ -2034,11 +2034,11 @@
       const freshness = Number(row.freshness_seconds);
       const spread = Number(row.spread);
       const liq = formatLiq(row.liquidity);
-      if (source === 'hot') items.push('<span class="quality-pill strong">live gated</span>');
-      if (Number.isFinite(freshness)) items.push(`<span class="quality-pill">${Math.round(freshness)}s quote</span>`);
-      if (liq) items.push(`<span class="quality-pill">${esc(liq)}</span>`);
-      if (Number.isFinite(spread)) items.push(`<span class="quality-pill">${Math.round(spread * 100)}pp spread</span>`);
-      if (!items.length && source === 'legacy') items.push('<span class="quality-pill">historical fallback</span>');
+      if (source === 'hot') items.push('<span class="quality-pill strong" title="This row passed the live quality gates.">live gated</span>');
+      if (Number.isFinite(freshness)) items.push(`<span class="quality-pill" title="Quote freshness. Older quotes weaken urgency.">${Math.round(freshness)}s quote</span>`);
+      if (liq) items.push(`<span class="quality-pill" title="Higher liquidity usually means cleaner execution.">${esc(liq)}</span>`);
+      if (Number.isFinite(spread)) items.push(`<span class="quality-pill" title="Lower spread is better. Wide spread can distort urgency.">${Math.round(spread * 100)}pp spread</span>`);
+      if (!items.length && source === 'legacy') items.push('<span class="quality-pill" title="Fallback data is shown while the hot layer catches up.">historical fallback</span>');
       return items.length ? `<div class="quality-line">${items.join('')}</div>` : '';
     }
 
@@ -2069,6 +2069,7 @@
                 href="${marketUrl}"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Open this market on Polymarket."
                 data-market-action="open_polymarket"
                 data-market-id="${marketId}"
                 data-market-question="${question}"
@@ -2079,6 +2080,7 @@
               <button
                 type="button"
                 class="row-link"
+                title="Save this market to your website watchlist."
                 data-watchlist-action="toggle_save"
                 data-market-id="${marketId}"
                 data-market-question="${question}"
@@ -2092,6 +2094,7 @@
               <button
                 type="button"
                 class="row-link"
+                title="Turn Telegram alerts on only when this market deserves interruption."
                 data-watchlist-action="toggle_alert"
                 data-market-id="${marketId}"
                 data-market-question="${question}"
@@ -2127,6 +2130,7 @@
                 href="${trackUrl}"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Open Telegram for the alert layer."
                 data-market-action="track_telegram"
                 data-market-id="${marketId}"
                 data-market-question="${question}"
@@ -2137,7 +2141,11 @@
       }).join('');
       window.dispatchEvent(new CustomEvent('pulse:watchlist-sync'));
       if (liveTitle) {
-        liveTitle.textContent = 'Top movers · Live DB feed';
+        liveTitle.textContent = 'Markets moving now';
+      }
+      if (!window.__pulseLiveBoardSeen) {
+        window.__pulseLiveBoardSeen = true;
+        trackEvent('live_board_impression', { ...getAttribution(), placement: 'live_movers_preview' });
       }
     }
 
@@ -2189,6 +2197,9 @@
             placement,
             surface_impression: true
           });
+          if (placement === 'pricing_section') {
+            trackEvent('pricing_seen', { ...getAttribution(), placement });
+          }
           observer.unobserve(entry.target);
         });
       }, { threshold: 0.35 });
@@ -2199,6 +2210,10 @@
       if (proofBridge) {
         proofBridge.dataset.placement = 'proof_bridge';
         observer.observe(proofBridge);
+      }
+      if (pricingSection) {
+        pricingSection.dataset.placement = 'pricing_section';
+        observer.observe(pricingSection);
       }
     }
     tgLinkTop?.addEventListener('click', () => {
@@ -2223,6 +2238,7 @@
       trackEvent('waitlist_intent', { ...getAttribution(), placement: 'proof_bridge_guide' });
     });
     proStarsBtn?.addEventListener('click', () => {
+      trackEvent('pricing_cta_click', { ...getAttribution(), placement: 'pro_stars' });
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });
     });
     checkoutBtn?.addEventListener('click', async () => {
@@ -2232,6 +2248,7 @@
         return;
       }
       proMsg.textContent = 'Redirecting to Stripe checkout...';
+      trackEvent('pricing_cta_click', { ...getAttribution(), placement: 'pro_offer' });
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_offer' });
       try {
         const res = await fetch('/api/stripe/checkout-session', {
