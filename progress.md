@@ -4,6 +4,74 @@ This document tracks the current state of the project.
 
 ---
 
+# SEO Intent Pages First-Screen Split (2026-04-28)
+
+Started the `PROMPT 7` pass by making the English dynamic intent pages feel like different product surfaces instead of one shared template with different H1 text.
+
+Files updated:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added page-specific first-screen stat blocks for:
+  - `/signals`
+  - `/top-movers`
+  - `/analytics`
+  - `/telegram-bot`
+  - `/watchlist-alerts`
+  - `/dashboard`
+  - `/watchlist`
+• added page-specific hero support surfaces:
+  - `/signals` now opens with signal-filter framing
+  - `/top-movers` now opens with movers-specific row/action framing
+  - `/analytics` now opens with category-view context derived from live mover samples
+  - `/telegram-bot` now shows `BOT FLOW` in the hero area instead of only lower on the page
+  - `/watchlist-alerts` now explains the save -> bell -> Telegram threshold -> alert return loop
+  - `/dashboard` now explicitly compares dashboard habit vs Pulse workflow
+• moved the live board higher for:
+  - `/signals`
+  - `/top-movers`
+  so first-screen value is visible before users scan generic preview cards
+• specialized live-board labels:
+  - `/signals` -> signal board
+  - `/top-movers` -> top movers board
+  - `/analytics` -> live analytics tape
+• kept `/how-it-works` and `/commands` unchanged in this step because they were already scenario-first vs reference-first and did not share the same first-screen problem as the dynamic pages
+
+What did not change:
+
+• no bot runtime changed
+• no DB schema changed
+• no alert delivery semantics changed
+• no RU-first redesign work was added
+• `/how-it-works` and `/commands` copy/layout were not rewritten in this step
+
+Manual test:
+
+• open each English page and confirm the first screen is meaningfully different:
+  - `/signals`
+  - `/top-movers`
+  - `/analytics`
+  - `/telegram-bot`
+  - `/watchlist-alerts`
+  - `/dashboard`
+• confirm page-specific markers exist:
+  - `Signal filters`
+  - `Top movers workflow`
+  - `Category view`
+  - `BOT FLOW`
+  - `Watchlist -> bell -> alert`
+  - `Why this is not another dashboard`
+• confirm live board remains present and actionable on the pages that need it
+
+Risks / follow-up:
+
+• this is the EN-first dynamic core of `PROMPT 7`; broader static-page restyling can still happen later if we decide the first screens of `/how-it-works` or `/commands` need more product polish
+• analytics category cards are derived from current live mover samples, so the mix can shift over time by design
+
 # Homepage Workspace Clarity Pass (2026-04-28)
 
 Implemented `PROMPT 2` from `new horizon` and tightened the homepage so it explains the new product model without requiring scroll: website as live market workspace, Telegram as login + bell + alert layer.

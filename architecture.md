@@ -4,6 +4,52 @@ This document describes the technical architecture.
 
 ---
 
+# SEO Intent Pages First-Screen Split (2026-04-28)
+
+The English dynamic intent pages no longer rely on one generic above-the-fold template for every search intent.
+
+Updated artifacts:
+
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• `render_seo_page(...)` now uses page-specific stat metadata instead of one shared stat trio for every slug
+• added a new page-specific focus layer inside the dynamic hero system:
+  - `_seo_page_stats(...)`
+  - `_render_page_focus_block(...)`
+• page-specific hero behavior now differs across core surfaces:
+  - `/signals`: threshold / quiet-state / quality framing
+  - `/top-movers`: movers ranking and direct row-action framing
+  - `/analytics`: category view derived from live mover samples
+  - `/telegram-bot`: `BOT FLOW` moves into the hero region
+  - `/watchlist-alerts`: explicit save -> bell -> alert lifecycle explanation
+  - `/dashboard`: workflow comparison against dashboard browsing habit
+• live-board placement is now part of page identity:
+  - `/signals` and `/top-movers` surface live board in the hero stack
+  - `/analytics` keeps the analytics tape deeper in the page after category framing
+• `_render_signal_quality_block(...)` now changes title/subtitle and sample size by slug so the same data surface can support different product intents without reading as duplicate UI
+
+Architectural consequence:
+
+• first-screen differentiation now comes from product semantics, not just SEO copy
+• dynamic intent pages are closer to a multi-surface product architecture:
+  - movers page
+  - signals page
+  - analytics page
+  - Telegram activation page
+  - watchlist alert explainer page
+  - dashboard alternative page
+• static pages `/how-it-works` and `/commands` were intentionally left alone in this step because they were already structurally distinct enough from each other
+• no runtime contracts changed:
+  - no new API endpoints
+  - no DB changes
+  - no bot-flow semantics change
+  - no delivery cutover
+• this makes the next UI polish/instrumentation passes safer because the product meaning of each page is now encoded in the server-rendered layout
+
 # Homepage Workspace Clarity Pass (2026-04-28)
 
 The homepage now explicitly presents the two-surface product model instead of behaving like a generic Telegram landing page.

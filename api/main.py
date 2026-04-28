@@ -1314,15 +1314,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         if lang == "en"
         else "Telegram-доставка с понятным контекстом временного окна."
     )
-    stat_1_label = "Signal delay" if lang == "en" else "Задержка сигнала"
-    stat_1_value = "< 12 sec" if lang == "en" else "< 12 сек"
-    stat_1_copy = "market move -> bot inbox" if lang == "en" else "движение рынка -> inbox бота"
-    stat_2_label = "Activation path" if lang == "en" else "Путь активации"
-    stat_2_value = "1 tap" if lang == "en" else "1 тап"
-    stat_2_copy = "landing -> /start -> watchlist" if lang == "en" else "лендинг -> /start -> watchlist"
-    stat_3_label = "Live scope" if lang == "en" else "Live-охват"
-    stat_3_value = "200 markets" if lang == "en" else "200 рынков"
-    stat_3_copy = "active-only balanced universe" if lang == "en" else "active-only сбалансированный universe"
+    page_stats = _seo_page_stats(slug, lang)
+    (stat_1_label, stat_1_value, stat_1_copy), (stat_2_label, stat_2_value, stat_2_copy), (stat_3_label, stat_3_value, stat_3_copy) = page_stats
     badge_1 = "4.8/5 trader score" if lang == "en" else "4.8/5 оценка трейдеров"
     badge_3 = "Telegram-first flow" if lang == "en" else "Telegram-first сценарий"
     screen_label = "Screen" if lang == "en" else "Экран"
@@ -1519,8 +1512,12 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         else ""
     )
     live_signal_block = _render_signal_quality_block(slug, lang)
-    hero_live_signal_block = live_signal_block if slug == "signals" else ""
-    body_live_signal_block = "" if slug == "signals" else live_signal_block
+    hero_focus_block = _render_page_focus_block(slug, lang)
+    if slug == "telegram-bot" and lang == "en":
+        hero_focus_block = bot_flow_block
+        bot_flow_block = ""
+    hero_live_signal_block = live_signal_block if slug in {"signals", "top-movers"} else ""
+    body_live_signal_block = "" if slug in {"signals", "top-movers"} else live_signal_block
     watchlist_workspace_block = _render_watchlist_workspace_block(lang) if slug == "watchlist" else ""
     robots_meta = "index,follow" if lang == "en" else "noindex,follow"
     if noindex_override:
@@ -2522,6 +2519,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         <div class="feature-row">{page["k2"]}</div>
         <div class="feature-row">{page["k3"]}</div>
       </div>
+      {hero_focus_block}
       <div class="cta-row">
         <a id="tg-link" class="cta" href="https://t.me/polymarket_pulse_bot?start=seo_{slug}_{lang}" target="_blank" rel="noopener noreferrer">{cta_text} -></a>
         {guide_cta}
@@ -3832,8 +3830,14 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
     if slug not in {"signals", "telegram-bot", "top-movers", "analytics"}:
         return ""
 
+    limit = 4
+    if slug == "top-movers":
+        limit = 5
+    elif slug == "analytics":
+        limit = 6
+
     try:
-        rows = fetch_live_movers_preview(limit=4, spark_snapshots=12, max_points=12, min_distinct_points=2)
+        rows = fetch_live_movers_preview(limit=limit, spark_snapshots=12, max_points=12, min_distinct_points=2)
     except Exception:
         logger.exception("live signal block render failed")
         rows = []
@@ -3848,12 +3852,26 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
             if lang == "en"
             else "Откройте текущий mover в Telegram и превратите его в watchlist-алерт."
         )
+    elif slug == "top-movers":
+        title = "Top movers board" if lang == "en" else "Top movers board"
+        subtitle = (
+            "The strongest current repricing ranked with open, save, and bell actions directly on the row."
+            if lang == "en"
+            else "Самые сильные текущие движения с действиями прямо из строки."
+        )
+    elif slug == "analytics":
+        title = "Live analytics tape" if lang == "en" else "Live analytics tape"
+        subtitle = (
+            "Current markets worth reading with movement quality and execution-ready context."
+            if lang == "en"
+            else "Текущие рынки с качеством движения и контекстом для действия."
+        )
     else:
         title = "Live signal board" if lang == "en" else "Live-доска сигналов"
         subtitle = (
-            "Current hot movers with freshness, liquidity, and spread context."
+            "Current candidates with freshness, liquidity, spread, and threshold-aware context."
             if lang == "en"
-            else "Текущие hot movers со свежестью, ликвидностью и spread-контекстом."
+            else "Текущие кандидаты со свежестью, ликвидностью и spread-контекстом."
         )
     track_label = "Track in Telegram" if lang == "en" else "Отслеживать в Telegram"
     open_label = "Open market" if lang == "en" else "Открыть рынок"
@@ -3947,6 +3965,150 @@ def _render_signal_quality_block(slug: str, lang: Literal["ru", "en"]) -> str:
       </div>
     </section>
 """
+
+
+def _seo_page_stats(slug: str, lang: Literal["ru", "en"]) -> list[tuple[str, str, str]]:
+    if lang != "en":
+        return [
+            ("Задержка сигнала", "< 12 сек", "движение рынка -> inbox бота"),
+            ("Путь активации", "1 тап", "лендинг -> /start -> watchlist"),
+            ("Live-охват", "200 рынков", "active-only сбалансированный universe"),
+        ]
+
+    page_stats: dict[str, list[tuple[str, str, str]]] = {
+        "signals": [
+            ("Threshold", "0.03 = 3pp", "Inbox fires only when abs(delta) clears your level."),
+            ("Quiet state", "intentional", "Watchlist can move while Inbox stays empty by design."),
+            ("Quality gates", "live filtered", "Freshness, liquidity, and spread help cut false urgency."),
+        ],
+        "top-movers": [
+            ("Sort key", "|delta| first", "The strongest repricing rises fastest in the current live window."),
+            ("Live tape", "1m + now", "Read the freshest move before it degrades into stale context."),
+            ("Row actions", "save / bell / open", "Every mover row should be actionable, not just descriptive."),
+        ],
+        "analytics": [
+            ("Category lens", "market grouped", "See whether politics, macro, or crypto is waking up first."),
+            ("Research flow", "site -> bell", "Research happens on the web before Telegram becomes relevant."),
+            ("Live scope", "200 markets", "Balanced active-only universe without dashboard sprawl."),
+        ],
+        "telegram-bot": [
+            ("First value", "< 60 sec", "/start -> /movers -> one market -> one useful alert path."),
+            ("Free plan", "3 / 20", "Three tracked markets and twenty alerts per day before upgrade."),
+            ("Telegram role", "bell + inbox", "The bot is for activation and delivery, not endless browsing."),
+        ],
+        "watchlist-alerts": [
+            ("Saved first", "watchlist != bell", "A market can stay saved even while alerts stay off."),
+            ("Threshold", "your own", "Telegram pings only above the level you configured."),
+            ("Delivery", "low-noise", "Quiet windows are product behavior, not a broken inbox."),
+        ],
+        "dashboard": [
+            ("Tab count", "20 -> 1", "Move from widget sprawl into one research and alert workflow."),
+            ("Workspace split", "site + Telegram", "Watchlist lives on the web, bell behavior lives in Telegram."),
+            ("Quiet state", "honest", "If nothing meaningful moved, Pulse stays quiet on purpose."),
+        ],
+        "watchlist": [
+            ("Watchlist", "saved layer", "Saving a market does not automatically opt you into noise."),
+            ("Bell", "optional", "Turn alerts on only for markets that deserve interruption."),
+            ("Workflow", "site first", "Research and compare on the site before using Telegram."),
+        ],
+    }
+    return page_stats.get(
+        slug,
+        [
+            ("Signal delay", "< 12 sec", "market move -> bot inbox"),
+            ("Activation path", "1 tap", "landing -> /start -> watchlist"),
+            ("Live scope", "200 markets", "active-only balanced universe"),
+        ],
+    )
+
+
+def _render_page_focus_block(slug: str, lang: Literal["ru", "en"]) -> str:
+    if lang != "en":
+        return ""
+
+    if slug == "signals":
+        title = "Signal filters"
+        cards = [
+            ("Threshold first", "A signal is not every move. It is a move large enough to clear the threshold you set."),
+            ("Quality matters", "Fresh quotes, better liquidity, and tighter spread make a move more worth trusting."),
+            ("Quiet is useful", "If the market is flat or below threshold, an empty Inbox is the correct product outcome."),
+        ]
+    elif slug == "top-movers":
+        title = "Top movers workflow"
+        cards = [
+            ("Rank by current repricing", "This page is for finding the strongest live move first, not reading a generic market list."),
+            ("Decide from the row", "Open the market, save it to watchlist, or turn the bell on without leaving the movers surface."),
+            ("Use speed as a filter", "If the 1m tape is flat or stale, the row should lose urgency even if the longer move still looks large."),
+        ]
+    elif slug == "analytics":
+        title = "Category view"
+        try:
+            rows = fetch_live_movers_preview(limit=8, spark_snapshots=8, max_points=8, min_distinct_points=1)
+        except Exception:
+            logger.exception("analytics focus block render failed")
+            rows = []
+        grouped: dict[str, dict[str, float | int]] = defaultdict(lambda: {"count": 0, "max_abs": 0.0})
+        for row in rows:
+            tag = _watchlist_category(str(row.get("question") or ""))
+            grouped[tag]["count"] = int(grouped[tag]["count"]) + 1
+            grouped[tag]["max_abs"] = max(float(grouped[tag]["max_abs"]), abs(float(row.get("delta_yes") or 0.0)))
+        cards = []
+        for tag, label in (("politics", "Politics"), ("macro", "Macro"), ("crypto", "Crypto")):
+            entry = grouped.get(tag) or {"count": 0, "max_abs": 0.0}
+            cards.append(
+                (
+                    label,
+                    f"{int(entry['count'])} active mover(s) in the current sample · strongest shift {_fmt_live_pp(entry['max_abs']) if float(entry['max_abs']) else 'quiet'}."
+                )
+            )
+        if not rows:
+            cards = [
+                ("Politics", "Follow narrative repricing without opening a dashboard full of election tabs."),
+                ("Macro", "See rate, recession, and policy repricing in one place."),
+                ("Crypto", "Surface the fastest token and headline-driven shifts without scanning the whole board."),
+            ]
+    elif slug == "watchlist-alerts":
+        title = "Watchlist -> bell -> alert"
+        cards = [
+            ("1. Save on the site", "A watchlist market stays saved even when you are not ready for alerts yet."),
+            ("2. Bell is separate", "Turning on alerts is a second decision, not something hidden inside the save action."),
+            ("3. Configure in Telegram", "Sensitivity lives in Telegram because the bell and Inbox do too."),
+            ("4. Quiet is still a state", "The market may move while the Inbox stays empty if it remains below threshold."),
+            ("5. Return with context", "The alert should bring you back to the market, not back into dashboard wandering."),
+        ]
+        return (
+            f"""
+    <section class="command-flow reveal delay-3">
+      <div class="command-flow-head">
+        <p class="links-title">{title}</p>
+        <p class="command-flow-subtitle">Watchlist and alerts are intentionally separate product objects now.</p>
+      </div>
+      <div class="command-grid">
+        {''.join(f'<article class="command-card{" strong" if idx == 2 else ""}"><p class="command-name">STEP {idx + 1}</p><h3 class="command-title">{html.escape(card_title)}</h3><p class="command-copy">{html.escape(card_copy)}</p></article>' for idx, (card_title, card_copy) in enumerate(cards))}
+      </div>
+    </section>
+"""
+        )
+    elif slug == "dashboard":
+        title = "Why this is not another dashboard"
+        cards = [
+            ("Dashboard habit", "A normal dashboard asks you to keep browsing until you find a move worth caring about."),
+            ("Pulse site", "Pulse should show what moved, let you save it, and explain whether it still looks actionable."),
+            ("Telegram bell", "Telegram only enters when the move deserves interruption, not as the whole product surface."),
+        ]
+    else:
+        return ""
+
+    return (
+        f"""
+    <section class="preview reveal delay-3">
+      <p class="links-title">{title}</p>
+      <div class="preview-grid">
+        {''.join(f'<article class="preview-card"><p class="preview-kicker">{idx + 1:02d}</p><h3 class="preview-title">{html.escape(card_title)}</h3><p class="preview-copy">{html.escape(card_copy)}</p></article>' for idx, (card_title, card_copy) in enumerate(cards))}
+      </div>
+    </section>
+"""
+    )
 
 
 def _float_or_none(value: object) -> float | None:
