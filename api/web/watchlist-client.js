@@ -99,6 +99,7 @@
       filteredEmptyCopy: "Clear one filter or open Live Movers to save a different market.",
       summarySaved: "saved",
       summaryBellOn: "bell on",
+      summaryPaused: "paused",
       summaryPending: "pending login",
       loginFinishNote: "Finish login in Telegram, then tap Return to site in the bot.",
       pendingTooltip: "Saved only in this browser for now. Finish Telegram login to persist it on the site.",
@@ -209,6 +210,7 @@
       filteredEmptyCopy: "Снимите один фильтр или откройте Live Movers и сохраните другой рынок.",
       summarySaved: "saved",
       summaryBellOn: "bell on",
+      summaryPaused: "paused",
       summaryPending: "ждут login",
       loginFinishNote: "Завершите login в Telegram, затем нажмите Return to site в боте.",
       pendingTooltip: "Пока сохранено только в этом браузере. Завершите Telegram login, чтобы закрепить рынок на сайте.",
@@ -852,11 +854,11 @@
     const secondary = secondaryBellControl(row);
     return [
       '<div class="watchlist-action-row">',
-      row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer" title="Open this market on Polymarket.">${esc(copy.openMarket)}</a>` : "",
       `<button type="button" class="watchlist-action${primary.extraClass ? ` ${primary.extraClass}` : ""}" title="${esc(primary.title)}" data-watchlist-action="${esc(primary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(primary.label)}</button>`,
       secondary.kind === "button"
         ? `<button type="button" class="watchlist-action" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(secondary.label)}</button>`
         : `<a class="watchlist-action" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}">${esc(secondary.label)}</a>`,
+      row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer" title="Open this market on Polymarket.">${esc(copy.openMarket)}</a>` : "",
       `<button type="button" class="watchlist-action" data-watchlist-action="remove" data-market-id="${esc(row.market_id)}">${esc(copy.remove)}</button>`,
       "</div>",
     ].join("");
@@ -915,18 +917,18 @@
   }
 
   function cardRow(row) {
+    const alertState = String(row.alert_state || "off");
+    const lastAlert = formatLastAlert(row.last_alert_at);
     return [
       '<article class="watchlist-card">',
       '<div class="watchlist-card-top">',
       `<p class="watchlist-question">${esc(row.question)}</p>`,
-      `<span class="watchlist-chip${row.alert_state === "on" ? " strong" : ""}" title="${esc(bellTooltip(row))}">${esc(alertStateLabel(row.alert_state || "off"))}</span>`,
+      `<span class="watchlist-chip${alertState === "on" ? " strong" : alertState === "paused" ? " saved" : ""}" title="${esc(bellTooltip(row))}">${esc(alertStateLabel(alertState))}</span>`,
       "</div>",
       `<p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p>`,
+      `<div class="watchlist-card-statband"><div class="watchlist-card-stat"><span>${esc(copy.colMid)}</span><strong>${esc(formatPct(row.yes_mid_now))}</strong></div><div class="watchlist-card-stat"><span>${esc(copy.colDelta)}</span><strong>${esc(formatPp(row.delta_primary))}</strong></div><div class="watchlist-card-stat"><span>${esc(copy.colFreshness)}</span><strong>${esc(formatFreshness(row.freshness_seconds))}</strong></div></div>`,
       sparkSvg(row),
-      `<div class="watchlist-chip-row">${chipWithTitle(formatPct(row.yes_mid_now), "Current probability.", "strong")}${chipWithTitle(formatPp(row.delta_primary), "Current move in percentage points.", Number(row.delta_primary || 0) < 0 ? "down" : "")}${chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", "")}${chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", "")}</div>`,
-      `<div class="watchlist-chip-row">${chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", "")}${chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", "")}${chipWithTitle(`${formatFreshness(row.freshness_seconds)} ${copy.quote}`, "Quote freshness. Stale quotes reduce urgency.", "")}</div>`,
-      `<div class="watchlist-chip-row">${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : "")}${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")}</div>`,
-      `<p class="watchlist-question-meta">${esc(formatLastAlert(row.last_alert_at))}</p>`,
+      `<div class="watchlist-chip-row">${chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", "")}${chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", "")}${chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", "")}${chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", "")}${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : "")}${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")}${chipWithTitle(lastAlert, "Last alert for this row.", "")}</div>`,
       actionRow(row),
       "</article>",
     ].join("");
@@ -935,12 +937,15 @@
   function workspaceSummary(rows) {
     const total = rows.length;
     const bellOn = rows.filter((row) => String(row.alert_state || "off") === "on").length;
+    const paused = rows.filter((row) => String(row.alert_state || "off") === "paused").length;
     const pending = rows.filter((row) => String(row.status || "") === "pending").length;
+    const thirdLabel = SESSION.loggedIn ? copy.summaryPaused : copy.summaryPending;
+    const thirdValue = SESSION.loggedIn ? paused : pending;
     return [
       '<section class="watchlist-summary">',
       `<article class="watchlist-summary-card"><strong>${esc(String(total))}</strong><span>${esc(copy.summarySaved)}</span></article>`,
       `<article class="watchlist-summary-card"><strong>${esc(String(bellOn))}</strong><span>${esc(copy.summaryBellOn)}</span></article>`,
-      `<article class="watchlist-summary-card"><strong>${esc(String(pending))}</strong><span>${esc(copy.summaryPending)}</span></article>`,
+      `<article class="watchlist-summary-card"><strong>${esc(String(thirdValue))}</strong><span>${esc(thirdLabel)}</span></article>`,
       "</section>",
     ].join("");
   }

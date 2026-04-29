@@ -545,7 +545,7 @@ class WatchlistAlertStateRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260429g"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260429h"
 WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
@@ -2312,7 +2312,8 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       background: #131714;
       padding: 14px;
       display: grid;
-      gap: 6px;
+      gap: 5px;
+      min-height: 76px;
     }}
     .watchlist-summary-card strong {{
       font-size: clamp(20px, 3vw, 28px);
@@ -2430,6 +2431,33 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       font-family: "JetBrains Mono", monospace;
       font-size: 11px;
       line-height: 1.4;
+    }}
+    .watchlist-card-statband {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }}
+    .watchlist-card-stat {{
+      border: 1px solid rgba(42, 51, 43, 0.72);
+      border-radius: 12px;
+      background: rgba(19, 23, 20, 0.72);
+      padding: 10px 10px 9px;
+      display: grid;
+      gap: 4px;
+    }}
+    .watchlist-card-stat span {{
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .watchlist-card-stat strong {{
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
     }}
     .watchlist-spark {{
       margin-top: 12px;
@@ -2673,6 +2701,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .watchlist-card-top {{ display: grid; gap: 8px; }}
       .watchlist-card-top .watchlist-chip {{ justify-self: start; }}
       .watchlist-card .watchlist-spark {{ height: 92px; }}
+      .watchlist-card-statband {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
+      .watchlist-card-stat {{ padding: 9px; }}
+      .watchlist-card-stat strong {{ font-size: 15px; }}
       .watchlist-card .watchlist-chip-row {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }}
       .watchlist-card .watchlist-chip {{
         min-height: 34px;
@@ -2698,6 +2729,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .watchlist-controls {{ grid-template-columns: 1fr; }}
       .watchlist-controls > :first-child,
       .watchlist-controls > :last-child {{ grid-column: auto; }}
+      .watchlist-card-statband {{ grid-template-columns: 1fr; }}
       .watchlist-card .watchlist-chip-row {{ grid-template-columns: 1fr; }}
       .watchlist-card .watchlist-action-row {{ grid-template-columns: 1fr; }}
       .watchlist-card .watchlist-action-row > :first-child {{ grid-column: auto; }}
@@ -4096,16 +4128,16 @@ def update_site_watchlist_alert_state(
 
 
 def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
-    title = "Watchlist workspace" if lang == "en" else "Watchlist workspace"
+    title = "Watchlist" if lang == "en" else "Watchlist"
     subtitle = (
-        "Your actual saved-market workspace lives here: sort by delta, liquidity, spread, freshness, and bell state. Telegram only finishes identity and alert delivery."
+        "Sort saved markets fast. Turn bells on, pause them, or keep rows quiet without losing the market."
         if lang == "en"
-        else "Именно здесь живёт ваш реальный workspace сохранённых рынков: сортировки по delta, liquidity, spread, freshness и bell state. Telegram нужен только для identity и доставки алертов."
+        else "Здесь живёт ваш реальный watchlist: быстро сортируйте рынки, ставьте bell на паузу и сохраняйте тихие строки без потери контекста."
     )
     login_copy = (
-        "Log in with Telegram to persist this watchlist across devices."
+        "Telegram links this watchlist across devices."
         if lang == "en"
-        else "Войдите через Telegram, чтобы закрепить этот watchlist между устройствами."
+        else "Telegram связывает этот watchlist между устройствами."
     )
     login_cta = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     return f"""

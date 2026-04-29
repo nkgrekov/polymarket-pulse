@@ -1,3 +1,27 @@
+# Watchlist Workspace Density Pass (2026-04-29)
+
+The website watchlist now reads more like an operational workspace and less like a verbose status dump.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• workspace action hierarchy now prioritizes bell management over outbound market links
+• logged-in summary state is now tuned to active operation:
+  - saved rows
+  - bell-on rows
+  - paused rows
+• watchlist cards now expose three primary scanning metrics at the top before secondary chips:
+  - current probability
+  - live delta
+  - freshness
+• explanatory copy in the workspace head has been shortened so more of the actual watchlist fits above the fold
+
 # Watchlist Bell Control Pass (2026-04-29)
 
 The website watchlist now owns fast management of existing bell state, while Telegram remains the activation and threshold surface.

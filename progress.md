@@ -1,3 +1,28 @@
+# Watchlist Workspace Density Pass (2026-04-29)
+
+Applied a focused scan-speed and action-hierarchy cleanup to the website watchlist workspace.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• shortened the watchlist workspace intro and login copy so the real workspace starts faster
+• summary strip is now more useful for logged-in users:
+  - `saved`
+  - `bell on`
+  - `paused`
+• reordered row actions so the first action is about bell control, not leaving the workspace
+• mobile cards now surface a clearer top stat band:
+  - current mid
+  - current delta
+  - freshness
+• collapsed redundant card metadata into denser chip rows so the workspace reads faster on repeat visits
+
 # Watchlist Bell Control Pass (2026-04-29)
 
 Tightened the website watchlist control loop so logged-in users can manage existing bell state directly on the site instead of bouncing back to Telegram for every small change.
