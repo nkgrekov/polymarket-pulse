@@ -1,3 +1,61 @@
+# Homepage De-Noise + Stars-Only Pricing Pass (2026-04-29)
+
+Addressed the latest homepage UX review in one focused cleanup pass.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• reduced the homepage headline from a four-line slogan to a short three-word value statement:
+  - `Track Live Movers`
+  - removed the trailing period
+  - trimmed the supporting copy so the first screen is not prose-heavy
+• rebalanced the hero to use the full top width more effectively:
+  - added a `hero-top` split where the left side owns the main promise and CTA
+  - reduced the right-side panel to a compact decision card instead of a second giant headline
+  - moved the live board into a full-width block directly under the hero top instead of sharing the first-screen budget with a dense side stack
+• made the static homepage live board look like a real board even in local file preview:
+  - increased the default row count from 3 to 5
+  - added visible placeholder spark charts to the static HTML rows
+  - the runtime fetch path now also requests `limit=5`
+• removed the duplicate mid-page Telegram bridge CTA:
+  - deleted the old `proof-bridge` section
+  - kept the main top CTA plus the sticky/mobile CTA and pricing CTA only
+• simplified homepage pricing around the new payment doctrine:
+  - homepage pricing is now framed as `Telegram Stars only`
+  - removed the Stripe email field and `Pay with card (Stripe)` button from the visible product path
+  - replaced the right column with one clean Stars CTA plus a short explanatory card
+• moved the noisy secondary content behind one disclosure:
+  - preview screens
+  - historical examples
+  - search/SEO entry pages
+  - FAQ
+  - email backup form
+• improved the search-path block readability:
+  - added small icon-like badges to each entry card
+  - reduced the list to the more useful six entry surfaces
+
+What did not change:
+
+• no bot logic changed
+• no watchlist auth/session logic changed
+• no payment backend migration changed in this pass
+• no RU homepage redesign changed in this pass
+
+Checks run:
+
+• `python3 -m py_compile api/main.py`
+• `git diff --check`
+
+Follow-up:
+
+• the next homepage pass should be a real browser/device QA round, especially mobile height and sticky CTA behavior
+• the next billing step remains product/backend work inside Telegram rather than another homepage checkout experiment
+
 # Homepage Priority + Bulk Watchlist Sync + Bigger Charts (2026-04-29)
 
 Pushed the next focused polish pass on the two user-facing pain points:

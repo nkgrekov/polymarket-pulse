@@ -1,3 +1,50 @@
+# Homepage De-Noise + Stars-Only Homepage Pricing (2026-04-29)
+
+The homepage now behaves more like a product surface and less like a mixed landing-page + FAQ + checkout collage.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the homepage first screen is now explicitly hierarchical:
+  - short value statement on the left
+  - compact decision card on the right
+  - full-width live movers board immediately below
+• the live board is now part of the guaranteed local/static experience:
+  - five static placeholder rows render even on `file://` preview
+  - static rows include visible spark charts so the board does not collapse into text-only placeholders when `/api/live-movers-preview` is unavailable
+  - runtime hydration still replaces that placeholder state from `/api/live-movers-preview`, now with `limit=5`
+• homepage CTA discipline is tighter:
+  - removed the old `proof-bridge` CTA strip
+  - kept the primary top CTA, sticky/mobile CTA, and pricing CTA
+  - this reduces duplicate navigation pressure on a short page
+• the homepage pricing contract now matches the intended monetization direction more closely:
+  - homepage no longer exposes the visible Stripe email/card path
+  - the site explains Stars-first upgrade inside Telegram instead
+  - this does not yet remove backend Stripe support globally, but it removes Stripe from the primary homepage decision path
+• secondary explanatory surfaces were moved behind a single disclosure:
+  - preview screens
+  - historical proof cards
+  - crawlable/search entry points
+  - FAQ
+  - email backup form
+• the search-path cluster now behaves as an optional support surface instead of mandatory scroll debt:
+  - entries use compact icon-like badges
+  - the homepage keeps only the more relevant six entry pages in that block
+
+Architectural consequence:
+
+• the homepage is now closer to the repo doctrine:
+  - board first
+  - watchlist research second
+  - Telegram for identity, billing, and alert delivery
+• the local HTML file is more reviewable in isolation because it no longer depends on runtime fetch success to visually prove that a market board exists
+• the billing direction is now encoded in the public information architecture even before the full Telegram Stars product cutover is completed
+
 # Homepage-First Priority + Batch Sync Pass (2026-04-29)
 
 The website now has a clearer first-screen hierarchy, and the slowest part of the Telegram-login reconciliation loop has been narrowed to a single batched request.

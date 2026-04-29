@@ -363,19 +363,19 @@
 
     h1 {
       margin: 0;
-      max-width: 860px;
-      line-height: 0.95;
-      letter-spacing: -0.02em;
-      font-size: clamp(40px, 8vw, 84px);
+      max-width: 620px;
+      line-height: 0.9;
+      letter-spacing: -0.035em;
+      font-size: clamp(40px, 7vw, 74px);
       text-transform: uppercase;
     }
 
     .sub {
       margin: 14px 0 0;
-      max-width: 760px;
+      max-width: 620px;
       color: var(--muted);
-      font-size: clamp(16px, 2vw, 21px);
-      line-height: 1.45;
+      font-size: clamp(15px, 1.7vw, 19px);
+      line-height: 1.5;
       font-family: "JetBrains Mono", monospace;
     }
 
@@ -392,6 +392,17 @@
       margin-top: 0;
       width: 100%;
       min-height: 50px;
+    }
+
+    .hero-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+      gap: 18px;
+      align-items: end;
+    }
+
+    .hero-copy {
+      min-width: 0;
     }
 
     .hero-helper {
@@ -435,52 +446,14 @@
       box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.18) inset;
     }
 
-    .hero-metrics {
-      margin-top: 18px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .metric {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 11px 12px;
-      background: rgba(19, 23, 20, 0.9);
-    }
-
-    .metric-label {
-      margin: 0;
-      color: var(--muted-soft);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 11px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .metric-value {
-      margin: 6px 0 0;
-      font-size: clamp(19px, 3vw, 27px);
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-
-    .metric-copy {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
     .accent {
       color: var(--accent);
     }
 
     .grid {
-      margin-top: 18px;
+      margin-top: 16px;
       display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.88fr);
+      grid-template-columns: 1fr;
       gap: 16px;
       align-items: start;
     }
@@ -519,7 +492,7 @@
     .rows {
       margin-top: 12px;
       display: grid;
-      gap: 10px;
+      gap: 12px;
       align-content: start;
     }
 
@@ -540,7 +513,7 @@
 
     .row-main {
       display: block;
-      padding: 12px 12px 10px;
+      padding: 14px 14px 10px;
       color: inherit;
       text-decoration: none;
     }
@@ -554,7 +527,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      padding: 0 12px 12px;
+      padding: 0 14px 14px;
     }
 
     .row-link {
@@ -684,15 +657,15 @@
     }
 
     .spark {
-      margin-top: 8px;
+      margin-top: 12px;
       width: 100%;
-      height: 44px;
+      height: 42px;
     }
 
     .spark svg {
       display: block;
       width: 100%;
-      height: 44px;
+      height: 42px;
     }
 
     .spark path {
@@ -717,7 +690,8 @@
       background: linear-gradient(175deg, #161b17 0%, #111612 100%);
       display: flex;
       flex-direction: column;
-      height: 100%;
+      gap: 10px;
+      min-height: 100%;
     }
 
     .ticker {
@@ -736,9 +710,9 @@
     }
 
     .cta-title {
-      margin: 8px 0 10px;
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.05;
+      margin: 0;
+      font-size: clamp(18px, 2.5vw, 28px);
+      line-height: 1.08;
       text-transform: uppercase;
     }
 
@@ -746,12 +720,12 @@
       margin: 0;
       font-family: "JetBrains Mono", monospace;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.5;
     }
 
     .cta-proof {
-      margin: 10px 0 0;
+      margin: 0;
       border: 1px solid rgba(0, 255, 136, 0.18);
       border-radius: 10px;
       padding: 9px 10px;
@@ -763,23 +737,35 @@
     }
 
     .speedrows {
-      margin: 12px 0 0;
+      margin: 0;
       display: grid;
       gap: 8px;
       font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
     }
 
     .speedrow {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 9px 12px;
+      padding: 10px 12px;
       background: #131714;
     }
 
-    .hero-drawer,
-    .cta-drawer {
+    .support-shell {
+      margin-top: 18px;
+    }
+
+    .support-drawer {
+      border-radius: 18px;
+    }
+
+    .support-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-drawer {
       margin-top: 14px;
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -787,8 +773,7 @@
       overflow: hidden;
     }
 
-    .hero-drawer summary,
-    .cta-drawer summary {
+    .hero-drawer summary {
       list-style: none;
       cursor: pointer;
       padding: 12px 14px;
@@ -799,13 +784,11 @@
       text-transform: uppercase;
     }
 
-    .hero-drawer summary::-webkit-details-marker,
-    .cta-drawer summary::-webkit-details-marker {
+    .hero-drawer summary::-webkit-details-marker {
       display: none;
     }
 
-    .hero-drawer summary::after,
-    .cta-drawer summary::after {
+    .hero-drawer summary::after {
       content: "+";
       float: right;
       color: var(--accent);
@@ -813,97 +796,13 @@
       line-height: 1;
     }
 
-    .hero-drawer[open] summary::after,
-    .cta-drawer[open] summary::after {
+    .hero-drawer[open] summary::after {
       content: "−";
     }
 
-    .hero-drawer-body,
-    .cta-drawer-body {
+    .hero-drawer-body {
       border-top: 1px solid var(--line);
       padding: 0 14px 14px;
-    }
-
-    .plan-teaser {
-      margin-top: 12px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .plan-teaser-label {
-      margin: 0;
-      color: var(--muted-soft);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-    }
-
-    .plan-teaser-row {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 10px;
-      align-items: start;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: #131714;
-    }
-
-    .plan-teaser-row.pro {
-      border-color: rgba(0, 255, 136, 0.24);
-      background: rgba(0, 255, 136, 0.05);
-    }
-
-    .plan-teaser-name {
-      color: var(--text);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .plan-teaser-row.pro .plan-teaser-name {
-      color: var(--accent);
-    }
-
-    .plan-teaser-copy {
-      color: var(--muted);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .flow-strip {
-      margin-top: 12px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .flow-step {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px;
-      background: rgba(19, 23, 20, 0.95);
-    }
-
-    .flow-kicker {
-      margin: 0;
-      color: var(--muted-soft);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .flow-copy {
-      margin: 6px 0 0;
-      color: var(--text);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      line-height: 1.45;
     }
 
     .tg-btn {
@@ -1055,13 +954,13 @@
     .pro-section {
       width: 100%;
       background: #0d0f0e;
-      padding: 48px 0;
+      padding: 18px 0 36px;
       scroll-margin-top: 96px;
     }
 
     .pro-inner {
       width: min(1120px, calc(100% - 32px));
-      margin: 48px auto;
+      margin: 0 auto;
       background: #0f1410;
       border: 1px solid #1e2520;
       border-radius: 16px;
@@ -1083,9 +982,9 @@
       font-family: "Space Grotesk", "Segoe UI", sans-serif;
       font-weight: 800;
       color: #e8ede9;
-      line-height: 0.95;
+      line-height: 0.98;
       letter-spacing: -0.02em;
-      font-size: clamp(32px, 6vw, 48px);
+      font-size: clamp(28px, 5vw, 42px);
     }
 
     .pro-copy {
@@ -1100,8 +999,8 @@
     .pro-layout {
       margin-top: 18px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 24px;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 18px;
       align-items: start;
     }
 
@@ -1159,8 +1058,34 @@
 
     .pro-cta-stack {
       display: grid;
-      gap: 0;
+      gap: 12px;
       min-width: 0;
+    }
+
+    .pro-direct {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #131714;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .pro-direct-label {
+      margin: 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .pro-direct-copy {
+      margin: 0;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
     }
 
     .pro-stars {
@@ -1188,66 +1113,13 @@
       filter: brightness(0.95);
     }
 
-    .pro-stripe-wrap {
-      display: block;
-      min-width: 0;
-    }
-
-    .pro-stripe-wrap input[type="email"] {
-      width: 100%;
-      min-height: 46px;
-      background: #131714;
-      border: 1px solid #1e2520;
-      border-radius: 12px;
-      padding: 12px 14px;
-      color: #e8ede9;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
-      margin-bottom: 8px;
-      box-sizing: border-box;
-    }
-
-    .pro-stripe-wrap input[type="email"]::placeholder {
-      color: #8fa88f;
-    }
-
-    .pro-stripe-btn {
-      width: 100%;
-      min-height: 50px;
-      border: 1px solid #2a332b;
-      border-radius: 12px;
-      background: transparent;
-      color: #8fa88f;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 14px;
-      box-sizing: border-box;
-    }
-
-    .pro-stripe-btn:hover,
-    .pro-stripe-btn:focus-visible {
-      outline: none;
-      border-color: #8fa88f;
-      color: #e8ede9;
-      background: #131714;
-    }
-
     .pro-note {
-      margin-top: 12px;
+      margin-top: 0;
       min-height: 18px;
       color: #6b7a6e;
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       line-height: 1.45;
-    }
-
-    .pro-msg {
-      min-height: 16px;
-      color: #8fa88f;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
     }
 
     .note {
@@ -1439,69 +1311,6 @@
       line-height: 1.4;
     }
 
-    .trade-strip {
-      margin-top: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-      background: linear-gradient(160deg, rgba(19, 23, 20, 0.98) 0%, rgba(13, 16, 14, 0.98) 100%);
-    }
-
-    .trade-strip-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 14px;
-      align-items: center;
-    }
-
-    .trade-strip-title {
-      margin: 8px 0 0;
-      font-size: clamp(20px, 3vw, 28px);
-      line-height: 1.04;
-      letter-spacing: -0.02em;
-      text-transform: uppercase;
-    }
-
-    .trade-strip-copy {
-      margin: 10px 0 0;
-      max-width: 760px;
-      color: var(--muted);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .trade-strip-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: min(280px, 100%);
-    }
-
-    .trade-link {
-      min-height: 48px;
-      border: 1px solid var(--line-soft);
-      border-radius: 12px;
-      background: #131714;
-      color: var(--text);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px 14px;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
-      font-weight: 700;
-      transition: border-color 0.2s ease, color 0.2s ease;
-    }
-
-    .trade-link:hover,
-    .trade-link:focus-visible {
-      border-color: var(--accent);
-      color: var(--text);
-      outline: none;
-    }
-
     .sticky-tg {
       position: fixed;
       left: 10px;
@@ -1549,13 +1358,14 @@
     .intent-link {
       border: 1px solid var(--line-soft);
       border-radius: 14px;
-      padding: 12px;
+      padding: 16px;
       text-decoration: none;
       color: var(--text);
       background: #131714;
       transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
       min-height: 92px;
-      display: block;
+      display: grid;
+      gap: 10px;
     }
 
     .intent-link:hover,
@@ -1563,6 +1373,30 @@
       border-color: var(--accent);
       transform: translateY(-1px);
       outline: none;
+    }
+
+    .intent-link-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .intent-icon {
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(0, 255, 136, 0.22);
+      border-radius: 10px;
+      background: rgba(0, 255, 136, 0.06);
+      color: var(--accent);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .intent-name {
@@ -1617,9 +1451,8 @@
         display: block;
       }
       .hero { padding: 20px; }
-      .hero-metrics { grid-template-columns: 1fr; }
+      .hero-top { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
-      .trade-strip-grid { grid-template-columns: 1fr; }
       .screens-grid { grid-template-columns: 1fr 1fr; }
       .proof-grid { grid-template-columns: 1fr 1fr; }
       .intent-grid { grid-template-columns: 1fr 1fr; }
@@ -1633,20 +1466,15 @@
       h1 { font-size: clamp(32px, 14vw, 50px); }
       .sub { font-size: 14px; }
       .hero-actions { grid-template-columns: 1fr; }
-      .market { max-width: 68%; }
-      .flow-strip { grid-template-columns: 1fr; }
-      .plan-teaser-row { grid-template-columns: 1fr; }
-      .hero-drawer summary,
-      .cta-drawer summary { padding: 11px 12px; font-size: 11px; }
-      .hero-drawer-body,
-      .cta-drawer-body { padding: 0 12px 12px; }
+      .market { max-width: 100%; white-space: normal; }
+      .hero-drawer summary { padding: 11px 12px; font-size: 11px; }
+      .hero-drawer-body { padding: 0 12px 12px; }
       .screens-grid { grid-template-columns: 1fr; }
       .proof-grid { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
       .pro-layout { grid-template-columns: 1fr; }
       .pro-inner { padding: 24px; margin: 24px auto; }
-      .pro-stars,
-      .pro-stripe-btn { width: 100%; }
+      .pro-stars { width: 100%; }
       .sticky-tg { display: block; }
       body { padding-bottom: 74px; }
     }
@@ -1696,22 +1524,43 @@
     </header>
 
     <section class="hero reveal delay-1">
-      <div class="signal-badges">
-        <span class="signal-badge active">4.8/5 trader score</span>
-        <span class="signal-badge">Watchlist + Telegram bell</span>
+      <div class="hero-top">
+        <div class="hero-copy">
+          <div class="signal-badges">
+            <span class="signal-badge active">4.8/5 trader score</span>
+            <span class="signal-badge">Watchlist + Telegram bell</span>
+          </div>
+          <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
+          <h1>Track Live Movers</h1>
+          <p class="sub">See what is repricing now, save the markets worth tracking, and let Telegram handle alerts only after the move is big enough.</p>
+          <div class="hero-actions">
+            <a id="tg-link-top" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_hero">Open Telegram Bot →</a>
+            <a id="view-movers-link" class="guide-link" href="/top-movers?placement=home_hero">View live movers</a>
+          </div>
+          <p class="scarcity"><span class="accent">Live board first.</span> Website = research + watchlist · Telegram = login, bell setup, alerts, and Stars billing</p>
+        </div>
+
+        <aside id="hero-panel" class="card cta-panel reveal delay-3">
+          <p class="cta-label">Site first</p>
+          <h2 class="cta-title">See then decide</h2>
+          <p class="cta-copy">Use the site to compare quality, freshness, and spread. Use Telegram only when you want identity, billing, and real alert delivery.</p>
+          <div class="speedrows" aria-label="Fastest way to get value">
+            <div class="speedrow">Live movers, quality chips, and row actions in one surface.</div>
+            <div class="speedrow">Save a market on the site before you decide it deserves a bell.</div>
+            <div class="speedrow">Alerts fire only when abs(delta) clears your threshold.</div>
+          </div>
+          <div class="cta-proof">The alert layer already lives in Telegram, so payment should live there too.</div>
+          <div class="cta-trust">
+            <span class="trust-pill">3 saved markets on free</span>
+            <span class="trust-pill">20 Telegram alerts/day</span>
+            <span class="trust-pill">Website research stays free</span>
+          </div>
+        </aside>
       </div>
-      <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
-      <h1>Live Polymarket moves<br />without watching 20 tabs.</h1>
-      <p class="sub">Find markets moving now, save the ones you care about, and send only important alerts to Telegram.</p>
-      <div class="hero-actions">
-        <a id="tg-link-top" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_hero">Open Telegram Bot →</a>
-        <a id="view-movers-link" class="guide-link" href="/top-movers?placement=home_hero">View live movers</a>
-      </div>
-      <p class="scarcity"><span class="accent">Live board first.</span> Website = research + watchlist · Telegram = login, bell setup, and alert delivery</p>
 
       <div class="grid">
         <article id="homepage-live-board" class="card ticker reveal delay-2" aria-label="Top Movers mock">
-          <p id="live-movers-title" class="card-title">Top movers · Live now</p>
+          <p id="live-movers-title" class="card-title">Markets moving now</p>
           <div id="live-movers-rows" class="rows">
             <div class="row">
               <div class="row-main">
@@ -1723,9 +1572,17 @@
                   <span class="move">34% → 41%</span>
                   <span class="delta-up">↑7pp</span>
                 </div>
+                <div class="quality-line">
+                  <span class="quality-pill strong">live gated</span>
+                  <span class="quality-pill">11s quote</span>
+                  <span class="quality-pill">$41k liq</span>
+                  <span class="quality-pill">2pp spread</span>
+                </div>
+                <div class="spark"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><path d="M 0,30 L 12,29 L 24,26 L 36,28 L 48,24 L 60,20 L 72,16 L 84,13 L 100,10" /></svg></div>
               </div>
               <div class="row-actions">
                 <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Add to watchlist</span>
                 <span class="row-link placeholder">Track in Telegram</span>
               </div>
             </div>
@@ -1739,9 +1596,17 @@
                   <span class="move">48% → 44%</span>
                   <span class="delta-down">↓4pp</span>
                 </div>
+                <div class="quality-line">
+                  <span class="quality-pill strong">live gated</span>
+                  <span class="quality-pill">18s quote</span>
+                  <span class="quality-pill">$19k liq</span>
+                  <span class="quality-pill">3pp spread</span>
+                </div>
+                <div class="spark down"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><path d="M 0,12 L 12,13 L 24,14 L 36,15 L 48,17 L 60,18 L 72,22 L 84,24 L 100,29" /></svg></div>
               </div>
               <div class="row-actions">
                 <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Add to watchlist</span>
                 <span class="row-link placeholder">Track in Telegram</span>
               </div>
             </div>
@@ -1755,99 +1620,71 @@
                   <span class="move">29% → 36%</span>
                   <span class="delta-up">↑7pp</span>
                 </div>
+                <div class="quality-line">
+                  <span class="quality-pill strong">live gated</span>
+                  <span class="quality-pill">32s quote</span>
+                  <span class="quality-pill">$11k liq</span>
+                  <span class="quality-pill">5pp spread</span>
+                </div>
+                <div class="spark"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><path d="M 0,28 L 12,25 L 24,22 L 36,23 L 48,20 L 60,18 L 72,14 L 84,12 L 100,9" /></svg></div>
               </div>
               <div class="row-actions">
                 <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Add to watchlist</span>
+                <span class="row-link placeholder">Track in Telegram</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main">
+                <div class="line-1">
+                  <span class="market">Solana between $80 and $90 on May 3</span>
+                  <span class="time">2m ago</span>
+                </div>
+                <div class="line-2">
+                  <span class="move">70% → 62%</span>
+                  <span class="delta-down">↓8pp</span>
+                </div>
+                <div class="quality-line">
+                  <span class="quality-pill strong">live gated</span>
+                  <span class="quality-pill">9s quote</span>
+                  <span class="quality-pill">$8k liq</span>
+                  <span class="quality-pill">4pp spread</span>
+                </div>
+                <div class="spark down"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><path d="M 0,10 L 12,11 L 24,12 L 36,15 L 48,18 L 60,21 L 72,23 L 84,26 L 100,31" /></svg></div>
+              </div>
+              <div class="row-actions">
+                <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Add to watchlist</span>
+                <span class="row-link placeholder">Track in Telegram</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main">
+                <div class="line-1">
+                  <span class="market">Oil hits $90 by end of week</span>
+                  <span class="time">6m ago</span>
+                </div>
+                <div class="line-2">
+                  <span class="move">19% → 26%</span>
+                  <span class="delta-up">↑7pp</span>
+                </div>
+                <div class="quality-line">
+                  <span class="quality-pill strong">live gated</span>
+                  <span class="quality-pill">14s quote</span>
+                  <span class="quality-pill">$24k liq</span>
+                  <span class="quality-pill">6pp spread</span>
+                </div>
+                <div class="spark"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><path d="M 0,31 L 12,30 L 24,30 L 36,27 L 48,23 L 60,20 L 72,18 L 84,15 L 100,12" /></svg></div>
+              </div>
+              <div class="row-actions">
+                <span class="row-link primary placeholder">Open on Polymarket</span>
+                <span class="row-link placeholder">Add to watchlist</span>
                 <span class="row-link placeholder">Track in Telegram</span>
               </div>
             </div>
           </div>
         </article>
-
-        <aside id="hero-panel" class="card cta-panel reveal delay-3">
-          <p class="cta-label">FASTEST LOOP</p>
-          <h2 class="cta-title">SEE THE MOVE HERE. ONLY WAKE TELEGRAM WHEN IT MATTERS.</h2>
-          <p class="cta-copy">The site is where you compare movers and build the watchlist. Telegram only steps in for identity, bell setup, and thresholded alerts.</p>
-          <div class="speedrows" aria-label="Fastest way to get value">
-            <div class="speedrow">Live movers, freshness, liquidity, and spread in one view.</div>
-            <div class="speedrow">Save first on the site. Bell later in Telegram.</div>
-            <div class="speedrow">Alerts only fire when abs(delta) clears your threshold.</div>
-          </div>
-          <div class="cta-proof">Bell on does not mean every move. Telegram alerts only fire when the market clears your configured threshold.</div>
-          <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
-          <div class="cta-trust">
-            <span class="trust-pill">3 saved markets on free</span>
-            <span class="trust-pill">20 Telegram alerts/day</span>
-            <span class="trust-pill">Website research stays free</span>
-          </div>
-          <details class="cta-drawer">
-            <summary>Plans, backup email, and bot flow</summary>
-            <div class="cta-drawer-body">
-              <div class="plan-teaser" aria-label="Plan teaser">
-                <p class="plan-teaser-label">Free vs Pro</p>
-                <div class="plan-teaser-row">
-                  <span class="plan-teaser-name">Free</span>
-                  <span class="plan-teaser-copy">Website research included, 3 saved watchlist markets, and 20 Telegram alerts per day.</span>
-                </div>
-                <div class="plan-teaser-row pro">
-                  <span class="plan-teaser-name">Pro</span>
-                  <span class="plan-teaser-copy">20 saved markets, unlimited Telegram alerts, and digest delivery for heavier monitoring.</span>
-                </div>
-              </div>
-              <a id="guide-link-main" class="guide-link" href="/how-it-works?lang=en">How it works?</a>
-              <div class="backup-shell">
-                <p class="backup-kicker">EMAIL BACKUP ONLY</p>
-                <p class="email-backup-note">Don’t use Telegram? Get digest updates by email.</p>
-                <form id="waitlist-form" class="form" novalidate>
-                  <div>
-                    <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
-                  </div>
-                  <button type="submit">Get digest updates by email</button>
-                </form>
-              </div>
-              <div id="msg" class="note" role="status" aria-live="polite">We will send a confirmation email.</div>
-            </div>
-          </details>
-        </aside>
       </div>
-
-      <details class="hero-drawer">
-        <summary>Why the workflow is split between site and Telegram</summary>
-        <div class="hero-drawer-body">
-          <p class="hero-helper">Use the website to see what moved, compare freshness/liquidity/spread, and save markets to your watchlist. Turn the bell on in Telegram only when you want alerts above your threshold.</p>
-          <div class="hero-metrics">
-            <article class="metric">
-              <p class="metric-label">What moved</p>
-              <p class="metric-value">&lt; 12 sec</p>
-              <p class="metric-copy">Live movers refresh from the hot layer while the window is still actionable.</p>
-            </article>
-            <article class="metric">
-              <p class="metric-label">Watchlist model</p>
-              <p class="metric-value">Save first</p>
-              <p class="metric-copy">A market can stay saved on the site even when the inbox is quiet.</p>
-            </article>
-            <article class="metric">
-              <p class="metric-label">Bell model</p>
-              <p class="metric-value">Threshold-led</p>
-              <p class="metric-copy">Telegram pings only when abs(delta) clears your threshold.</p>
-            </article>
-          </div>
-          <div class="flow-strip" aria-label="Website and Telegram workflow">
-            <article class="flow-step">
-              <p class="flow-kicker">Website</p>
-              <p class="flow-copy">See live movers, quality chips, and current market context before you commit to tracking anything.</p>
-            </article>
-            <article class="flow-step">
-              <p class="flow-kicker">Watchlist</p>
-              <p class="flow-copy">Save markets on the site so they stay visible, sortable, and easy to compare even when nothing is alert-worthy.</p>
-            </article>
-            <article class="flow-step">
-              <p class="flow-kicker">Telegram bell</p>
-              <p class="flow-copy">Log in, turn the bell on, set sensitivity, and only get nudged when the move is actually large enough.</p>
-            </article>
-          </div>
-        </div>
-      </details>
 
       <div class="meta reveal delay-4">
         <span>Signal engine for Polymarket probability shifts</span>
@@ -1855,97 +1692,12 @@
       </div>
     </section>
 
-    <section class="screens reveal delay-5" aria-label="App preview screens">
-      <p class="screens-head">PREVIEW SCREENS · SIGNAL LOOP</p>
-      <div class="screens-grid">
-        <article class="screen-card">
-          <p class="screen-kicker">Screen 01</p>
-          <h3 class="screen-title">Top Movers feed</h3>
-          <p class="screen-copy">See what repriced now and whether the move still looks fresh enough to matter.</p>
-          <div class="screen-bar" style="--w:72%;"><span></span></div>
-        </article>
-        <article class="screen-card">
-          <p class="screen-kicker">Screen 02</p>
-          <h3 class="screen-title">Web watchlist workspace</h3>
-          <p class="screen-copy">Keep saved markets together on the site even when the alert layer stays quiet.</p>
-          <div class="screen-bar" style="--w:58%;"><span></span></div>
-        </article>
-        <article class="screen-card">
-          <p class="screen-kicker">Screen 03</p>
-          <h3 class="screen-title">Telegram bell inbox</h3>
-          <p class="screen-copy">Only get pushed back into the market when the move clears your chosen threshold.</p>
-          <div class="screen-bar down" style="--w:36%;"><span></span></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="proof reveal delay-6" aria-label="Historical examples">
-      <p class="proof-head">HISTORICAL EXAMPLES · DEC 2025 - MAR 2026</p>
-      <div class="proof-grid">
-        <article class="proof-card neg">
-          <p class="proof-q">Miami temperature range market</p>
-          <div class="proof-meta"><span>Feb 16, 2026</span><span>window shift</span></div>
-          <div class="proof-delta delta-down">-67.5pp</div>
-          <p class="proof-note">Probability repriced sharply within one live bucket transition.</p>
-        </article>
-        <article class="proof-card pos">
-          <p class="proof-q">DOJ/Epstein narrative market</p>
-          <div class="proof-meta"><span>Dec 13, 2025</span><span>upside repricing</span></div>
-          <div class="proof-delta delta-up">+66.5pp</div>
-          <p class="proof-note">Market probability jumped after new narrative catalyst hit the tape.</p>
-        </article>
-        <article class="proof-card pos">
-          <p class="proof-q">Dota2 map winner market</p>
-          <div class="proof-meta"><span>Jan 22, 2026</span><span>lineup shock</span></div>
-          <div class="proof-delta delta-up">+64.0pp</div>
-          <p class="proof-note">Outcome odds flipped hard after roster information became public.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="proof-bridge" class="trade-strip reveal delay-7" aria-label="Telegram decision strip">
-      <div class="trade-strip-grid">
-        <div>
-          <p class="screen-kicker">AFTER THE PROOF</p>
-          <h3 class="trade-strip-title">SAVE ON THE SITE. USE TELEGRAM ONLY FOR THE BELL.</h3>
-          <p class="trade-strip-copy">You already saw live movers and repricing examples. The next useful step is to save one market to your watchlist, then use Telegram only for threshold setup and alert delivery.</p>
-        </div>
-        <div class="trade-strip-actions">
-          <a id="tg-link-bridge" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_bridge">Open Telegram Bot →</a>
-          <a id="guide-link-bridge" class="trade-link" href="/how-it-works?lang=en&placement=bridge_cta">See the bot flow first</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="intent-links reveal delay-8" aria-label="Related SEO pages">
-      <p class="intent-title">SEARCH PATHS · CRAWLABLE ENTRY POINTS</p>
-      <div class="intent-grid">
-        <a class="intent-link" href="/analytics"><span class="intent-name">Polymarket Analytics</span><span class="intent-copy">Live repricing, probability shifts, and signal-first context.</span></a>
-        <a class="intent-link" href="/signals"><span class="intent-name">Polymarket Signals</span><span class="intent-copy">Low-noise alerting with thresholding and honest quiet states.</span></a>
-        <a class="intent-link" href="/telegram-bot"><span class="intent-name">Telegram Bot</span><span class="intent-copy">Fastest path from first click to first useful market signal.</span></a>
-        <a class="intent-link" href="/top-movers"><span class="intent-name">Top Movers</span><span class="intent-copy">What moved fastest in the current live window, without dashboard sprawl.</span></a>
-        <a class="intent-link" href="/watchlist-alerts"><span class="intent-name">Watchlist Alerts</span><span class="intent-copy">Track only the markets you care about and cut the alert noise.</span></a>
-        <a class="intent-link" href="/dashboard"><span class="intent-name">Dashboard Alternative</span><span class="intent-copy">Why a Telegram-first workflow can beat another tab full of widgets.</span></a>
-        <a class="intent-link" href="/how-it-works"><span class="intent-name">How It Works</span><span class="intent-copy">Human-friendly onboarding guide for the bot flow and command surfaces.</span></a>
-        <a class="intent-link" href="/commands"><span class="intent-name">Command Guide</span><span class="intent-copy">Slash commands, watchlist controls, and the clean path to first value.</span></a>
-      </div>
-      <p class="intent-note">These pages exist to answer different search intents cleanly, then move the user into the Telegram activation path without dashboard friction.</p>
-      <div class="faq">
-        <span class="faq-prefix">// </span><b>FAQ: Why can /movers be zero?</b><br />
-        If short-window `last/prev` change is flat, bot falls back to 1h movers.  
-        If both are flat, it returns zero by design to avoid signal spam.
-        <br /><br />
-        <span class="faq-prefix">// </span><b>Why Telegram-first instead of full dashboard?</b><br />
-        Faster activation: open bot, add one market, and get actionable signal in under 60 seconds.
-      </div>
-    </section>
-
   </div>
   <section id="pricing" class="pro-section reveal delay-8" aria-label="Pro plan">
     <div class="pro-inner">
-      <p class="pro-kicker">PLANS · WEBSITE RESEARCH + TELEGRAM ALERTS</p>
-      <h3 class="pro-headline">Browse live movers on the site. Plan limits apply when you save markets and turn bells on.</h3>
-      <p class="pro-copy">The website is where you discover and compare markets. Telegram stays the alert layer, so plan differences show up when you save markets and enable bells.</p>
+      <p class="pro-kicker">PLANS · TELEGRAM STARS ONLY</p>
+      <h3 class="pro-headline">Website research stays open. Paid alerting upgrades happen inside Telegram.</h3>
+      <p class="pro-copy">The site stays your live workspace. The bot stays the billing and alert-delivery surface because that is where the paid value actually lands.</p>
       <div class="pro-layout">
         <div class="pro-rows">
           <div class="pro-row">
@@ -1954,7 +1706,11 @@
           </div>
           <div class="pro-row pro-tier">
             <span class="pro-label pro">PRO</span>
-            <span class="pro-value">20 saved markets · unlimited alerts · email digest</span>
+            <span class="pro-value">20 saved markets · unlimited alerts · digest backup</span>
+          </div>
+          <div class="pro-row">
+            <span class="pro-label">PAYMENT</span>
+            <span class="pro-value">Telegram Stars only. No Stripe branch, no extra homepage checkout path.</span>
           </div>
         </div>
         <div class="pro-cta-stack">
@@ -1964,16 +1720,107 @@
             target="_blank"
             rel="noopener noreferrer"
           >Upgrade in Telegram → ⭐ 454 Stars</a>
-          <div class="pro-stripe-wrap">
-            <input id="pro-email" type="email" autocomplete="email" placeholder="email for Stripe checkout" />
-            <button id="checkout-btn" class="pro-stripe-btn" type="button">Pay with card (Stripe)</button>
-            <div id="pro-msg" class="pro-msg" role="status" aria-live="polite"></div>
+          <div class="pro-direct">
+            <p class="pro-direct-label">How upgrade works</p>
+            <p class="pro-direct-copy">Open the bot, tap upgrade, pay in Stars, and keep alert delivery in the same surface. No email field. No card detour.</p>
           </div>
-          <div class="pro-note">// Stars upgrade is instant. Stripe sends confirmation to your email.</div>
+          <div class="pro-note">// Stars upgrade is instant and stays inside the alert workflow.</div>
         </div>
       </div>
     </div>
   </section>
+  <div class="wrap">
+    <section class="support-shell reveal delay-8" aria-label="Additional homepage context">
+      <details class="hero-drawer support-drawer">
+        <summary>Workflow notes, examples, and search paths</summary>
+        <div class="hero-drawer-body">
+          <div class="support-grid">
+            <section class="screens" aria-label="App preview screens">
+              <p class="screens-head">PREVIEW SCREENS · SIGNAL LOOP</p>
+              <div class="screens-grid">
+                <article class="screen-card">
+                  <p class="screen-kicker">Screen 01</p>
+                  <h3 class="screen-title">Top Movers feed</h3>
+                  <p class="screen-copy">See what repriced now and whether the move still looks fresh enough to matter.</p>
+                  <div class="screen-bar" style="--w:72%;"><span></span></div>
+                </article>
+                <article class="screen-card">
+                  <p class="screen-kicker">Screen 02</p>
+                  <h3 class="screen-title">Web watchlist workspace</h3>
+                  <p class="screen-copy">Keep saved markets together on the site even when the alert layer stays quiet.</p>
+                  <div class="screen-bar" style="--w:58%;"><span></span></div>
+                </article>
+                <article class="screen-card">
+                  <p class="screen-kicker">Screen 03</p>
+                  <h3 class="screen-title">Telegram bell inbox</h3>
+                  <p class="screen-copy">Only get pushed back into the market when the move clears your chosen threshold.</p>
+                  <div class="screen-bar down" style="--w:36%;"><span></span></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="proof" aria-label="Historical examples">
+              <p class="proof-head">HISTORICAL EXAMPLES · DEC 2025 - MAR 2026</p>
+              <div class="proof-grid">
+                <article class="proof-card neg">
+                  <p class="proof-q">Miami temperature range market</p>
+                  <div class="proof-meta"><span>Feb 16, 2026</span><span>window shift</span></div>
+                  <div class="proof-delta delta-down">-67.5pp</div>
+                  <p class="proof-note">Probability repriced sharply within one live bucket transition.</p>
+                </article>
+                <article class="proof-card pos">
+                  <p class="proof-q">DOJ/Epstein narrative market</p>
+                  <div class="proof-meta"><span>Dec 13, 2025</span><span>upside repricing</span></div>
+                  <div class="proof-delta delta-up">+66.5pp</div>
+                  <p class="proof-note">Market probability jumped after new narrative catalyst hit the tape.</p>
+                </article>
+                <article class="proof-card pos">
+                  <p class="proof-q">Dota2 map winner market</p>
+                  <div class="proof-meta"><span>Jan 22, 2026</span><span>lineup shock</span></div>
+                  <div class="proof-delta delta-up">+64.0pp</div>
+                  <p class="proof-note">Outcome odds flipped hard after roster information became public.</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="intent-links" aria-label="Related SEO pages">
+              <p class="intent-title">SEARCH PATHS · CRAWLABLE ENTRY POINTS</p>
+              <div class="intent-grid">
+                <a class="intent-link" href="/analytics"><span class="intent-link-head"><span class="intent-icon">AN</span><span class="intent-name">Polymarket Analytics</span></span><span class="intent-copy">Live repricing, probability shifts, and signal-first context.</span></a>
+                <a class="intent-link" href="/signals"><span class="intent-link-head"><span class="intent-icon">SG</span><span class="intent-name">Polymarket Signals</span></span><span class="intent-copy">Low-noise alerting with thresholding and honest quiet states.</span></a>
+                <a class="intent-link" href="/telegram-bot"><span class="intent-link-head"><span class="intent-icon">TG</span><span class="intent-name">Telegram Bot</span></span><span class="intent-copy">Fastest path from first click to first useful market signal.</span></a>
+                <a class="intent-link" href="/top-movers"><span class="intent-link-head"><span class="intent-icon">TM</span><span class="intent-name">Top Movers</span></span><span class="intent-copy">What moved fastest in the current live window, without dashboard sprawl.</span></a>
+                <a class="intent-link" href="/watchlist-alerts"><span class="intent-link-head"><span class="intent-icon">WL</span><span class="intent-name">Watchlist Alerts</span></span><span class="intent-copy">Track only the markets you care about and cut the alert noise.</span></a>
+                <a class="intent-link" href="/commands"><span class="intent-link-head"><span class="intent-icon">CM</span><span class="intent-name">Command Guide</span></span><span class="intent-copy">Slash commands, watchlist controls, and the clean path to first value.</span></a>
+              </div>
+              <p class="intent-note">These pages exist to answer different search intents cleanly, then move the user into the Telegram activation path without dashboard friction.</p>
+              <div class="faq">
+                <span class="faq-prefix">// </span><b>FAQ: Why can /movers be zero?</b><br />
+                If short-window `last/prev` change is flat, bot falls back to 1h movers.
+                If both are flat, it returns zero by design to avoid signal spam.
+                <br /><br />
+                <span class="faq-prefix">// </span><b>Why Telegram-first instead of full dashboard?</b><br />
+                Faster activation: open bot, add one market, and get actionable signal in under 60 seconds.
+              </div>
+            </section>
+
+            <div class="backup-shell">
+              <p class="backup-kicker">EMAIL BACKUP ONLY</p>
+              <p class="email-backup-note">Do not want Telegram as the main loop? Email stays backup-only for digest delivery.</p>
+              <a id="guide-link-main" class="guide-link" href="/how-it-works?lang=en">How it works?</a>
+              <form id="waitlist-form" class="form" novalidate>
+                <div>
+                  <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
+                </div>
+                <button type="submit">Get digest updates by email</button>
+              </form>
+              <div id="msg" class="note" role="status" aria-live="polite">We will send a confirmation email.</div>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
   <a id="tg-link-sticky" class="sticky-tg" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_sticky">Open Telegram Bot</a>
 
   <script>
@@ -1983,18 +1830,11 @@
     const waitlistMsg = document.getElementById('msg');
     const emailInput = document.getElementById('email');
     const tgLinkTop = document.getElementById('tg-link-top');
-    const tgLink = document.getElementById('tg-link');
     const viewMoversLink = document.getElementById('view-movers-link');
-    const tgLinkBridge = document.getElementById('tg-link-bridge');
     const tgLinkSticky = document.getElementById('tg-link-sticky');
     const guideLink = document.getElementById('guide-link-main');
-    const guideLinkBridge = document.getElementById('guide-link-bridge');
     const heroPanel = document.getElementById('hero-panel');
-    const proofBridge = document.getElementById('proof-bridge');
     const pricingSection = document.getElementById('pricing');
-    const checkoutBtn = document.getElementById('checkout-btn');
-    const proEmail = document.getElementById('pro-email');
-    const proMsg = document.getElementById('pro-msg');
     const proStarsBtn = document.querySelector('.pro-stars');
     const liveRows = document.getElementById('live-movers-rows');
     const liveTitle = document.getElementById('live-movers-title');
@@ -2237,7 +2077,7 @@
 
     async function loadLiveMovers() {
       try {
-        const res = await fetch('/api/live-movers-preview?limit=3', { cache: 'no-store' });
+        const res = await fetch('/api/live-movers-preview?limit=5', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (!data || !Array.isArray(data.rows) || data.rows.length === 0) return;
@@ -2271,10 +2111,6 @@
         heroPanel.dataset.placement = 'hero_panel';
         observer.observe(heroPanel);
       }
-      if (proofBridge) {
-        proofBridge.dataset.placement = 'proof_bridge';
-        observer.observe(proofBridge);
-      }
       if (pricingSection) {
         pricingSection.dataset.placement = 'pricing_section';
         observer.observe(pricingSection);
@@ -2283,14 +2119,8 @@
     tgLinkTop?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'hero_intro' });
     });
-    tgLink?.addEventListener('click', () => {
-      trackEvent('tg_click', { ...getAttribution(), placement: 'hero_panel' });
-    });
     viewMoversLink?.addEventListener('click', () => {
       trackEvent('market_click', { ...getAttribution(), placement: 'hero_intro', action: 'view_live_movers_page' });
-    });
-    tgLinkBridge?.addEventListener('click', () => {
-      trackEvent('tg_click', { ...getAttribution(), placement: 'proof_bridge' });
     });
     tgLinkSticky?.addEventListener('click', () => {
       trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
@@ -2298,48 +2128,18 @@
     guideLink?.addEventListener('click', () => {
       trackEvent('waitlist_intent', { ...getAttribution(), placement: 'how_it_works_link' });
     });
-    guideLinkBridge?.addEventListener('click', () => {
-      trackEvent('waitlist_intent', { ...getAttribution(), placement: 'proof_bridge_guide' });
-    });
     proStarsBtn?.addEventListener('click', () => {
       trackEvent('pricing_cta_click', { ...getAttribution(), placement: 'pro_stars' });
       trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_stars' });
     });
-    checkoutBtn?.addEventListener('click', async () => {
-      const email = (proEmail?.value || emailInput.value || '').trim();
-      if (!email) {
-        proMsg.textContent = 'Enter email first, then continue to checkout.';
-        return;
-      }
-      proMsg.textContent = 'Redirecting to Stripe checkout...';
-      trackEvent('pricing_cta_click', { ...getAttribution(), placement: 'pro_offer' });
-      trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_offer' });
-      try {
-        const res = await fetch('/api/stripe/checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            source: 'site',
-            lang: 'en'
-          })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.url) throw new Error(data.detail || 'Checkout unavailable');
-        window.location.href = data.url;
-      } catch (err) {
-        proMsg.textContent = 'Checkout failed: ' + err.message;
-      }
-    });
-
-    form.addEventListener('submit', async (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = emailInput.value.trim();
+      const email = emailInput?.value.trim() || '';
       if (!email) {
-        waitlistMsg.textContent = 'Enter your email.';
+        if (waitlistMsg) waitlistMsg.textContent = 'Enter your email.';
         return;
       }
-      waitlistMsg.textContent = 'Submitting...';
+      if (waitlistMsg) waitlistMsg.textContent = 'Submitting...';
       try {
         const res = await fetch('/api/waitlist', {
           method: 'POST',
@@ -2352,9 +2152,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Request failed');
-        waitlistMsg.textContent = data.message || 'Done. Check your inbox and confirm email.';
+        if (waitlistMsg) waitlistMsg.textContent = data.message || 'Done. Check your inbox and confirm email.';
       } catch (err) {
-        waitlistMsg.textContent = 'Failed: ' + err.message;
+        if (waitlistMsg) waitlistMsg.textContent = 'Failed: ' + err.message;
       }
     });
   </script>
