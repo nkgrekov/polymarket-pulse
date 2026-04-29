@@ -1,3 +1,35 @@
+# Mobile Homepage + Watchlist Scan Pass (2026-04-29)
+
+Applied a mobile-first cleanup pass to the homepage and website watchlist workspace.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• reduced homepage mobile scroll debt before the first live board:
+  - hid the secondary signal badge on small screens
+  - removed the product-split chip row on small screens
+  - tightened header spacing and hid the secondary brand copy
+• made homepage mobile rows read more like tappable market cards:
+  - taller sparklines
+  - slightly denser row paddings
+  - action pills now wrap more cleanly into a 2-up mobile pattern
+• improved mobile watchlist scan speed:
+  - summary cards stay compact across the top on normal phones and collapse only on very narrow screens
+  - controls now use a 2-column mobile layout with search and view toggle spanning full width
+  - watchlist cards use taller charts, stacked title/bell layout, 2-column metric chips, and a clearer action hierarchy
+
+What did not change:
+
+• no watchlist persistence logic changed
+• no auth flow changed
+• no delivery semantics changed
+
 # Homepage Full-Width Scene Pass (2026-04-29)
 
 Applied a third homepage refinement pass to make the first screen behave like a real wide monitoring surface instead of a left-heavy landing block.

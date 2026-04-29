@@ -1,3 +1,33 @@
+# Mobile Homepage + Watchlist Scan Pass (2026-04-29)
+
+The homepage and watchlist workspace now spend less mobile viewport height on repeated explanation and more on actionable market surface.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the homepage mobile hero now suppresses secondary explanatory elements that were pushing the live board too far below the fold
+• homepage live rows gain more chart height and cleaner mobile action wrapping, so the board reads as product rather than as compressed copy
+• the watchlist mobile surface now follows a more explicit scan order:
+  - compact counters
+  - compact controls
+  - market card
+  - chart
+  - metric chips
+  - actions
+• the watchlist summary remains horizontally compact on normal phones and only collapses to one column on truly narrow screens
+• watchlist actions now establish a clearer hierarchy by giving the first action a full-width row on small screens
+
+Architectural consequence:
+
+• mobile visitors reach live context faster on `/`
+• mobile watchlist review now behaves more like a usable workspace and less like a squeezed desktop table translation
+
 # Homepage Full-Width Scene Pass (2026-04-29)
 
 The homepage first screen now behaves as a wide product scene instead of a narrow marketing block with a side explainer.

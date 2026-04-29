@@ -2651,10 +2651,50 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .live-signal-row {{ grid-template-columns: 1fr; }}
       .live-signal-side {{ align-items: start; }}
       .live-signal-actions {{ justify-content: flex-start; }}
-      .watchlist-controls {{ grid-template-columns: 1fr; }}
-      .watchlist-summary {{ grid-template-columns: 1fr; }}
+      .watchlist-workspace {{ padding: 12px; }}
+      .watchlist-workspace-copy,
+      .watchlist-login-copy {{ font-size: 11px; line-height: 1.45; }}
+      .watchlist-summary {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
+      .watchlist-summary-card {{ padding: 12px 10px; gap: 4px; }}
+      .watchlist-summary-card strong {{ font-size: 22px; }}
+      .watchlist-summary-card span {{ font-size: 10px; letter-spacing: 0.05em; }}
+      .watchlist-controls {{ grid-template-columns: 1fr 1fr; }}
+      .watchlist-controls > :first-child {{ grid-column: 1 / -1; }}
+      .watchlist-controls > :last-child {{ grid-column: 1 / -1; }}
       .watchlist-table-wrap {{ display: none; }}
-      .watchlist-card-grid {{ display: grid; }}
+      .watchlist-card-grid {{ display: grid; gap: 12px; padding: 8px; }}
+      .watchlist-card {{ padding: 12px; gap: 12px; }}
+      .watchlist-card-top {{ display: grid; gap: 8px; }}
+      .watchlist-card-top .watchlist-chip {{ justify-self: start; }}
+      .watchlist-card .watchlist-spark {{ height: 92px; }}
+      .watchlist-card .watchlist-chip-row {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }}
+      .watchlist-card .watchlist-chip {{
+        min-height: 34px;
+        padding: 6px 10px;
+        white-space: normal;
+        text-align: left;
+        line-height: 1.3;
+        justify-content: flex-start;
+      }}
+      .watchlist-card .watchlist-action-row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }}
+      .watchlist-card .watchlist-action-row > :first-child {{ grid-column: 1 / -1; }}
+      .watchlist-card .watchlist-action {{
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+        text-align: center;
+      }}
+    }}
+    @media (max-width: 420px) {{
+      .watchlist-summary {{ grid-template-columns: 1fr; }}
+      .watchlist-controls {{ grid-template-columns: 1fr; }}
+      .watchlist-controls > :first-child,
+      .watchlist-controls > :last-child {{ grid-column: auto; }}
+      .watchlist-card .watchlist-chip-row {{ grid-template-columns: 1fr; }}
+      .watchlist-card .watchlist-action-row {{ grid-template-columns: 1fr; }}
+      .watchlist-card .watchlist-action-row > :first-child {{ grid-column: auto; }}
     }}
     @media (prefers-reduced-motion: reduce) {{
       *, *::before, *::after {{
