@@ -1,3 +1,28 @@
+# Homepage Hierarchy + Trust Pass (2026-04-29)
+
+Applied a compact homepage pass to improve first-screen hierarchy and explain alert trust more clearly without reopening a full redesign.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• homepage now pulls the current watchlist client asset version instead of an older stale one
+• shortened the hero value copy so first-value lands faster
+• added a compact trust rail above the live board:
+  - fresh quotes first
+  - sane spread
+  - enough liquidity
+  - thresholded quiet
+• replaced the right hero explainer with a simpler `Signal trust` block that explains:
+  - when a live row qualifies
+  - when Telegram can push
+  - why quiet states are intentional
+• tightened mobile hierarchy by hiding part of the trust rail on smaller screens and reducing right-panel verbosity
+
 # Watchlist Workspace Density Pass (2026-04-29)
 
 Applied a focused scan-speed and action-hierarchy cleanup to the website watchlist workspace.

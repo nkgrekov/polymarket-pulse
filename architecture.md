@@ -1,3 +1,22 @@
+# Homepage Hierarchy + Trust Pass (2026-04-29)
+
+The homepage first screen now explains both value and trust with less verbal overhead.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• homepage and watchlist actions are now aligned on the current watchlist client asset version, avoiding stale client behavior from an older hardcoded querystring
+• homepage live board now carries a compact trust rail that makes the quality gates visible before the user ever opens Telegram
+• the right-hand hero support block no longer acts like a second marketing panel; it now acts as a strict signal-trust explainer:
+  - row eligibility
+  - push eligibility
+  - intentional quiet states
+
 # Watchlist Workspace Density Pass (2026-04-29)
 
 The website watchlist now reads more like an operational workspace and less like a verbose status dump.

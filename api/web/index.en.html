@@ -29,7 +29,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
-  <script defer src="/api/watchlist-client?v=20260429f"></script>
+  <script defer src="/api/watchlist-client?v=20260429h"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -374,7 +374,7 @@
 
     .sub {
       margin: 14px 0 0;
-      max-width: 880px;
+      max-width: 760px;
       color: var(--muted);
       font-size: clamp(15px, 1.45vw, 18px);
       line-height: 1.55;
@@ -736,43 +736,62 @@
       line-height: 1.55;
     }
 
-    .cta-footnote {
-      margin: 0;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      color: var(--muted-soft);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .cta-list {
+    .cta-rules {
       margin: 0;
       display: grid;
-      gap: 12px;
-      padding: 0;
-      list-style: none;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
-      color: var(--text);
+      gap: 8px;
     }
 
-    .cta-list li {
-      position: relative;
-      padding-left: 18px;
+    .cta-rule {
+      border: 1px solid rgba(42, 51, 43, 0.72);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(19, 23, 20, 0.72);
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
       line-height: 1.5;
     }
 
-    .cta-list li::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 0.6em;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 10px rgba(0, 255, 136, 0.28);
+    .cta-rule strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .trust-rail {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .trust-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      padding: 0 10px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      background: rgba(19, 23, 20, 0.72);
+      white-space: nowrap;
+    }
+
+    .trust-pill.strong {
+      color: var(--text);
+      border-color: rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.08);
+    }
+
+    .trust-note {
+      margin: 10px 0 0;
+      color: var(--muted-soft);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      line-height: 1.45;
     }
 
     .support-shell {
@@ -1478,12 +1497,17 @@
       .eyebrow { margin-bottom: 10px; font-size: 11px; }
       .hero-actions { grid-template-columns: 1fr; }
       .scarcity { display: none; }
+      .trust-rail { margin-top: 10px; }
+      .trust-pill:nth-child(n+3) { display: none; }
       .spark,
       .spark svg { height: 84px; }
       .market { max-width: 100%; white-space: normal; }
       .row-main { padding: 12px 12px 10px; }
       .row-actions { padding: 0 12px 12px; }
       .row-link { flex: 1 1 calc(50% - 8px); justify-content: center; }
+      .cta-panel { gap: 10px; }
+      .cta-title { font-size: 22px; }
+      .cta-rule { padding: 9px 10px; font-size: 11px; }
       .hero-drawer summary { padding: 11px 12px; font-size: 11px; }
       .hero-drawer-body { padding: 0 12px 12px; }
       .screens-grid { grid-template-columns: 1fr; }
@@ -1549,7 +1573,7 @@
           </div>
           <div class="eyebrow"><span class="dot" aria-hidden="true"></span>Live probability feed</div>
           <h1>Track Live Movers</h1>
-          <p class="sub">See what is repricing now, save the markets worth tracking, and let Telegram handle alerts only after the move is big enough.</p>
+          <p class="sub">See what is repricing now, save the markets worth tracking, and let Telegram wake up only when the move actually matters.</p>
           <div class="hero-actions">
             <a id="tg-link-top" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_hero">Open Telegram Bot →</a>
             <a id="view-movers-link" class="guide-link" href="/top-movers?placement=home_hero">View live movers</a>
@@ -1565,6 +1589,13 @@
       <div class="grid">
         <article id="homepage-live-board" class="card ticker reveal delay-2" aria-label="Top Movers mock">
           <p id="live-movers-title" class="card-title">Markets moving now</p>
+          <div class="trust-rail" aria-label="Signal trust cues">
+            <span class="trust-pill strong">Fresh quotes first</span>
+            <span class="trust-pill">Sane spread</span>
+            <span class="trust-pill">Enough liquidity</span>
+            <span class="trust-pill">Thresholded quiet</span>
+          </div>
+          <p class="trust-note">Quiet is deliberate: Telegram stays silent when the bell is off, the move is below threshold, quotes go stale, or the market is effectively closed.</p>
           <div id="live-movers-rows" class="rows">
             <div class="row">
               <div class="row-main">
@@ -1690,14 +1721,13 @@
         </article>
 
         <aside id="hero-panel" class="card cta-panel reveal delay-3">
-          <h2 class="cta-title">How Pulse Works</h2>
-          <p class="cta-copy">Use the site to compare quality, freshness, spread, and chart context. Use Telegram only for login, billing, and real alert delivery.</p>
-          <ul class="cta-list" aria-label="Fastest way to get value">
-            <li>See the move on the site.</li>
-            <li>Save the market if it deserves tracking.</li>
-            <li>Enable Telegram alerts only after the threshold matters.</li>
-          </ul>
-          <p class="cta-footnote">Payment stays in Telegram too, because that is where the alert product already lives.</p>
+          <h2 class="cta-title">Signal trust</h2>
+          <p class="cta-copy">Pulse does not treat every twitch as signal. It shows live rows only when the surface looks clean enough, and it stays quiet when the alert should not fire.</p>
+          <div class="cta-rules" aria-label="Signal trust rules">
+            <div class="cta-rule"><strong>Live row:</strong> fresh quote, sane spread, and enough liquidity.</div>
+            <div class="cta-rule"><strong>Telegram push:</strong> bell on, not paused, and move above threshold.</div>
+            <div class="cta-rule"><strong>Quiet state:</strong> below threshold, stale quotes, paused bell, or closed market.</div>
+          </div>
         </aside>
       </div>
 
