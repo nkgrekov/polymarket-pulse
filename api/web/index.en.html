@@ -29,7 +29,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
-  <script defer src="/watchlist-client.js?v=20260428c"></script>
+  <script defer src="/api/watchlist-client?v=20260429e"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -338,7 +338,7 @@
       border-radius: 20px;
       background: linear-gradient(150deg, rgba(19, 23, 20, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%);
       box-shadow: 0 24px 72px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
-      padding: 30px;
+      padding: 26px;
     }
 
     .eyebrow {
@@ -395,7 +395,7 @@
     }
 
     .hero-helper {
-      margin: 10px 0 0;
+      margin: 12px 0 0;
       max-width: 760px;
       color: var(--muted);
       font-family: "JetBrains Mono", monospace;
@@ -478,11 +478,11 @@
     }
 
     .grid {
-      margin-top: 24px;
+      margin-top: 18px;
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
+      grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.88fr);
       gap: 16px;
-      align-items: stretch;
+      align-items: start;
     }
 
     .card {
@@ -686,13 +686,13 @@
     .spark {
       margin-top: 8px;
       width: 100%;
-      height: 28px;
+      height: 44px;
     }
 
     .spark svg {
       display: block;
       width: 100%;
-      height: 28px;
+      height: 44px;
     }
 
     .spark path {
@@ -774,8 +774,54 @@
     .speedrow {
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 9px 12px;
       background: #131714;
+    }
+
+    .hero-drawer,
+    .cta-drawer {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(19, 23, 20, 0.76);
+      overflow: hidden;
+    }
+
+    .hero-drawer summary,
+    .cta-drawer summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .hero-drawer summary::-webkit-details-marker,
+    .cta-drawer summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .hero-drawer summary::after,
+    .cta-drawer summary::after {
+      content: "+";
+      float: right;
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .hero-drawer[open] summary::after,
+    .cta-drawer[open] summary::after {
+      content: "−";
+    }
+
+    .hero-drawer-body,
+    .cta-drawer-body {
+      border-top: 1px solid var(--line);
+      padding: 0 14px 14px;
     }
 
     .plan-teaser {
@@ -1570,7 +1616,7 @@
       .site-menu {
         display: block;
       }
-      .hero { padding: 22px; }
+      .hero { padding: 20px; }
       .hero-metrics { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
       .trade-strip-grid { grid-template-columns: 1fr; }
@@ -1582,14 +1628,18 @@
     @media (max-width: 680px) {
       .wrap { width: calc(100% - 20px); }
       .topbar { font-size: 12px; }
-      .hero { padding: 16px; border-radius: 16px; }
+      .hero { padding: 15px; border-radius: 16px; }
       .card { padding: 14px; }
-      h1 { font-size: clamp(34px, 15vw, 56px); }
+      h1 { font-size: clamp(32px, 14vw, 50px); }
       .sub { font-size: 14px; }
       .hero-actions { grid-template-columns: 1fr; }
       .market { max-width: 68%; }
       .flow-strip { grid-template-columns: 1fr; }
       .plan-teaser-row { grid-template-columns: 1fr; }
+      .hero-drawer summary,
+      .cta-drawer summary { padding: 11px 12px; font-size: 11px; }
+      .hero-drawer-body,
+      .cta-drawer-body { padding: 0 12px 12px; }
       .screens-grid { grid-template-columns: 1fr; }
       .proof-grid { grid-template-columns: 1fr; }
       .intent-grid { grid-template-columns: 1fr; }
@@ -1657,42 +1707,10 @@
         <a id="tg-link-top" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_hero">Open Telegram Bot →</a>
         <a id="view-movers-link" class="guide-link" href="/top-movers?placement=home_hero">View live movers</a>
       </div>
-      <p class="hero-helper">Use the website to see what moved, compare freshness/liquidity/spread, and save markets to your watchlist. Turn the bell on in Telegram only when you want alerts above your threshold.</p>
-      <p class="scarcity"><span class="accent">Website = live workspace</span> · Telegram = login, bell setup, and alert delivery</p>
-      <div class="hero-metrics">
-        <article class="metric">
-          <p class="metric-label">What moved</p>
-          <p class="metric-value">&lt; 12 sec</p>
-          <p class="metric-copy">Live movers refresh from the hot layer while the window is still actionable.</p>
-        </article>
-        <article class="metric">
-          <p class="metric-label">Watchlist model</p>
-          <p class="metric-value">Save first</p>
-          <p class="metric-copy">A market can stay saved on the site even when the inbox is quiet.</p>
-        </article>
-        <article class="metric">
-          <p class="metric-label">Bell model</p>
-          <p class="metric-value">Threshold-led</p>
-          <p class="metric-copy">Telegram pings only when abs(delta) clears your threshold.</p>
-        </article>
-      </div>
-      <div class="flow-strip" aria-label="Website and Telegram workflow">
-        <article class="flow-step">
-          <p class="flow-kicker">Website</p>
-          <p class="flow-copy">See live movers, quality chips, and current market context before you commit to tracking anything.</p>
-        </article>
-        <article class="flow-step">
-          <p class="flow-kicker">Watchlist</p>
-          <p class="flow-copy">Save markets on the site so they stay visible, sortable, and easy to compare even when nothing is alert-worthy.</p>
-        </article>
-        <article class="flow-step">
-          <p class="flow-kicker">Telegram bell</p>
-          <p class="flow-copy">Log in, turn the bell on, set sensitivity, and only get nudged when the move is actually large enough.</p>
-        </article>
-      </div>
+      <p class="scarcity"><span class="accent">Live board first.</span> Website = research + watchlist · Telegram = login, bell setup, and alert delivery</p>
 
       <div class="grid">
-        <article class="card ticker reveal delay-2" aria-label="Top Movers mock">
+        <article id="homepage-live-board" class="card ticker reveal delay-2" aria-label="Top Movers mock">
           <p id="live-movers-title" class="card-title">Top movers · Live now</p>
           <div id="live-movers-rows" class="rows">
             <div class="row">
@@ -1747,43 +1765,89 @@
         </article>
 
         <aside id="hero-panel" class="card cta-panel reveal delay-3">
-          <p class="cta-label">WEBSITE WORKSPACE + TELEGRAM LOOP</p>
-          <h2 class="cta-title">RESEARCH ON THE SITE. TURN THE BELL ON IN TELEGRAM.</h2>
-          <p class="cta-copy">Pulse is no longer just a Telegram landing page. Use the site to inspect live movement and save markets. Use Telegram for login, bell setup, and low-noise delivery.</p>
+          <p class="cta-label">FASTEST LOOP</p>
+          <h2 class="cta-title">SEE THE MOVE HERE. ONLY WAKE TELEGRAM WHEN IT MATTERS.</h2>
+          <p class="cta-copy">The site is where you compare movers and build the watchlist. Telegram only steps in for identity, bell setup, and thresholded alerts.</p>
           <div class="speedrows" aria-label="Fastest way to get value">
             <div class="speedrow">Live movers, freshness, liquidity, and spread in one view.</div>
-            <div class="speedrow">Save a market without automatically turning alerts on.</div>
-            <div class="speedrow">Telegram only matters when you want the bell and thresholded alerts.</div>
+            <div class="speedrow">Save first on the site. Bell later in Telegram.</div>
+            <div class="speedrow">Alerts only fire when abs(delta) clears your threshold.</div>
           </div>
           <div class="cta-proof">Bell on does not mean every move. Telegram alerts only fire when the market clears your configured threshold.</div>
-          <div class="plan-teaser" aria-label="Plan teaser">
-            <p class="plan-teaser-label">Free vs Pro</p>
-            <div class="plan-teaser-row">
-              <span class="plan-teaser-name">Free</span>
-              <span class="plan-teaser-copy">Website research included, 3 saved watchlist markets, and 20 Telegram alerts per day.</span>
-            </div>
-            <div class="plan-teaser-row pro">
-              <span class="plan-teaser-name">Pro</span>
-              <span class="plan-teaser-copy">20 saved markets, unlimited Telegram alerts, and digest delivery for heavier monitoring.</span>
-            </div>
-          </div>
-
           <a id="tg-link" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en">Open Telegram Bot →</a>
-          <a id="guide-link-main" class="guide-link" href="/how-it-works?lang=en">How it works?</a>
-
-          <div class="backup-shell">
-            <p class="backup-kicker">EMAIL BACKUP ONLY</p>
-            <p class="email-backup-note">Don’t use Telegram? Get digest updates by email.</p>
-            <form id="waitlist-form" class="form" novalidate>
-              <div>
-                <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
-              </div>
-              <button type="submit">Get digest updates by email</button>
-            </form>
+          <div class="cta-trust">
+            <span class="trust-pill">3 saved markets on free</span>
+            <span class="trust-pill">20 Telegram alerts/day</span>
+            <span class="trust-pill">Website research stays free</span>
           </div>
-          <div id="msg" class="note" role="status" aria-live="polite">We will send a confirmation email.</div>
+          <details class="cta-drawer">
+            <summary>Plans, backup email, and bot flow</summary>
+            <div class="cta-drawer-body">
+              <div class="plan-teaser" aria-label="Plan teaser">
+                <p class="plan-teaser-label">Free vs Pro</p>
+                <div class="plan-teaser-row">
+                  <span class="plan-teaser-name">Free</span>
+                  <span class="plan-teaser-copy">Website research included, 3 saved watchlist markets, and 20 Telegram alerts per day.</span>
+                </div>
+                <div class="plan-teaser-row pro">
+                  <span class="plan-teaser-name">Pro</span>
+                  <span class="plan-teaser-copy">20 saved markets, unlimited Telegram alerts, and digest delivery for heavier monitoring.</span>
+                </div>
+              </div>
+              <a id="guide-link-main" class="guide-link" href="/how-it-works?lang=en">How it works?</a>
+              <div class="backup-shell">
+                <p class="backup-kicker">EMAIL BACKUP ONLY</p>
+                <p class="email-backup-note">Don’t use Telegram? Get digest updates by email.</p>
+                <form id="waitlist-form" class="form" novalidate>
+                  <div>
+                    <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@domain.com" />
+                  </div>
+                  <button type="submit">Get digest updates by email</button>
+                </form>
+              </div>
+              <div id="msg" class="note" role="status" aria-live="polite">We will send a confirmation email.</div>
+            </div>
+          </details>
         </aside>
       </div>
+
+      <details class="hero-drawer">
+        <summary>Why the workflow is split between site and Telegram</summary>
+        <div class="hero-drawer-body">
+          <p class="hero-helper">Use the website to see what moved, compare freshness/liquidity/spread, and save markets to your watchlist. Turn the bell on in Telegram only when you want alerts above your threshold.</p>
+          <div class="hero-metrics">
+            <article class="metric">
+              <p class="metric-label">What moved</p>
+              <p class="metric-value">&lt; 12 sec</p>
+              <p class="metric-copy">Live movers refresh from the hot layer while the window is still actionable.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">Watchlist model</p>
+              <p class="metric-value">Save first</p>
+              <p class="metric-copy">A market can stay saved on the site even when the inbox is quiet.</p>
+            </article>
+            <article class="metric">
+              <p class="metric-label">Bell model</p>
+              <p class="metric-value">Threshold-led</p>
+              <p class="metric-copy">Telegram pings only when abs(delta) clears your threshold.</p>
+            </article>
+          </div>
+          <div class="flow-strip" aria-label="Website and Telegram workflow">
+            <article class="flow-step">
+              <p class="flow-kicker">Website</p>
+              <p class="flow-copy">See live movers, quality chips, and current market context before you commit to tracking anything.</p>
+            </article>
+            <article class="flow-step">
+              <p class="flow-kicker">Watchlist</p>
+              <p class="flow-copy">Save markets on the site so they stay visible, sortable, and easy to compare even when nothing is alert-worthy.</p>
+            </article>
+            <article class="flow-step">
+              <p class="flow-kicker">Telegram bell</p>
+              <p class="flow-copy">Log in, turn the bell on, set sensitivity, and only get nudged when the move is actually large enough.</p>
+            </article>
+          </div>
+        </div>
+      </details>
 
       <div class="meta reveal delay-4">
         <span>Signal engine for Polymarket probability shifts</span>

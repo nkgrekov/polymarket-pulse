@@ -532,10 +532,15 @@ class WatchlistSaveRequest(BaseModel):
     source: str = "site"
 
 
+class WatchlistSyncRequest(BaseModel):
+    items: list[WatchlistSaveRequest]
+
+
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260428c"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260429e"
+WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
 
@@ -1616,7 +1621,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
-  <script defer src="/watchlist-client.js?v={WATCHLIST_CLIENT_ASSET_VERSION}"></script>
+  <script defer src="{WATCHLIST_CLIENT_ASSET_PATH}"></script>
   <script type="application/ld+json">{page_schema}</script>
   {faq_schema_tag}
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-J901VRQH4G"></script>
@@ -2410,6 +2415,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       font-size: 14px;
       line-height: 1.3;
     }}
+    .watchlist-table td:first-child {{
+      min-width: 280px;
+    }}
     .watchlist-question-meta {{
       margin: 6px 0 0;
       color: var(--muted-soft);
@@ -2418,10 +2426,24 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       line-height: 1.4;
     }}
     .watchlist-spark {{
-      margin-top: 10px;
-      width: 152px;
-      height: 36px;
+      margin-top: 12px;
+      width: 236px;
+      max-width: 100%;
+      height: 64px;
       display: block;
+    }}
+    .watchlist-spark .spark-frame {{
+      fill: rgba(255, 255, 255, 0.012);
+      stroke: rgba(42, 51, 43, 0.82);
+      stroke-width: 1;
+    }}
+    .watchlist-spark .spark-grid {{
+      stroke: rgba(143, 168, 143, 0.16);
+      stroke-width: 1;
+      stroke-dasharray: 3 4;
+    }}
+    .watchlist-spark .spark-area {{
+      opacity: 0.22;
     }}
     .watchlist-spark polyline {{
       fill: none;
@@ -2429,8 +2451,14 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       stroke-linecap: round;
       stroke-linejoin: round;
     }}
+    .watchlist-spark.down .spark-area {{
+      fill: rgba(255, 91, 91, 0.12);
+    }}
     .watchlist-spark.down polyline {{
       stroke: #ff5b5b;
+    }}
+    .watchlist-spark.up .spark-area {{
+      fill: rgba(0, 255, 136, 0.12);
     }}
     .watchlist-spark.up polyline {{
       stroke: var(--accent);
@@ -2517,6 +2545,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       background: #101511;
       display: grid;
       gap: 10px;
+    }}
+    .watchlist-card .watchlist-spark {{
+      width: 100%;
     }}
     .watchlist-card-top {{
       display: flex;
@@ -3918,27 +3949,53 @@ def save_site_watchlist_market(
     source: str,
     default_alert_enabled: bool = False,
 ) -> None:
-    safe_market_id = _safe_market_token(market_id, max_len=48)
-    if not safe_market_id:
+    saved = save_site_watchlist_markets(
+        user_id=user_id,
+        market_ids=[market_id],
+        source=source,
+        default_alert_enabled=default_alert_enabled,
+    )
+    if not saved:
         raise HTTPException(status_code=400, detail="invalid_market_id")
+
+
+def save_site_watchlist_markets(
+    *,
+    user_id: str,
+    market_ids: list[str],
+    source: str,
+    default_alert_enabled: bool = False,
+) -> list[str]:
+    safe_market_ids: list[str] = []
+    seen: set[str] = set()
+    for market_id in market_ids:
+        safe_market_id = _safe_market_token(market_id, max_len=48)
+        if not safe_market_id or safe_market_id in seen:
+            continue
+        safe_market_ids.append(safe_market_id)
+        seen.add(safe_market_id)
+    if not safe_market_ids:
+        return []
     if not PG_CONN:
         raise HTTPException(status_code=500, detail="PG_CONN is not configured")
     with psycopg.connect(PG_CONN, connect_timeout=5) as conn:
         with conn.cursor() as cur:
             cur.execute("set statement_timeout = '6000ms'")
-            cur.execute(SQL_SITE_WATCHLIST_ADD, (user_id, safe_market_id))
-            cur.execute(
-                SQL_SITE_ALERT_SETTINGS_UPSERT,
-                (
-                    user_id,
-                    safe_market_id,
-                    default_alert_enabled,
-                    False,
-                    None,
-                    source,
-                ),
-            )
+            for safe_market_id in safe_market_ids:
+                cur.execute(SQL_SITE_WATCHLIST_ADD, (user_id, safe_market_id))
+                cur.execute(
+                    SQL_SITE_ALERT_SETTINGS_UPSERT,
+                    (
+                        user_id,
+                        safe_market_id,
+                        default_alert_enabled,
+                        False,
+                        None,
+                        source,
+                    ),
+                )
         conn.commit()
+    return safe_market_ids
 
 
 def remove_site_watchlist_market(*, user_id: str, market_id: str) -> int:
@@ -4755,6 +4812,39 @@ def watchlist_save(data: WatchlistSaveRequest, request: Request) -> JSONResponse
     return JSONResponse({"ok": True, "market_id": safe_market_id, "saved": True})
 
 
+@app.post("/api/watchlist/sync")
+def watchlist_sync(data: WatchlistSyncRequest, request: Request) -> JSONResponse:
+    session = current_site_session(request)
+    if not session or not session.get("user_id"):
+        raise HTTPException(status_code=401, detail="telegram_login_required")
+    raw_items = list(data.items or [])[:24]
+    safe_market_ids = save_site_watchlist_markets(
+        user_id=str(session["user_id"]),
+        market_ids=[str(item.market_id or "") for item in raw_items],
+        source="web",
+        default_alert_enabled=False,
+    )
+    log_site_event(
+        event_type="watchlist_sync_site",
+        request=request,
+        lang=str(session.get("locale") or "en"),
+        source="site",
+        details={
+            "saved_count": len(safe_market_ids),
+            "saved_market_ids": safe_market_ids[:12],
+            "requested_count": len(raw_items),
+        },
+        path_override=request.url.path,
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "saved_market_ids": safe_market_ids,
+            "saved_count": len(safe_market_ids),
+        }
+    )
+
+
 @app.post("/api/watchlist/remove")
 def watchlist_remove(data: WatchlistSaveRequest, request: Request) -> JSONResponse:
     session = current_site_session(request)
@@ -4808,6 +4898,11 @@ def watchlist_client_script() -> Response:
         media_type="application/javascript",
         headers={"Cache-Control": "public, max-age=300"},
     )
+
+
+@app.get("/api/watchlist-client")
+def watchlist_client_script_api() -> Response:
+    return watchlist_client_script()
 
 
 @app.post("/api/stripe/checkout-session")

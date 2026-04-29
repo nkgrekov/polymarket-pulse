@@ -734,17 +734,30 @@
     const items = pendingItems(state);
     if (!items.length) return 0;
     let synced = 0;
-    for (const item of items) {
-      try {
-        await saveMarketServer(item, { track: false });
-        delete state.pendingItems[String(item.market_id || "")];
-        synced += 1;
-      } catch (_) {}
-    }
+    try {
+      const data = await jsonFetch("/api/watchlist/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            market_id: String(item.market_id || ""),
+            question: item.question || "",
+            slug: item.slug || "",
+            source: item.source || "site",
+          })),
+        }),
+      });
+      const savedIds = new Set(Array.isArray(data.saved_market_ids) ? data.saved_market_ids.map((value) => String(value || "")) : []);
+      synced = savedIds.size;
+      if (savedIds.size) {
+        Object.keys(state.pendingItems || {}).forEach((marketId) => {
+          if (savedIds.has(String(marketId || ""))) delete state.pendingItems[marketId];
+        });
+      }
+    } catch (_) {}
     if (synced > 0) {
-      state.pendingContext = null;
+      if (!pendingItems(state).length) state.pendingContext = null;
       writeState(state);
-      trackEvent("watchlist_pending_sync_success", baseEventDetails({ synced_count: synced, watchlist_state: "saved" }));
+      trackEvent("watchlist_pending_sync_success", baseEventDetails({ synced_count: synced, pending_left: pendingItems(state).length, watchlist_state: "saved" }));
       window.dispatchEvent(new CustomEvent("pulse:watchlist-sync"));
     }
     return synced;
@@ -791,18 +804,31 @@
   function sparkSvg(row) {
     const series = Array.isArray(row.spark) ? row.spark.map((value) => Number(value)).filter((value) => Number.isFinite(value)) : [];
     if (series.length < 2) return "";
-    const width = 152;
-    const height = 36;
+    const width = 236;
+    const height = 64;
+    const padX = 8;
+    const padY = 6;
     const min = Math.min(...series);
     const max = Math.max(...series);
     const span = Math.max(max - min, 0.0001);
     const points = series.map((value, index) => {
-      const x = series.length === 1 ? width / 2 : (index / (series.length - 1)) * width;
-      const y = height - (((value - min) / span) * (height - 4) + 2);
+      const usableWidth = width - padX * 2;
+      const usableHeight = height - padY * 2;
+      const x = series.length === 1 ? width / 2 : padX + (index / (series.length - 1)) * usableWidth;
+      const y = height - padY - (((value - min) / span) * usableHeight);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
     const tone = Number(row.delta_primary || 0) < 0 ? "down" : "up";
-    return `<svg class="watchlist-spark ${tone}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${esc(points)}"></polyline></svg>`;
+    const area = `${padX},${height - padY} ${points} ${width - padX},${height - padY}`;
+    const midY = (height / 2).toFixed(1);
+    return [
+      `<svg class="watchlist-spark ${tone}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">`,
+      `<rect class="spark-frame" x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="10"></rect>`,
+      `<line class="spark-grid" x1="${padX}" y1="${midY}" x2="${width - padX}" y2="${midY}"></line>`,
+      `<polygon class="spark-area" points="${esc(area)}"></polygon>`,
+      `<polyline points="${esc(points)}"></polyline>`,
+      `</svg>`,
+    ].join("");
   }
 
   function tableRow(row) {

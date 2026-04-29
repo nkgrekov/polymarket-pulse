@@ -1,3 +1,49 @@
+# Homepage-First Priority + Batch Sync Pass (2026-04-29)
+
+The website now has a clearer first-screen hierarchy, and the slowest part of the Telegram-login reconciliation loop has been narrowed to a single batched request.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• homepage hierarchy was rebalanced around the live board:
+  - the hero now presents the live movers board immediately after the CTA cluster
+  - explanatory metrics/workflow blocks no longer consume the same first-screen budget by default
+  - the right-side hero panel is still present, but it is compacted and secondary details now live behind disclosures
+• the post-login watchlist sync path is now batch-capable:
+  - new endpoint: `/api/watchlist/sync`
+  - `watchlist-client.js` sends pending local rows in one payload instead of iterating `/api/watchlist/save` per market
+  - the browser-side reconciliation model is still the same (`pending` -> `saved`), but the transport is now materially cheaper
+• watchlist workspace visualization is stronger:
+  - row-level spark charts now render in a larger framed format
+  - this keeps the workspace visually legible as a monitoring surface instead of reading like decorative micro-lines
+• watchlist client asset delivery was hardened again:
+  - the preferred script include path now points at an API-served asset URL instead of relying only on the long-lived legacy top-level path
+  - this is an anti-stale step motivated by real deploy behavior where fresh HTML and stale JS could briefly diverge
+
+Architectural consequence:
+
+• the homepage is now closer to the product doctrine the repo already states:
+  - live board first
+  - watchlist second
+  - Telegram only when the bell / alert layer is needed
+• login-loop latency should now scale with one sync request instead of one request per saved pending row
+• the watchlist workspace gets closer to terminal-like usefulness because movement context is no longer visually collapsed into tiny sparklines
+
+Open deployment caveat:
+
+• the code path for the new client delivery is in place, but prod edge behavior still shows script-path lag/inconsistency during this pass
+• the next live verification step should be:
+  - confirm the new watchlist client asset path is the one the browser actually receives
+  - then rerun the Telegram login return loop and measure whether pending rows reconcile faster
+
 # Prompt 8-10 UX + Instrumentation Pass (2026-04-28)
 
 Implemented the next `new horizon` cycle across the web UI, Telegram bot UX, and measurement layer.

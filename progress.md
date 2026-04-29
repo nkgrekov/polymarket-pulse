@@ -1,3 +1,77 @@
+# Homepage Priority + Bulk Watchlist Sync + Bigger Charts (2026-04-29)
+
+Pushed the next focused polish pass on the two user-facing pain points:
+
+• homepage first-screen hierarchy
+• slow post-login watchlist reconciliation
+
+Files updated:
+
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• moved the homepage live board into the real first-screen budget:
+  - `homepage-live-board` now sits directly under the hero CTAs instead of below explanatory blocks
+  - the first visible promise is now board-first, not prose-first
+  - the right-side hero panel was compacted so the board owns more of the attention budget on desktop and mobile
+• reduced homepage visual noise without changing the design identity:
+  - workflow explanation is now behind a compact disclosure block instead of always expanded
+  - plan / backup-email / bot-flow support is now behind a separate compact drawer
+  - the visible hero copy now stays closer to:
+    - headline
+    - CTA
+    - live board
+• accelerated post-login watchlist reconciliation:
+  - added `/api/watchlist/sync`
+  - pending browser-local watchlist rows now sync in one request instead of one request per market after Telegram login
+  - this removes the most obvious N-request slowdown from the bridge loop
+• upgraded watchlist row charting:
+  - the old micro-sparklines were replaced with larger framed mini-charts
+  - desktop workspace rows now get substantially wider/higher chart real estate
+  - cards also inherit the larger chart treatment
+• hardened watchlist client delivery:
+  - the site now points the client loader at a fresh API-served asset path instead of relying only on the legacy shared path
+  - this is meant to reduce stale-client mismatches when HTML updates reach prod faster than JS caches do
+
+What did not change:
+
+• no bot delivery semantics changed
+• no payment migration happened yet
+• no Telegram Stars-only cutover happened in this pass
+• no ingest logic or live ranking logic changed
+• no RU homepage redesign was introduced; only the shared watchlist client include path was updated
+
+Checks run:
+
+• `python3 -m py_compile api/main.py`
+• `node --check api/web/watchlist-client.js`
+• `git diff --check`
+
+Deployment / verification notes:
+
+• site was redeployed through Railway multiple times during this pass
+• prod HTML confirms the homepage hierarchy changes (`Live board first`, compact drawers, `homepage-live-board`)
+• anonymous `POST /api/watchlist/sync` on prod correctly returns `telegram_login_required`
+• there is still edge-cache inconsistency around the watchlist client asset path on prod:
+  - homepage HTML and API runtime are not always surfacing the same newest script reference immediately
+  - this likely needs one clean CDN cache purge or a calmer propagation window before final prod verification of the faster sync loop
+
+Risks / follow-up:
+
+• once the fresh watchlist client path is visibly live on prod, we should run one real end-to-end login test:
+  - add pending market
+  - Telegram login
+  - return to site
+  - confirm batch sync feels materially faster
+• after that, the next product task remains the billing simplification:
+  - Telegram Stars as the primary paid path inside the bot
+
 # Watchlist Truthfulness + Post-Login Sync Fix (2026-04-28)
 
 Closed the first real watchlist UX bug loop after live user feedback.
