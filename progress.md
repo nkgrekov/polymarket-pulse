@@ -1,3 +1,26 @@
+# Public Stripe Surface Retirement Pass (2026-04-29)
+
+Removed the remaining public Stripe payment surface so the product no longer tells two different billing stories at once.
+
+Files updated:
+
+• `api/web/index.ru.html`
+• `api/web/how-it-works.en.html`
+• `api/web/how-it-works.ru.html`
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• RU homepage pricing now matches the Stars-only doctrine already shown on the EN homepage
+• removed user-facing Stripe checkout controls from the RU landing page
+• updated both `how-it-works` pages so PRO payment/activation is described as a Telegram-native Stars flow
+• retired public website Stripe checkout entrypoints:
+  - `POST /api/stripe/checkout-session` now returns `410`
+  - `GET /stripe/success` now returns a retired-page message that sends the user back to the Telegram bot
+• deliberately left webhook-side Stripe plumbing untouched in this pass to avoid unnecessary operational risk while public monetization moves fully into Telegram
+
 # Telegram Stars-Only Bot Upgrade Pass (2026-04-29)
 
 Moved the user-facing PRO upgrade loop in the main Pulse bot to a cleaner Telegram-native Stars path.

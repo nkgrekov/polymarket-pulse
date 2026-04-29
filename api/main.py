@@ -4949,102 +4949,25 @@ def watchlist_client_script_api() -> Response:
 
 @app.post("/api/stripe/checkout-session")
 def stripe_checkout_session(data: StripeCheckoutRequest, request: Request) -> JSONResponse:
-    if not stripe_enabled():
-        raise HTTPException(status_code=503, detail="Stripe checkout is not configured")
-
-    req_lang = detect_lang(request, explicit=data.lang)
-    details = enrich_details(request, fallback_lang=req_lang, fallback_placement="stripe_checkout")
-    email = data.email.strip().lower()
-    source = (data.source or "site").strip()[:64] or "site"
-    success_url = STRIPE_SUCCESS_URL or f"{base_url()}/stripe/success?session_id={{CHECKOUT_SESSION_ID}}&lang={req_lang}"
-    cancel_url = STRIPE_CANCEL_URL or f"{base_url()}/?lang={req_lang}&checkout=cancel"
-
-    session = stripe_api_call(
-        "/v1/checkout/sessions",
-        {
-            "mode": "subscription",
-            "success_url": success_url,
-            "cancel_url": cancel_url,
-            "customer_email": email,
-            "line_items[0][price]": STRIPE_PRICE_ID_MONTHLY,
-            "line_items[0][quantity]": "1",
-            "allow_promotion_codes": "true",
-            "metadata[email]": email,
-            "metadata[user_id]": data.user_id or "",
-            "metadata[source]": source,
-            "metadata[lang]": req_lang,
-            "metadata[plan]": "pro_monthly",
-        },
-    )
-
-    log_site_event(
-        event_type="checkout_intent",
-        request=request,
-        lang=req_lang,
-        email=email,
-        source=source,
-        details={**details, "provider": "stripe", "session_id": session.get("id")},
-    )
-    return JSONResponse(
-        {
-            "ok": True,
-            "provider": "stripe",
-            "session_id": session.get("id"),
-            "url": session.get("url"),
-            "publishable_key": STRIPE_PUBLISHABLE_KEY,
-        }
-    )
+    raise HTTPException(status_code=410, detail="Stripe checkout retired. Use Telegram Stars in the bot.")
 
 
 @app.get("/stripe/success", response_class=HTMLResponse)
 def stripe_success(session_id: str, request: Request) -> HTMLResponse:
     req_lang = detect_lang(request)
-    if not stripe_enabled():
-        if req_lang == "ru":
-            return HTMLResponse("<h3>Stripe пока не настроен.</h3>", status_code=503)
-        return HTMLResponse("<h3>Stripe is not configured yet.</h3>", status_code=503)
-
-    session = stripe_get(
-        f"/v1/checkout/sessions/{session_id}",
-        params={"expand[]": "subscription"},
-    )
-    status = (session.get("status") or "").lower()
-    payment_status = (session.get("payment_status") or "").lower()
-    metadata = session.get("metadata") or {}
-    email = (
-        metadata.get("email")
-        or session.get("customer_email")
-        or ((session.get("customer_details") or {}).get("email"))
-        or ""
-    ).strip().lower()
-    preferred_user_id = (metadata.get("user_id") or "").strip() or None
-    currency = (session.get("currency") or "").upper() or None
-    amount_total = session.get("amount_total")
-
-    if not email or status != "complete" or payment_status not in {"paid", "no_payment_required"}:
-        if req_lang == "ru":
-            return HTMLResponse("<h3>Платеж не подтвержден. Если списание было, напишите в поддержку.</h3>", status_code=400)
-        return HTMLResponse("<h3>Payment is not confirmed yet. If charged, contact support.</h3>", status_code=400)
-
-    applied, _user_id = activate_pro_from_payment(
-        provider="stripe_checkout",
-        external_id=str(session.get("id") or session_id),
-        event_type="checkout.session.completed",
-        email=email,
-        preferred_user_id=preferred_user_id,
-        amount_cents=int(amount_total) if amount_total is not None else None,
-        currency=currency,
-        source="stripe_checkout",
-        payload=session,
-    )
-
     if req_lang == "ru":
-        if applied:
-            return HTMLResponse("<h3>Оплата подтверждена. PRO активирован.</h3>")
-        return HTMLResponse("<h3>Оплата уже обработана ранее. PRO активен.</h3>")
-    if applied:
-        return HTMLResponse("<h3>Payment confirmed. PRO is active.</h3>")
-    return HTMLResponse("<h3>Payment was already processed. PRO is active.</h3>")
+        return HTMLResponse(
+            """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Website checkout retired</title><style>body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#08110d;color:#e8f4ee;display:grid;place-items:center;min-height:100vh;padding:24px}main{max-width:560px;border:1px solid rgba(0,255,163,.18);border-radius:24px;padding:28px;background:rgba(10,18,14,.92)}a{color:#00ffa3}</style></head>
+            <body><main><h2>Оплата на сайте отключена</h2><p>Теперь активация PRO происходит только внутри Telegram через Stars.</p><p><a href="https://t.me/polymarket_pulse_bot?start=upgrade">Открыть Telegram-бота</a></p></main></body></html>""",
+            status_code=410,
+        )
+    return HTMLResponse(
+        """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Website checkout retired</title><style>body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#08110d;color:#e8f4ee;display:grid;place-items:center;min-height:100vh;padding:24px}main{max-width:560px;border:1px solid rgba(0,255,163,.18);border-radius:24px;padding:28px;background:rgba(10,18,14,.92)}a{color:#00ffa3}</style></head>
+        <body><main><h2>Website checkout is retired</h2><p>PRO upgrade now happens only inside Telegram via Stars.</p><p><a href="https://t.me/polymarket_pulse_bot?start=upgrade">Open Telegram bot</a></p></main></body></html>""",
+        status_code=410,
+    )
 
 
 @app.post("/api/stripe/webhook")

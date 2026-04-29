@@ -1,3 +1,23 @@
+# Public Billing Surface Simplification (2026-04-29)
+
+The public product surface now presents a single billing path: Telegram Stars inside the bot.
+
+Updated artifacts:
+
+• `api/web/index.ru.html`
+• `api/web/how-it-works.en.html`
+• `api/web/how-it-works.ru.html`
+• `api/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• landing-page pricing no longer exposes a mixed Stars-plus-Stripe decision surface on RU pages
+• `how-it-works` copy now matches the real monetization model: payment and activation stay inside Telegram
+• public Stripe checkout entrypoints in `api/main.py` are now treated as retired (`410 Gone`)
+• webhook-era Stripe plumbing remains in place as dormant legacy infrastructure for now, which keeps this cleanup isolated from unrelated payment event risk
+
 # Telegram Stars-Only Bot Upgrade Pass (2026-04-29)
 
 The main Pulse bot now presents PRO as a Telegram-native Stars purchase path instead of a mixed Stars-plus-Stripe decision surface.

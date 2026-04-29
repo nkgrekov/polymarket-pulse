@@ -1630,8 +1630,8 @@
   </div>
   <section id="pricing" class="pro-section reveal delay-8" aria-label="Pro plan">
     <div class="pro-inner">
-      <p class="pro-kicker">PRO PLAN · $10/MONTH</p>
-      <h3 class="pro-headline">20 markets. No cap. Email digest included.</h3>
+      <p class="pro-kicker">PLANS · TELEGRAM STARS ONLY</p>
+      <h3 class="pro-headline">20 рынков. Безлимит алертов. Активация прямо в боте.</h3>
       <div class="pro-layout">
         <div class="pro-rows">
           <div class="pro-row">
@@ -1650,12 +1650,7 @@
             target="_blank"
             rel="noopener noreferrer"
           >Upgrade in Telegram → ⭐ 454 Stars</a>
-          <div class="pro-stripe-wrap">
-            <input id="pro-email" type="email" autocomplete="email" placeholder="email for Stripe checkout" />
-            <button id="checkout-btn" class="pro-stripe-btn" type="button">Pay with card (Stripe)</button>
-            <div id="pro-msg" class="pro-msg" role="status" aria-live="polite"></div>
-          </div>
-          <div class="pro-note">// Stars upgrade is instant. Stripe sends confirmation to your email.</div>
+          <div class="pro-note">// Оплата и активация PRO теперь живут только внутри Telegram через Stars.</div>
         </div>
       </div>
     </div>
@@ -1671,9 +1666,6 @@
     const tgLink = document.getElementById('tg-link');
     const tgLinkSticky = document.getElementById('tg-link-sticky');
     const guideLink = document.querySelector('.guide-link');
-    const checkoutBtn = document.getElementById('checkout-btn');
-    const proEmail = document.getElementById('pro-email');
-    const proMsg = document.getElementById('pro-msg');
     const proStarsBtn = document.querySelector('.pro-stars');
     const tradeStripLink = document.getElementById('trade-strip-link');
     const liveRows = document.getElementById('live-movers-rows');
@@ -1934,32 +1926,6 @@
     });
     tradeStripLink?.addEventListener('click', () => {
       trackEvent('waitlist_intent', { ...getAttribution(), placement: 'landing_trade_strip', product: 'trader_alpha' });
-    });
-
-    checkoutBtn?.addEventListener('click', async () => {
-      const email = (proEmail?.value || emailInput.value || '').trim();
-      if (!email) {
-        proMsg.textContent = 'Сначала введите email, затем продолжайте оплату.';
-        return;
-      }
-      proMsg.textContent = 'Переходим в Stripe checkout...';
-      trackEvent('checkout_intent', { ...getAttribution(), placement: 'pro_offer' });
-      try {
-        const res = await fetch('/api/stripe/checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            source: 'site',
-            lang: 'ru'
-          })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.url) throw new Error(data.detail || 'Checkout недоступен');
-        window.location.href = data.url;
-      } catch (err) {
-        proMsg.textContent = 'Ошибка checkout: ' + err.message;
-      }
     });
 
     form.addEventListener('submit', async (e) => {
