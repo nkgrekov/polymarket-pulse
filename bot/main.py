@@ -705,7 +705,39 @@ select
     from wl
     join live_last ll on ll.market_id = wl.market_id
     join live_prev lp on lp.market_id = wl.market_id
-  ) as wl_with_quotes_both;
+  ) as wl_with_quotes_both,
+  (
+    select count(*)
+    from wl
+    join wl_status s on s.market_id = wl.market_id
+    left join live_last ll on ll.market_id = wl.market_id
+    left join live_prev lp on lp.market_id = wl.market_id
+    where s.status = 'active'
+      and ll.market_id is not null
+      and lp.market_id is not null
+  ) as wl_ready_both,
+  (
+    select count(*)
+    from wl
+    join wl_status s on s.market_id = wl.market_id
+    left join live_last ll on ll.market_id = wl.market_id
+    left join live_prev lp on lp.market_id = wl.market_id
+    where s.status = 'active'
+      and (
+        (ll.market_id is not null and lp.market_id is null)
+        or (ll.market_id is null and lp.market_id is not null)
+      )
+  ) as wl_partial_quotes,
+  (
+    select count(*)
+    from wl
+    join wl_status s on s.market_id = wl.market_id
+    left join live_last ll on ll.market_id = wl.market_id
+    left join live_prev lp on lp.market_id = wl.market_id
+    where s.status = 'active'
+      and ll.market_id is null
+      and lp.market_id is null
+  ) as wl_no_quotes;
 """
 
 SQL_INBOX_DIAGNOSTICS = """
@@ -744,7 +776,15 @@ with hot_watchlist as (
 )
 select
   count(*) filter (where candidate_state in ('ready', 'below_threshold')) as candidates_total,
-  count(*) filter (where candidate_state = 'ready') as over_threshold
+  count(*) filter (where candidate_state = 'ready') as over_threshold,
+  count(*) filter (where candidate_state = 'ready') as ready_count,
+  count(*) filter (where candidate_state = 'below_threshold') as below_threshold_count,
+  count(*) filter (where candidate_state = 'no_quotes') as no_quotes_count,
+  count(*) filter (where candidate_state = 'stale_quotes') as stale_quotes_count,
+  count(*) filter (where candidate_state = 'filtered_liquidity') as filtered_liquidity_count,
+  count(*) filter (where candidate_state = 'filtered_spread') as filtered_spread_count,
+  count(*) filter (where candidate_state = 'closed') as closed_count,
+  count(*) filter (where candidate_state = 'date_passed_active') as date_passed_active_count
 from d;
 """
 
@@ -2454,25 +2494,84 @@ def inbox_live_inline(locale: str, *, has_closed: bool = False) -> InlineKeyboar
     return InlineKeyboardMarkup(rows)
 
 
+def _quiet_reason_bits(locale: str, pairs: list[tuple[int, str, str]]) -> str:
+    bits: list[str] = []
+    for count, en_label, ru_label in pairs:
+        if count <= 0:
+            continue
+        bits.append(f"{count} {en_label}" if locale == "en" else f"{count} {ru_label}")
+    return " · ".join(bits)
+
+
+def _watchlist_coverage_line(locale: str, *, ready_count: int, partial_count: int, no_quotes_count: int, closed_count: int) -> str:
+    if locale == "en":
+        return f"Coverage now: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}"
+    return f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}"
+
+
 def quiet_followup_text(
     locale: str,
     *,
     user_ctx: dict,
     diag: dict[str, Any] | None = None,
+    alert_overview: dict[str, Any] | None = None,
     view: str = "watchlist",
 ) -> str:
     diag = diag or {}
+    alert_overview = alert_overview or {}
     watchlist_count = int(user_ctx.get("watchlist_count") or 0)
     closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    alert_on_total = int(alert_overview.get("alert_on_total") or 0)
+    alert_paused_total = int(alert_overview.get("alert_paused_total") or 0)
     if view == "inbox":
         total = int(diag.get("candidates_total") or 0)
         over = int(diag.get("over_threshold") or 0)
-        if total > 0 and over == 0:
+        below_threshold = int(diag.get("below_threshold_count") or 0)
+        no_quotes_count = int(diag.get("no_quotes_count") or 0)
+        stale_quotes_count = int(diag.get("stale_quotes_count") or 0)
+        filtered_liquidity_count = int(diag.get("filtered_liquidity_count") or 0)
+        filtered_spread_count = int(diag.get("filtered_spread_count") or 0)
+        hot_closed_count = int(diag.get("closed_count") or 0) + int(diag.get("date_passed_active_count") or 0)
+        quiet_bits = _quiet_reason_bits(
+            locale,
+            [
+                (below_threshold, "below threshold", "ниже threshold"),
+                (stale_quotes_count, "stale quotes", "stale quotes"),
+                (filtered_spread_count, "wide spread", "широкий spread"),
+                (filtered_liquidity_count, "thin liquidity", "тонкая liquidity"),
+                (no_quotes_count, "no quotes yet", "ещё без котировок"),
+                (hot_closed_count, "closed", "closed"),
+            ],
+        )
+        if alert_on_total == 0 and alert_paused_total > 0:
             return (
-                f"Best next step: lower threshold below {threshold} if you want more sensitivity, or wait for the next live window."
+                "Quiet now: all bell-enabled rows are paused.\nBest next step: resume one bell or turn another one on in Telegram."
                 if locale == "en"
-                else f"Лучший следующий шаг: опустите threshold ниже {threshold}, если хотите больше чувствительности, или дождитесь следующего live-окна."
+                else "Сейчас тихо: все bell-enabled строки стоят на паузе.\nЛучший следующий шаг: возобновите один bell или включите другой в Telegram."
+            )
+        if alert_on_total == 0 and watchlist_count > 0:
+            return (
+                "Quiet now: no bell-enabled rows can wake Telegram yet.\nBest next step: turn one bell on first, then come back to Inbox."
+                if locale == "en"
+                else "Сейчас тихо: ни одна bell-enabled строка пока не может разбудить Telegram.\nЛучший следующий шаг: сначала включите один bell, а потом возвращайтесь в Inbox."
+            )
+        if total > 0 and over == 0:
+            prefix = (
+                f"Quiet now: {quiet_bits}.\n" if quiet_bits else ""
+            ) if locale == "en" else (
+                f"Сейчас тихо: {quiet_bits}.\n" if quiet_bits else ""
+            )
+            return (
+                f"{prefix}Best next step: lower threshold below {threshold} if you want more sensitivity, or wait for the next live window."
+                if locale == "en"
+                else f"{prefix}Лучший следующий шаг: опустите threshold ниже {threshold}, если хотите больше чувствительности, или дождитесь следующего live-окна."
+            )
+        if quiet_bits:
+            return (
+                f"Quiet now: {quiet_bits}.\nBest next step: review the list first, then replace one quiet market if needed."
+                if locale == "en"
+                else f"Сейчас тихо: {quiet_bits}.\nЛучший следующий шаг: сначала проверьте список, а потом при необходимости замените один тихий рынок."
             )
         if closed_count > 0:
             return (
@@ -2494,28 +2593,38 @@ def quiet_followup_text(
 
     wl_active = int(diag.get("wl_active") or 0)
     wl_with_quotes_both = int(diag.get("wl_with_quotes_both") or 0)
+    ready_count = int(diag.get("wl_ready_both") or wl_with_quotes_both)
+    partial_count = int(diag.get("wl_partial_quotes") or 0)
+    no_quotes_count = int(diag.get("wl_no_quotes") or 0)
+    coverage_line = _watchlist_coverage_line(
+        locale,
+        ready_count=ready_count,
+        partial_count=partial_count,
+        no_quotes_count=no_quotes_count,
+        closed_count=closed_count,
+    )
     if closed_count > 0:
         return (
-            "Best next step: remove closed markets or replace one quiet market below."
+            f"{coverage_line}\nBest next step: remove closed markets or replace one quiet market below."
             if locale == "en"
-            else "Лучший следующий шаг: очистите закрытые рынки или замените один тихий рынок ниже."
+            else f"{coverage_line}\nЛучший следующий шаг: очистите закрытые рынки или замените один тихий рынок ниже."
         )
     if wl_active > 0 and wl_with_quotes_both == 0:
         return (
-            "Best next step: your markets are tracked, but not quoting in both windows yet. Replace one with a more active market or wait for the next live window."
+            f"{coverage_line}\nBest next step: your markets are tracked, but not quoting in both windows yet. Replace one with a more active market or wait for the next live window."
             if locale == "en"
-            else "Лучший следующий шаг: рынки уже отслеживаются, но ещё не котируются в обоих окнах. Замените один на более активный или дождитесь следующего live-окна."
+            else f"{coverage_line}\nЛучший следующий шаг: рынки уже отслеживаются, но ещё не котируются в обоих окнах. Замените один на более активный или дождитесь следующего live-окна."
         )
     if watchlist_count > 0:
         return (
-            "Best next step: keep this list tight. One active market is better than three quiet ones."
+            f"{coverage_line}\nBest next step: keep this list tight. One active market is better than three quiet ones."
             if locale == "en"
-            else "Лучший следующий шаг: держите список компактным. Один активный рынок лучше трёх тихих."
+            else f"{coverage_line}\nЛучший следующий шаг: держите список компактным. Один активный рынок лучше трёх тихих."
         )
     return (
-        "Best next step: add one live market and come back after the next bucket."
+        f"{coverage_line}\nBest next step: add one live market and come back after the next bucket."
         if locale == "en"
-        else "Лучший следующий шаг: добавьте один live-рынок и возвращайтесь после следующего бакета."
+        else f"{coverage_line}\nЛучший следующий шаг: добавьте один live-рынок и возвращайтесь после следующего бакета."
     )
 
 
@@ -3085,6 +3194,11 @@ async def send_inbox_view(
             log.exception("inbox diagnostics failed")
             diag = {}
         try:
+            alert_overview = await asyncio.to_thread(fetch_watchlist_alert_overview_sync, str(user_ctx["user_id"]))
+        except Exception:
+            log.exception("inbox alert overview failed")
+            alert_overview = {}
+        try:
             near_miss = await fetch_inbox_near_miss_async(user_ctx["user_id"], timeout_sec=10.0)
         except Exception:
             log.exception("inbox near-miss failed")
@@ -3136,7 +3250,7 @@ async def send_inbox_view(
             reason
             + (f"\nCurrent threshold: {threshold}" if locale == "en" else f"\nТекущий threshold: {threshold}")
             + "\n"
-            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, view="inbox"),
+            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, alert_overview=alert_overview, view="inbox"),
             reply_markup=reply_markup,
         )
         return
@@ -3293,7 +3407,7 @@ async def send_watchlist_view(
                 if locale == "en"
                 else "Сохранённые рынки остаются здесь, даже если разбудить Telegram могут только bell-enabled строки.\n"
             )
-            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, view="watchlist"),
+            + quiet_followup_text(locale, user_ctx=user_ctx, diag=diag, alert_overview=alert_overview, view="watchlist"),
             reply_markup=reply_markup,
         )
         return

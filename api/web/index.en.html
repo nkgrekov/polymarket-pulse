@@ -734,6 +734,7 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.55;
+      max-width: 34ch;
     }
 
     .cta-rules {
@@ -1499,6 +1500,7 @@
       .scarcity { display: none; }
       .trust-rail { margin-top: 10px; }
       .trust-pill:nth-child(n+3) { display: none; }
+      .trust-note { display: none; }
       .spark,
       .spark svg { height: 84px; }
       .market { max-width: 100%; white-space: normal; }
@@ -1507,6 +1509,8 @@
       .row-link { flex: 1 1 calc(50% - 8px); justify-content: center; }
       .cta-panel { gap: 10px; }
       .cta-title { font-size: 22px; }
+      .cta-copy { max-width: none; font-size: 12px; }
+      .cta-rules { gap: 6px; }
       .cta-rule { padding: 9px 10px; font-size: 11px; }
       .hero-drawer summary { padding: 11px 12px; font-size: 11px; }
       .hero-drawer-body { padding: 0 12px 12px; }
@@ -1721,12 +1725,12 @@
         </article>
 
         <aside id="hero-panel" class="card cta-panel reveal delay-3">
-          <h2 class="cta-title">Signal trust</h2>
-          <p class="cta-copy">Pulse does not treat every twitch as signal. It shows live rows only when the surface looks clean enough, and it stays quiet when the alert should not fire.</p>
+          <h2 class="cta-title">How quiet works</h2>
+          <p class="cta-copy">The site shows live context first. Telegram only wakes up after a saved market has the bell on and clears your threshold.</p>
           <div class="cta-rules" aria-label="Signal trust rules">
-            <div class="cta-rule"><strong>Live row:</strong> fresh quote, sane spread, and enough liquidity.</div>
-            <div class="cta-rule"><strong>Telegram push:</strong> bell on, not paused, and move above threshold.</div>
-            <div class="cta-rule"><strong>Quiet state:</strong> below threshold, stale quotes, paused bell, or closed market.</div>
+            <div class="cta-rule">Live row = fresh quote + sane spread + enough liquidity.</div>
+            <div class="cta-rule">Telegram push = bell on + not paused + move above threshold.</div>
+            <div class="cta-rule">Quiet = below threshold, stale quote, paused bell, or closed market.</div>
           </div>
         </aside>
       </div>

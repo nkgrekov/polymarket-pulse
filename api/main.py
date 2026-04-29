@@ -2687,7 +2687,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .live-signal-actions {{ justify-content: flex-start; }}
       .watchlist-workspace {{ padding: 12px; }}
       .watchlist-workspace-copy,
-      .watchlist-login-copy {{ font-size: 11px; line-height: 1.45; }}
+      .watchlist-login-copy {{ display: none; }}
       .watchlist-summary {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
       .watchlist-summary-card {{ padding: 12px 10px; gap: 4px; }}
       .watchlist-summary-card strong {{ font-size: 22px; }}
@@ -2700,7 +2700,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .watchlist-card {{ padding: 12px; gap: 12px; }}
       .watchlist-card-top {{ display: grid; gap: 8px; }}
       .watchlist-card-top .watchlist-chip {{ justify-self: start; }}
-      .watchlist-card .watchlist-spark {{ height: 92px; }}
+      .watchlist-card .watchlist-spark {{ height: 104px; }}
       .watchlist-card-statband {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
       .watchlist-card-stat {{ padding: 9px; }}
       .watchlist-card-stat strong {{ font-size: 15px; }}

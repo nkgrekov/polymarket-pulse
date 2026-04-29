@@ -1,3 +1,36 @@
+# Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
+
+The product now explains quiet states with more operational honesty in the bot, while the website spends less mobile viewport on repeated explanation.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `api/main.py`
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• bot inbox diagnostics are no longer binary-only (`has alerts` vs `no alerts`)
+• hot inbox diagnostics now carry state-specific counts for:
+  - below-threshold candidates
+  - stale quotes
+  - wide-spread filters
+  - thin-liquidity filters
+  - no-quote rows
+  - closed/date-passed rows
+• quiet follow-up copy now also accounts for bell-state reality:
+  - no bell-enabled rows on
+  - all bell-enabled rows paused
+• watchlist quiet states now expose lightweight coverage structure directly in the main view:
+  - ready
+  - partial
+  - no_quotes
+  - closed
+• homepage mobile hierarchy now suppresses secondary trust copy before it competes with the live board
+• mobile watchlist review now hides repeated explanatory copy and gives more vertical weight to the actual sparkline surface
+
 # Homepage Hierarchy + Trust Pass (2026-04-29)
 
 The homepage first screen now explains both value and trust with less verbal overhead.

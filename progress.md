@@ -1,3 +1,41 @@
+# Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
+
+Applied one joint pass across the bot and the site to make quiet states more trustworthy and mobile workspaces easier to scan.
+
+Files updated:
+
+• `bot/main.py`
+• `api/main.py`
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• inbox quiet states in the bot now explain *why* nothing fired instead of only saying that the window is empty
+• inbox diagnostics now distinguish:
+  - below threshold
+  - stale quotes
+  - wide spread
+  - thin liquidity
+  - no quotes yet
+  - closed/date-passed rows
+• inbox copy now also detects the operational case where:
+  - all bell-enabled rows are paused
+  - no bell-enabled rows are on yet
+• watchlist quiet states now include a compact coverage line:
+  - ready
+  - partial
+  - no_quotes
+  - closed
+• homepage mobile hierarchy was trimmed again:
+  - the right explainer is now simpler textually
+  - the live-board trust note is hidden on small screens
+  - the right card copy/rule spacing is tighter on mobile
+• mobile `/watchlist` now gets to the actual list faster:
+  - top explainer copy is hidden on smaller screens
+  - mobile watchlist charts are taller
+
 # Homepage Hierarchy + Trust Pass (2026-04-29)
 
 Applied a compact homepage pass to improve first-screen hierarchy and explain alert trust more clearly without reopening a full redesign.
