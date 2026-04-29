@@ -1,3 +1,36 @@
+# Homepage Width + Hero Discipline Pass (2026-04-29)
+
+Applied a second homepage refinement pass after live visual feedback.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• expanded the desktop shell width substantially to reduce black side gutters on wide screens
+• fixed the hero-top alignment bug that created dead air above the left copy
+• made the homepage H1 desktop-first and one-line:
+  - `Track Live Movers`
+  - now uses the available horizontal space instead of stacking into an awkward two-line block on wide screens
+• replaced the long hero footer sentence with compact chips so the product split reads faster
+• simplified the right-side hero card again:
+  - one kicker
+  - one heading
+  - one explanatory paragraph
+  - one three-item list
+  - one plain footnote
+• removed the extra visual styles from the old right-card trust-pill treatment
+• increased homepage spark height again so the board reads more like a real monitoring surface on desktop
+
+What did not change:
+
+• no backend logic changed
+• no watchlist/auth flow changed
+• no pricing semantics changed beyond presentation
+
 # Homepage De-Noise + Stars-Only Pricing Pass (2026-04-29)
 
 Addressed the latest homepage UX review in one focused cleanup pass.

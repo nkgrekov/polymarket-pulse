@@ -83,6 +83,7 @@
       --accent: #00ff88;
       --negative: #ff4444;
       --positive: #00ff88;
+      --shell: min(1840px, calc(100% - 24px));
     }
 
     * { box-sizing: border-box; }
@@ -135,7 +136,7 @@
     }
 
     .wrap {
-      width: min(1120px, calc(100% - 32px));
+      width: var(--shell);
       margin: 0 auto;
       padding: 20px 0 40px;
       position: relative;
@@ -363,19 +364,20 @@
 
     h1 {
       margin: 0;
-      max-width: 620px;
+      max-width: none;
       line-height: 0.9;
       letter-spacing: -0.035em;
-      font-size: clamp(40px, 7vw, 74px);
+      font-size: clamp(38px, 4.9vw, 78px);
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .sub {
       margin: 14px 0 0;
-      max-width: 620px;
+      max-width: 760px;
       color: var(--muted);
-      font-size: clamp(15px, 1.7vw, 19px);
-      line-height: 1.5;
+      font-size: clamp(15px, 1.45vw, 18px);
+      line-height: 1.55;
       font-family: "JetBrains Mono", monospace;
     }
 
@@ -384,7 +386,7 @@
       display: grid;
       grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
       gap: 10px;
-      max-width: 560px;
+      max-width: 640px;
     }
 
     .hero-actions .tg-btn,
@@ -396,9 +398,9 @@
 
     .hero-top {
       display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
-      gap: 18px;
-      align-items: end;
+      grid-template-columns: minmax(0, 1.85fr) minmax(320px, 0.95fr);
+      gap: 24px;
+      align-items: start;
     }
 
     .hero-copy {
@@ -416,9 +418,22 @@
 
     .scarcity {
       margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
       font-family: "JetBrains Mono", monospace;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
+    }
+
+    .scarcity-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 0 10px;
+      background: rgba(19, 23, 20, 0.72);
     }
 
     .signal-badges {
@@ -659,13 +674,13 @@
     .spark {
       margin-top: 12px;
       width: 100%;
-      height: 42px;
+      height: 58px;
     }
 
     .spark svg {
       display: block;
       width: 100%;
-      height: 42px;
+      height: 58px;
     }
 
     .spark path {
@@ -690,7 +705,7 @@
       background: linear-gradient(175deg, #161b17 0%, #111612 100%);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 14px;
       min-height: 100%;
     }
 
@@ -701,7 +716,7 @@
     }
 
     .cta-label {
-      font-size: 12px;
+      font-size: 11px;
       font-family: "JetBrains Mono", monospace;
       color: var(--muted-soft);
       text-transform: uppercase;
@@ -711,8 +726,8 @@
 
     .cta-title {
       margin: 0;
-      font-size: clamp(18px, 2.5vw, 28px);
-      line-height: 1.08;
+      font-size: clamp(22px, 2.2vw, 34px);
+      line-height: 1.02;
       text-transform: uppercase;
     }
 
@@ -720,35 +735,34 @@
       margin: 0;
       font-family: "JetBrains Mono", monospace;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
+      font-size: 14px;
+      line-height: 1.55;
     }
 
-    .cta-proof {
+    .cta-footnote {
       margin: 0;
-      border: 1px solid rgba(0, 255, 136, 0.18);
-      border-radius: 10px;
-      padding: 9px 10px;
-      background: rgba(0, 255, 136, 0.04);
-      color: var(--text);
+      padding-top: 2px;
+      color: var(--muted-soft);
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       line-height: 1.45;
     }
 
-    .speedrows {
+    .cta-list {
       margin: 0;
       display: grid;
-      gap: 8px;
+      gap: 10px;
+      padding: 0;
+      list-style: none;
       font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
-      color: var(--muted);
+      font-size: 13px;
+      color: var(--text);
     }
 
-    .speedrow {
+    .cta-list li {
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px 12px;
+      border-radius: 10px;
+      padding: 12px 14px;
       background: #131714;
     }
 
@@ -821,24 +835,6 @@
       font-weight: 700;
       text-decoration: none;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .cta-trust {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .trust-pill {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 6px 10px;
-      background: #131714;
-      color: var(--muted);
-      font-family: "JetBrains Mono", monospace;
-      font-size: 11px;
-      line-height: 1;
     }
 
     .tg-btn:hover,
@@ -959,7 +955,7 @@
     }
 
     .pro-inner {
-      width: min(1120px, calc(100% - 32px));
+      width: var(--shell);
       margin: 0 auto;
       background: #0f1410;
       border: 1px solid #1e2520;
@@ -1451,7 +1447,7 @@
         display: block;
       }
       .hero { padding: 20px; }
-      .hero-top { grid-template-columns: 1fr; }
+      .hero-top { grid-template-columns: 1fr; gap: 16px; }
       .grid { grid-template-columns: 1fr; }
       .screens-grid { grid-template-columns: 1fr 1fr; }
       .proof-grid { grid-template-columns: 1fr 1fr; }
@@ -1463,7 +1459,7 @@
       .topbar { font-size: 12px; }
       .hero { padding: 15px; border-radius: 16px; }
       .card { padding: 14px; }
-      h1 { font-size: clamp(32px, 14vw, 50px); }
+      h1 { font-size: clamp(32px, 14vw, 50px); white-space: normal; }
       .sub { font-size: 14px; }
       .hero-actions { grid-template-columns: 1fr; }
       .market { max-width: 100%; white-space: normal; }
@@ -1537,24 +1533,23 @@
             <a id="tg-link-top" class="tg-btn" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_hero">Open Telegram Bot →</a>
             <a id="view-movers-link" class="guide-link" href="/top-movers?placement=home_hero">View live movers</a>
           </div>
-          <p class="scarcity"><span class="accent">Live board first.</span> Website = research + watchlist · Telegram = login, bell setup, alerts, and Stars billing</p>
+          <div class="scarcity" aria-label="Product split summary">
+            <span class="scarcity-chip"><span class="accent">Live board first</span></span>
+            <span class="scarcity-chip">Site = research + watchlist</span>
+            <span class="scarcity-chip">Telegram = login + alerts + Stars</span>
+          </div>
         </div>
 
         <aside id="hero-panel" class="card cta-panel reveal delay-3">
           <p class="cta-label">Site first</p>
           <h2 class="cta-title">See then decide</h2>
           <p class="cta-copy">Use the site to compare quality, freshness, and spread. Use Telegram only when you want identity, billing, and real alert delivery.</p>
-          <div class="speedrows" aria-label="Fastest way to get value">
-            <div class="speedrow">Live movers, quality chips, and row actions in one surface.</div>
-            <div class="speedrow">Save a market on the site before you decide it deserves a bell.</div>
-            <div class="speedrow">Alerts fire only when abs(delta) clears your threshold.</div>
-          </div>
-          <div class="cta-proof">The alert layer already lives in Telegram, so payment should live there too.</div>
-          <div class="cta-trust">
-            <span class="trust-pill">3 saved markets on free</span>
-            <span class="trust-pill">20 Telegram alerts/day</span>
-            <span class="trust-pill">Website research stays free</span>
-          </div>
+          <ul class="cta-list" aria-label="Fastest way to get value">
+            <li>See live movers, chips, and chart context in one place.</li>
+            <li>Save on the site before you decide a market deserves a bell.</li>
+            <li>Get Telegram alerts only after the move clears your threshold.</li>
+          </ul>
+          <p class="cta-footnote">Billing belongs in Telegram too, because that is where the alert product already lives.</p>
         </aside>
       </div>
 

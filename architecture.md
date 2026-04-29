@@ -1,3 +1,35 @@
+# Homepage Width + Hero Discipline Pass (2026-04-29)
+
+The homepage shell and hero geometry were refined again after a stricter visual review.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the desktop shell width now behaves more like a real application surface than a narrow centered marketing card
+• the hero-top grid no longer bottom-aligns the left and right columns:
+  - this removes the large dead zone that appeared above the left hero copy
+  - the first screen now spends more of its height on actual product signal
+• the homepage H1 now assumes wide-screen desktop space correctly:
+  - one-line desktop title
+  - multi-line fallback only on smaller breakpoints
+• the product-split explainer beneath the CTA cluster is now chip-based instead of sentence-based
+• the right-side hero support card is now reduced to a simpler visual grammar:
+  - kicker
+  - heading
+  - paragraph
+  - uniform list items
+  - plain footnote
+• homepage board sparklines were enlarged again so the board earns more of the visual weight of the first-screen promise
+
+Architectural consequence:
+
+• the homepage now reads less like “landing copy sitting beside a side card” and more like a wide operational entry surface with a supporting explanation block
+
 # Homepage De-Noise + Stars-Only Homepage Pricing (2026-04-29)
 
 The homepage now behaves more like a product surface and less like a mixed landing-page + FAQ + checkout collage.
