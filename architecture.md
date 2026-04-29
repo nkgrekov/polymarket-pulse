@@ -1,3 +1,35 @@
+# Homepage Full-Width Scene Pass (2026-04-29)
+
+The homepage first screen now behaves as a wide product scene instead of a narrow marketing block with a side explainer.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• the homepage shell now consumes almost the full desktop viewport width, leaving only a thin visual gutter
+• the hero composition is now explicitly staged:
+  - full-width promise and CTA first
+  - live board plus explainer second
+• the right-hand support card now uses one simple hierarchy only:
+  - title
+  - paragraph
+  - step list
+  - footnote
+• the hero product split is now encoded as chips rather than a single long sentence, which makes the doctrine easier to scan
+• enlarged board sparklines make the first visible monitoring surface feel closer to the live product model
+
+Architectural consequence:
+
+• a new visitor now sees a clearer sequence:
+  - understand the promise
+  - see the board
+  - understand the Telegram boundary
+• the homepage spends more horizontal real estate on live signal context and less on decorative dead space
+
 # Homepage Width + Hero Discipline Pass (2026-04-29)
 
 The homepage shell and hero geometry were refined again after a stricter visual review.

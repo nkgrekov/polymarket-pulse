@@ -1,3 +1,36 @@
+# Homepage Full-Width Scene Pass (2026-04-29)
+
+Applied a third homepage refinement pass to make the first screen behave like a real wide monitoring surface instead of a left-heavy landing block.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• widened the desktop shell again so the homepage spends more of the browser width on actual product surface instead of side gutters
+• removed the split-top hero composition:
+  - the copy now owns the full top width first
+  - the live board and explainer now sit together underneath as one operational scene
+• kept the homepage H1 short and desktop-first:
+  - `Track Live Movers`
+  - now uses the available horizontal space with one-line intent on wide screens
+• simplified the right-side explainer card down to one visual grammar:
+  - one title
+  - one paragraph
+  - one three-step list
+  - one footnote
+• replaced the long hero product-split sentence with three compact chips so the logic reads at a glance
+• increased live-board spark height again so the top board earns more visual weight
+
+What did not change:
+
+• no backend logic changed
+• no watchlist sync/auth logic changed
+• no pricing backend changed
+
 # Homepage Width + Hero Discipline Pass (2026-04-29)
 
 Applied a second homepage refinement pass after live visual feedback.
