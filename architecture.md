@@ -1,3 +1,22 @@
+# Watchlist Bell Control Pass (2026-04-29)
+
+The website watchlist now owns fast management of existing bell state, while Telegram remains the activation and threshold surface.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• introduced `POST /api/watchlist/alert-state` as a lightweight authenticated website control endpoint
+• state split is now clearer:
+  - website = save rows, inspect rows, pause/resume/off for existing bells
+  - Telegram = login, turn bell on, choose threshold, receive alerts
+• this reduces avoidable Telegram round-trips without collapsing the product back into a mixed-surface setup flow
+
 # Public Billing Surface Simplification (2026-04-29)
 
 The public product surface now presents a single billing path: Telegram Stars inside the bot.

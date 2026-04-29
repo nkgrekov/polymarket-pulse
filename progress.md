@@ -1,3 +1,24 @@
+# Watchlist Bell Control Pass (2026-04-29)
+
+Tightened the website watchlist control loop so logged-in users can manage existing bell state directly on the site instead of bouncing back to Telegram for every small change.
+
+Files updated:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• added `POST /api/watchlist/alert-state` for logged-in website users
+• website watchlist can now directly:
+  - pause an active bell
+  - resume a paused bell
+  - turn a paused bell fully off
+• kept Telegram as the place for bell activation and threshold choice, while the site now owns fast state management for existing saved rows
+• upgraded watchlist action rows from generic “configure in Telegram” behavior to state-aware controls
+
 # Public Stripe Surface Retirement Pass (2026-04-29)
 
 Removed the remaining public Stripe payment surface so the product no longer tells two different billing stories at once.

@@ -536,10 +536,16 @@ class WatchlistSyncRequest(BaseModel):
     items: list[WatchlistSaveRequest]
 
 
+class WatchlistAlertStateRequest(BaseModel):
+    market_id: str
+    desired_state: Literal["on", "off", "paused"]
+    source: str = "site"
+
+
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260429f"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260429g"
 WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
@@ -4051,6 +4057,44 @@ def remove_site_watchlist_market(*, user_id: str, market_id: str) -> int:
     return removed
 
 
+def update_site_watchlist_alert_state(
+    *,
+    user_id: str,
+    market_id: str,
+    desired_state: str,
+    source: str,
+) -> str:
+    safe_market_id = _safe_market_token(market_id, max_len=48)
+    desired = str(desired_state or "").strip().lower()
+    if not safe_market_id:
+        raise HTTPException(status_code=400, detail="invalid_market_id")
+    if desired not in {"on", "off", "paused"}:
+        raise HTTPException(status_code=400, detail="invalid_desired_state")
+    save_site_watchlist_market(
+        user_id=user_id,
+        market_id=safe_market_id,
+        source=source,
+        default_alert_enabled=False,
+    )
+    alert_enabled = desired == "on"
+    alert_paused = desired == "paused"
+    if desired == "off":
+        alert_enabled = False
+        alert_paused = False
+    execute_db_write(
+        SQL_SITE_ALERT_SETTINGS_UPSERT,
+        (
+            user_id,
+            safe_market_id,
+            alert_enabled,
+            alert_paused,
+            None,
+            source,
+        ),
+    )
+    return safe_market_id
+
+
 def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
     title = "Watchlist workspace" if lang == "en" else "Watchlist workspace"
     subtitle = (
@@ -4905,6 +4949,36 @@ def watchlist_remove(data: WatchlistSaveRequest, request: Request) -> JSONRespon
         path_override=request.url.path,
     )
     return JSONResponse({"ok": True, "market_id": safe_market_id, "removed": bool(removed)})
+
+
+@app.post("/api/watchlist/alert-state")
+def watchlist_alert_state(data: WatchlistAlertStateRequest, request: Request) -> JSONResponse:
+    session = current_site_session(request)
+    if not session or not session.get("user_id"):
+        raise HTTPException(status_code=401, detail="telegram_login_required")
+    safe_market_id = update_site_watchlist_alert_state(
+        user_id=str(session["user_id"]),
+        market_id=data.market_id,
+        desired_state=data.desired_state,
+        source=data.source,
+    )
+    rows = fetch_watchlist_workspace_for_user(str(session["user_id"]))
+    log_site_event(
+        event_type="watchlist_alert_state_site",
+        request=request,
+        lang=str(session.get("locale") or "en"),
+        source=data.source,
+        details={"market_id": safe_market_id, "desired_state": data.desired_state},
+        path_override=request.url.path,
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "market_id": safe_market_id,
+            "desired_state": data.desired_state,
+            "rows": rows,
+        }
+    )
 
 
 @app.get("/auth/telegram/complete")

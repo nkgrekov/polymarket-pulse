@@ -56,6 +56,11 @@
       colSensitivity: "Sensitivity",
       colActions: "Actions",
       openMarket: "Open market",
+      turnOnBell: "Turn on in Telegram",
+      pauseBell: "Pause bell",
+      resumeBell: "Resume bell",
+      turnOffBell: "Bell off",
+      thresholdTelegram: "Threshold in Telegram",
       remove: "Remove",
       configureTelegram: "Configure in Telegram",
       alertSetup: "Set bell in Telegram",
@@ -102,6 +107,12 @@
       syncSuccessCopy: "Pending markets were persisted into your website watchlist.",
       loginSuccessTitle: "Telegram connected.",
       loginSuccessCopy: "This website is now linked to your Telegram identity.",
+      pauseSuccessTitle: "Bell paused.",
+      pauseSuccessCopy: "The market stays saved on the site, but Telegram will stay quiet for now.",
+      resumeSuccessTitle: "Bell resumed.",
+      resumeSuccessCopy: "Telegram can alert this market again when the move clears your threshold.",
+      offSuccessTitle: "Bell turned off.",
+      offSuccessCopy: "The market stays saved, but Telegram alerts are now disabled for this row.",
     },
     ru: {
       add: "Add to watchlist",
@@ -155,6 +166,11 @@
       colSensitivity: "Sensitivity",
       colActions: "Действия",
       openMarket: "Открыть рынок",
+      turnOnBell: "Включить в Telegram",
+      pauseBell: "Пауза bell",
+      resumeBell: "Возобновить bell",
+      turnOffBell: "Bell off",
+      thresholdTelegram: "Threshold в Telegram",
       remove: "Удалить",
       configureTelegram: "Настроить в Telegram",
       alertSetup: "Настроить bell в Telegram",
@@ -201,6 +217,12 @@
       syncSuccessCopy: "Pending-рынки закреплены в website watchlist.",
       loginSuccessTitle: "Telegram подключён.",
       loginSuccessCopy: "Этот сайт теперь связан с вашей Telegram identity.",
+      pauseSuccessTitle: "Bell поставлен на паузу.",
+      pauseSuccessCopy: "Рынок остаётся сохранённым на сайте, но Telegram пока молчит.",
+      resumeSuccessTitle: "Bell снова включён.",
+      resumeSuccessCopy: "Теперь Telegram снова может прислать алерт, когда движение превысит ваш threshold.",
+      offSuccessTitle: "Bell выключен.",
+      offSuccessCopy: "Рынок остаётся в watchlist, но алерты Telegram для этой строки отключены.",
     },
   };
   const copy = TEXT[LOCALE];
@@ -411,6 +433,34 @@
     if (state === "limit") return copy.bellLocked;
     if (!SESSION.loggedIn) return copy.bellLogin;
     return copy.bellOff;
+  }
+
+  function primaryBellControl(row) {
+    const state = String(row.alert_state || "off");
+    if (!SESSION.loggedIn) {
+      return { action: "toggle_alert", label: copy.bellLogin, extraClass: "", title: bellTooltip(row) };
+    }
+    if (state === "on") {
+      return { action: "pause_alert", label: copy.pauseBell, extraClass: "saved", title: "Pause Telegram alerts while keeping this market saved on the site." };
+    }
+    if (state === "paused") {
+      return { action: "resume_alert", label: copy.resumeBell, extraClass: "primary", title: "Resume Telegram alerts for this saved market." };
+    }
+    return { action: "toggle_alert", label: copy.turnOnBell, extraClass: "", title: "Open Telegram and choose sensitivity to turn this bell on." };
+  }
+
+  function secondaryBellControl(row) {
+    const state = String(row.alert_state || "off");
+    if (!SESSION.loggedIn) {
+      return { kind: "telegram", action: "configure_telegram", label: copy.configureTelegram, title: "Open Telegram to finish login and configure this market." };
+    }
+    if (state === "on") {
+      return { kind: "telegram", action: "configure_telegram", label: copy.thresholdTelegram, title: "Open Telegram to change threshold for this market bell." };
+    }
+    if (state === "paused") {
+      return { kind: "button", action: "off_alert", label: copy.turnOffBell, title: "Turn this bell fully off while keeping the market saved." };
+    }
+    return { kind: "telegram", action: "configure_telegram", label: copy.configureTelegram, title: "Open Telegram to configure this market bell." };
   }
 
   function alertStateLabel(state) {
@@ -798,11 +848,15 @@
   }
 
   function actionRow(row) {
+    const primary = primaryBellControl(row);
+    const secondary = secondaryBellControl(row);
     return [
       '<div class="watchlist-action-row">',
       row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer" title="Open this market on Polymarket.">${esc(copy.openMarket)}</a>` : "",
-      `<button type="button" class="watchlist-action${row.alert_state === "on" ? " primary" : row.alert_state === "paused" ? " saved" : ""}" title="${esc(bellTooltip(row))}" data-watchlist-action="toggle_alert" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(bellLabel(row))}</button>`,
-      `<a class="watchlist-action" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="Open Telegram to configure this market bell." data-watchlist-action="configure_telegram" data-market-id="${esc(row.market_id)}">${esc(copy.configureTelegram)}</a>`,
+      `<button type="button" class="watchlist-action${primary.extraClass ? ` ${primary.extraClass}` : ""}" title="${esc(primary.title)}" data-watchlist-action="${esc(primary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(primary.label)}</button>`,
+      secondary.kind === "button"
+        ? `<button type="button" class="watchlist-action" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(secondary.label)}</button>`
+        : `<a class="watchlist-action" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}">${esc(secondary.label)}</a>`,
       `<button type="button" class="watchlist-action" data-watchlist-action="remove" data-market-id="${esc(row.market_id)}">${esc(copy.remove)}</button>`,
       "</div>",
     ].join("");
@@ -1039,6 +1093,16 @@
     trackEvent("watchlist_remove", baseEventDetails({ market_id: marketId, watchlist_state: "removed" }));
   }
 
+  async function updateAlertStateServer(marketId, desiredState) {
+    const data = await jsonFetch("/api/watchlist/alert-state", {
+      method: "POST",
+      body: JSON.stringify({ market_id: marketId, desired_state: desiredState, source: "site" }),
+    });
+    SERVER_ROWS = Array.isArray(data.rows) ? data.rows : SERVER_ROWS;
+    clearSyncedPending();
+    return data;
+  }
+
   async function handleAuthClick(anchor) {
     const returnPath = anchor.getAttribute("data-watchlist-return") || `${window.location.pathname}${window.location.search}`;
     const telegramUrl = await startAuthFlow("login", { market_id: null, question: "", return_path: returnPath });
@@ -1120,6 +1184,23 @@
         clearPendingMarket(marketId);
       }
       await refreshWorkspace();
+      syncWatchlistButtons(document);
+      return;
+    }
+
+    if (action === "pause_alert" || action === "resume_alert" || action === "off_alert") {
+      if (!SESSION.loggedIn) return;
+      const desiredState = action === "pause_alert" ? "paused" : action === "resume_alert" ? "on" : "off";
+      await updateAlertStateServer(marketId, desiredState);
+      trackEvent("watchlist_alert_state_change", baseEventDetails({ market_id: marketId, slug: market.slug || "", desired_state: desiredState, watchlist_state: "saved" }));
+      if (desiredState === "paused") {
+        setFlash(copy.pauseSuccessTitle, copy.pauseSuccessCopy, "success");
+      } else if (desiredState === "on") {
+        setFlash(copy.resumeSuccessTitle, copy.resumeSuccessCopy, "success");
+      } else {
+        setFlash(copy.offSuccessTitle, copy.offSuccessCopy, "success");
+      }
+      await refreshWorkspace({ skipLoad: true });
       syncWatchlistButtons(document);
       return;
     }
