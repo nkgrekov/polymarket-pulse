@@ -2099,16 +2099,53 @@ def upgrade_pitch_text(update: Update) -> str:
         return (
             f"⭐ <b>PRO — {TELEGRAM_STARS_PRICE_XTR} Stars / month</b>\n\n"
             f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
-            f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
-            "Upgrade instantly via Stars below.\n"
-            'Prefer card? → <a href="https://polymarketpulse.app/telegram-bot#pro">Pay with Stripe</a>'
+            f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited alerts · email digest\n\n"
+            "This upgrade stays inside Telegram because alerts, billing, and activation all live here.\n"
+            "Tap the Stars invoice below to activate instantly."
         )
     return (
         f"⭐ <b>PRO — {TELEGRAM_STARS_PRICE_XTR} Stars / month</b>\n\n"
         f"<code>FREE</code> → {FREE_WATCHLIST_LIMIT} watchlist markets · {FREE_DAILY_ALERT_LIMIT} alerts/day\n"
-        f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited · email digest\n\n"
-        "Upgrade instantly via Stars below.\n"
-        'Prefer card? → <a href="https://polymarketpulse.app/telegram-bot#pro">Pay with Stripe</a>'
+        f"<code>PRO</code>  → {PRO_WATCHLIST_LIMIT} markets · unlimited alerts · email digest\n\n"
+        "Оплата и активация остаются внутри Telegram, потому что сами алерты живут здесь же.\n"
+        "Нажмите на Stars-счёт ниже, чтобы активировать PRO сразу."
+    )
+
+
+def stars_checkout_unavailable_text(locale: str) -> str:
+    if locale == "en":
+        return (
+            "Stars checkout is temporarily unavailable in this chat.\n"
+            "Retry /upgrade in a few minutes."
+        )
+    return (
+        "Stars-оплата временно недоступна в этом чате.\n"
+        "Повторите /upgrade через несколько минут."
+    )
+
+
+def stars_payment_success_text(locale: str, *, renew_at: datetime | None = None) -> str:
+    renew_text = ""
+    if isinstance(renew_at, datetime):
+        renew_text = (
+            f"\nActive until: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+            if locale == "en"
+            else f"\nДействует до: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+        )
+    if locale == "en":
+        return (
+            "Payment received. PRO activated.\n"
+            f"Watchlist limit: {PRO_WATCHLIST_LIMIT}\n"
+            "Alerts: unlimited\n"
+            "Email digest: enabled"
+            f"{renew_text}"
+        )
+    return (
+        "Оплата получена. PRO активирован.\n"
+        f"Лимит watchlist: {PRO_WATCHLIST_LIMIT}\n"
+        "Алерты: без лимита\n"
+        "Email-дайджест: включён"
+        f"{renew_text}"
     )
 
 
@@ -2701,6 +2738,10 @@ def upgrade_followup_inline(locale: str, *, pro: bool = False) -> InlineKeyboard
                 InlineKeyboardButton("Watchlist", callback_data="menu:watchlist"),
             ],
             [
+                InlineKeyboardButton("Add market" if locale == "en" else "Добавить рынок", callback_data="menu:pick"),
+                InlineKeyboardButton("Top movers", callback_data="menu:movers"),
+            ],
+            [
                 InlineKeyboardButton("Threshold", callback_data="menu:threshold"),
                 InlineKeyboardButton("Inbox", callback_data="menu:inbox"),
             ],
@@ -2888,12 +2929,12 @@ async def send_stars_invoice_for_pro(bot, chat_id: int, user_ctx: dict, *, local
     if locale == "en":
         description = (
             f"PRO: up to {PRO_WATCHLIST_LIMIT} watchlist markets, "
-            "unlimited push alerts, and email digest."
+            "unlimited Telegram alerts, and email digest."
         )
     else:
         description = (
             f"PRO: до {PRO_WATCHLIST_LIMIT} рынков в watchlist, "
-            "push-алерты без лимита и email-дайджест."
+            "Telegram-алерты без лимита и email-дайджест."
         )
     prices = [LabeledPrice(label="PRO Monthly", amount=TELEGRAM_STARS_PRICE_XTR)]
     await bot.send_invoice(
@@ -4370,20 +4411,39 @@ async def cmd_upgrade(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     try:
         invoice_sent = await send_stars_invoice_for_pro(context.bot, update.effective_chat.id, user_ctx, locale=locale)
+        if invoice_sent:
+            try:
+                await asyncio.to_thread(
+                    log_bot_metric_event_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    event_type="stars_invoice_sent",
+                    path="/upgrade",
+                    details={"price_xtr": TELEGRAM_STARS_PRICE_XTR},
+                )
+            except Exception:
+                log.exception("stars_invoice_sent analytics insert failed")
     except Exception:
         log.exception("stars invoice send failed")
         invoice_sent = False
 
     if not invoice_sent:
+        try:
+            await asyncio.to_thread(
+                log_bot_metric_event_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                event_type="stars_invoice_unavailable",
+                path="/upgrade",
+                details={"price_xtr": TELEGRAM_STARS_PRICE_XTR},
+            )
+        except Exception:
+            log.exception("stars_invoice_unavailable analytics insert failed")
         await update.message.reply_text(
-            (
-                "Stars checkout is temporarily unavailable.\n"
-                "Use the site: https://polymarketpulse.app/telegram-bot#pro"
-                if locale == "en"
-                else "Stars-счет временно недоступен.\n"
-                "Используйте сайт: https://polymarketpulse.app/telegram-bot#pro"
-            ),
-            disable_web_page_preview=True,
+            stars_checkout_unavailable_text(locale),
+            reply_markup=upgrade_followup_inline(locale, pro=False),
         )
 
 
@@ -4918,19 +4978,38 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         try:
             invoice_sent = await send_stars_invoice_for_pro(context.bot, query.message.chat_id, user_ctx, locale=locale)
+            if invoice_sent:
+                try:
+                    await asyncio.to_thread(
+                        log_bot_metric_event_sync,
+                        update,
+                        user_ctx,
+                        locale=locale,
+                        event_type="stars_invoice_sent",
+                        path="/menu:upgrade",
+                        details={"price_xtr": TELEGRAM_STARS_PRICE_XTR},
+                    )
+                except Exception:
+                    log.exception("stars_invoice_sent analytics insert failed from callback")
         except Exception:
             log.exception("stars invoice send failed from callback")
             invoice_sent = False
         if not invoice_sent:
+            try:
+                await asyncio.to_thread(
+                    log_bot_metric_event_sync,
+                    update,
+                    user_ctx,
+                    locale=locale,
+                    event_type="stars_invoice_unavailable",
+                    path="/menu:upgrade",
+                    details={"price_xtr": TELEGRAM_STARS_PRICE_XTR},
+                )
+            except Exception:
+                log.exception("stars_invoice_unavailable analytics insert failed from callback")
             await query.message.reply_text(
-                (
-                    "Stars checkout is temporarily unavailable.\n"
-                    "Use the site: https://polymarketpulse.app/telegram-bot#pro"
-                    if locale == "en"
-                    else "Stars-счет временно недоступен.\n"
-                    "Используйте сайт: https://polymarketpulse.app/telegram-bot#pro"
-                ),
-                disable_web_page_preview=True,
+                stars_checkout_unavailable_text(locale),
+                reply_markup=upgrade_followup_inline(locale, pro=False),
             )
         return
     if data == "menu:trade":
@@ -5178,6 +5257,18 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     if not applied:
+        try:
+            await asyncio.to_thread(
+                log_bot_metric_event_sync,
+                update,
+                user_ctx,
+                locale=locale,
+                event_type="stars_payment_duplicate",
+                path="/payment",
+                details={"currency": payment.currency, "total_amount": payment.total_amount},
+            )
+        except Exception:
+            log.exception("stars_payment_duplicate analytics insert failed")
         await update.message.reply_text(
             "This payment was already processed. PRO is active."
             if locale == "en"
@@ -5185,25 +5276,25 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
 
-    renew_text = ""
-    if isinstance(renew_at, datetime):
-        renew_text = (
-            f"\nActive until: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
-            if locale == "en"
-            else f"\nДействует до: {renew_at.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+    try:
+        await asyncio.to_thread(
+            log_bot_metric_event_sync,
+            update,
+            user_ctx,
+            locale=locale,
+            event_type="stars_payment_activated",
+            path="/payment",
+            details={
+                "currency": payment.currency,
+                "total_amount": payment.total_amount,
+                "price_xtr": TELEGRAM_STARS_PRICE_XTR,
+            },
         )
+    except Exception:
+        log.exception("stars_payment_activated analytics insert failed")
     await update.message.reply_text(
-        (
-            "Payment received. PRO activated.\n"
-            f"Watchlist limit: {PRO_WATCHLIST_LIMIT}\n"
-            "Email digest enabled."
-            f"{renew_text}"
-            if locale == "en"
-            else "Оплата получена. PRO активирован.\n"
-            f"Лимит watchlist: {PRO_WATCHLIST_LIMIT}\n"
-            "Email-дайджест включен."
-            f"{renew_text}"
-        )
+        stars_payment_success_text(locale, renew_at=renew_at),
+        reply_markup=upgrade_followup_inline(locale, pro=True),
     )
 
 

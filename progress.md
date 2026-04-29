@@ -1,3 +1,33 @@
+# Telegram Stars-Only Bot Upgrade Pass (2026-04-29)
+
+Moved the user-facing PRO upgrade loop in the main Pulse bot to a cleaner Telegram-native Stars path.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• removed Stripe fallback language from the bot’s visible `/upgrade` copy
+• `/upgrade` and `menu:upgrade` now frame PRO as a Telegram-native purchase:
+  - billing, activation, and alert consumption all live in Telegram
+  - the invoice below the message is now the single expected upgrade action
+• Stars checkout failure copy no longer pushes the user out to the site
+• successful Stars activation now replies with a clearer PRO confirmation block plus direct next-step actions
+• added monetization telemetry around:
+  - `stars_invoice_sent`
+  - `stars_invoice_unavailable`
+  - `stars_payment_duplicate`
+  - `stars_payment_activated`
+
+What did not change:
+
+• backend Stripe endpoints were not removed in this pass
+• PRO entitlement logic did not change
+• subscription activation still lands in `app.subscriptions` + `bot.profiles`
+
 # Watchlist Login Return Latency Pass (2026-04-29)
 
 Applied a focused speed pass to the website watchlist login-return loop.
