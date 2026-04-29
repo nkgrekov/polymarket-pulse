@@ -539,7 +539,7 @@ class WatchlistSyncRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260429e"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260429f"
 WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
@@ -4864,6 +4864,7 @@ def watchlist_sync(data: WatchlistSyncRequest, request: Request) -> JSONResponse
         source="web",
         default_alert_enabled=False,
     )
+    rows = fetch_watchlist_workspace_for_user(str(session["user_id"]))
     log_site_event(
         event_type="watchlist_sync_site",
         request=request,
@@ -4881,6 +4882,7 @@ def watchlist_sync(data: WatchlistSyncRequest, request: Request) -> JSONResponse
             "ok": True,
             "saved_market_ids": safe_market_ids,
             "saved_count": len(safe_market_ids),
+            "rows": rows,
         }
     )
 

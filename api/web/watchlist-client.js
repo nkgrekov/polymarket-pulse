@@ -729,7 +729,12 @@
   }
 
   async function syncPendingToServer() {
+    return syncPendingToServerWithOptions();
+  }
+
+  async function syncPendingToServerWithOptions(options) {
     if (!SESSION.loggedIn) return 0;
+    const settings = options && typeof options === "object" ? options : {};
     const state = readState();
     const items = pendingItems(state);
     if (!items.length) return 0;
@@ -747,6 +752,7 @@
         }),
       });
       const savedIds = new Set(Array.isArray(data.saved_market_ids) ? data.saved_market_ids.map((value) => String(value || "")) : []);
+      if (Array.isArray(data.rows)) SERVER_ROWS = data.rows;
       synced = savedIds.size;
       if (savedIds.size) {
         Object.keys(state.pendingItems || {}).forEach((marketId) => {
@@ -757,8 +763,9 @@
     if (synced > 0) {
       if (!pendingItems(state).length) state.pendingContext = null;
       writeState(state);
+      clearSyncedPending();
       trackEvent("watchlist_pending_sync_success", baseEventDetails({ synced_count: synced, pending_left: pendingItems(state).length, watchlist_state: "saved" }));
-      window.dispatchEvent(new CustomEvent("pulse:watchlist-sync"));
+      if (!settings.silent) window.dispatchEvent(new CustomEvent("pulse:watchlist-sync"));
     }
     return synced;
   }
@@ -963,16 +970,19 @@
     syncWatchlistButtons(root);
   }
 
-  async function refreshWorkspace() {
+  async function refreshWorkspace(options) {
+    const settings = options && typeof options === "object" ? options : {};
     const root = document.querySelector("[data-watchlist-workspace]");
+    if (root) {
+      root.className = "watchlist-root";
+      root.innerHTML = `<section class="watchlist-banner"><h3>${esc(copy.loadingTitle)}</h3><p>${esc(copy.loadingCopy)}</p></section>`;
+    }
     try {
-      await loadWorkspaceRows();
+      if (!settings.skipLoad) await loadWorkspaceRows();
       if (!root) {
         syncWatchlistButtons(document);
         return;
       }
-      root.className = "watchlist-root";
-      root.innerHTML = `<section class="watchlist-banner"><h3>${esc(copy.loadingTitle)}</h3><p>${esc(copy.loadingCopy)}</p></section>`;
       const rows = currentRows();
       if (!rows.length) {
         root.className = "watchlist-root";
@@ -1159,7 +1169,7 @@
 
   window.addEventListener("storage", async () => {
     await loadSession();
-    if (SESSION.loggedIn) await syncPendingToServer();
+    if (SESSION.loggedIn) await syncPendingToServerWithOptions({ silent: true });
     syncSessionCopy();
     syncWatchlistButtons(document);
     refreshWorkspace();
@@ -1171,9 +1181,14 @@
   });
 
   document.addEventListener("DOMContentLoaded", async () => {
+    const root = document.querySelector("[data-watchlist-workspace]");
+    if (root) {
+      root.className = "watchlist-root";
+      root.innerHTML = `<section class="watchlist-banner"><h3>${esc(copy.loadingTitle)}</h3><p>${esc(copy.loadingCopy)}</p></section>`;
+    }
     await loadSession();
     let syncedCount = 0;
-    if (SESSION.loggedIn) syncedCount = await syncPendingToServer();
+    if (SESSION.loggedIn) syncedCount = await syncPendingToServerWithOptions({ silent: true });
     if (window.location.search.includes("tg_auth=1") && SESSION.loggedIn) {
       if (syncedCount > 0) {
         setFlash(copy.syncSuccessTitle, copy.syncSuccessCopy, "success");
@@ -1182,7 +1197,7 @@
       }
     }
     syncSessionCopy();
-    await refreshWorkspace();
+    await refreshWorkspace({ skipLoad: syncedCount > 0 && SERVER_ROWS.length > 0 });
     syncWatchlistButtons(document);
     try {
       const qs = new URLSearchParams(window.location.search);

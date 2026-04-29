@@ -1,3 +1,27 @@
+# Watchlist Login Return Latency Pass (2026-04-29)
+
+The website watchlist login-return loop now wastes less time between Telegram auth completion and a visible saved workspace state.
+
+Updated artifacts:
+
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• watchlist sync is no longer just a write acknowledgement:
+  - `/api/watchlist/sync` now also returns the user’s fresh workspace rows
+• the website bootstrap path can now hydrate from sync results directly instead of immediately performing an extra follow-up workspace read
+• bootstrap syncs can run in a silent mode so they do not cascade into an extra event-driven refresh
+• loading feedback is now shown before network waits, which improves perceived speed even when absolute network time is unchanged
+
+Architectural consequence:
+
+• after `Return to site`, the user should see a faster transition from pending state to real saved workspace
+• the login-return flow now does less duplicate network work during the most sensitive UX moment
+
 # Mobile Homepage + Watchlist Scan Pass (2026-04-29)
 
 The homepage and watchlist workspace now spend less mobile viewport height on repeated explanation and more on actionable market surface.
