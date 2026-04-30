@@ -60,7 +60,8 @@
       pauseBell: "Pause bell",
       resumeBell: "Resume bell",
       turnOffBell: "Bell off",
-      thresholdTelegram: "Threshold in Telegram",
+      thresholdTelegram: "Edit threshold in Telegram",
+      setThresholdTelegram: "Set threshold in Telegram",
       remove: "Remove",
       configureTelegram: "Configure in Telegram",
       alertSetup: "Set bell in Telegram",
@@ -172,7 +173,8 @@
       pauseBell: "Пауза bell",
       resumeBell: "Возобновить bell",
       turnOffBell: "Bell off",
-      thresholdTelegram: "Threshold в Telegram",
+      thresholdTelegram: "Изменить threshold в Telegram",
+      setThresholdTelegram: "Задать threshold в Telegram",
       remove: "Удалить",
       configureTelegram: "Настроить в Telegram",
       alertSetup: "Настроить bell в Telegram",
@@ -464,7 +466,7 @@
     if (state === "paused") {
       return { kind: "button", action: "off_alert", label: copy.turnOffBell, title: "Turn this bell fully off while keeping the market saved." };
     }
-    return { kind: "telegram", action: "configure_telegram", label: copy.configureTelegram, title: "Open Telegram to configure this market bell." };
+    return { kind: "telegram", action: "configure_telegram", label: copy.setThresholdTelegram, title: "Open Telegram to choose sensitivity and turn this bell on." };
   }
 
   function alertStateLabel(state) {
@@ -921,16 +923,26 @@
   function cardRow(row) {
     const alertState = String(row.alert_state || "off");
     const lastAlert = formatLastAlert(row.last_alert_at);
-    const primaryChips = [
-      chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", ""),
-      chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", ""),
-      chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : ""),
-      chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : ""),
-    ].join("");
+    const thresholdChip = row.effective_threshold_value != null
+      ? chipWithTitle(sensitivityLabel(row.effective_threshold_value), "Current bell threshold for this market.", "strong")
+      : "";
+    const primaryChips = (alertState === "on" || alertState === "paused")
+      ? [
+          chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", ""),
+          chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", ""),
+          thresholdChip,
+          chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : ""),
+        ].filter(Boolean).join("")
+      : [
+          chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", ""),
+          chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", ""),
+          chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : ""),
+          chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : ""),
+        ].join("");
     const secondaryChips = [
       chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", ""),
       chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", ""),
-      chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", ""),
+      ...(alertState === "on" || alertState === "paused" ? [] : [chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")]),
       chipWithTitle(lastAlert, "Last alert for this row.", ""),
     ].join("");
     return [

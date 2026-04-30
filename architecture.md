@@ -1,3 +1,22 @@
+# Watchlist Bell Threshold Visibility Pass (2026-04-30)
+
+The watchlist workspace now exposes bell sensitivity earlier in the mobile card scan path, without moving threshold control out of Telegram.
+
+Updated artifacts:
+
+• `api/web/watchlist-client.js`
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• bell-enabled rows now surface threshold in the primary visible chip layer instead of burying it only in expanded context
+• the website continues to own workspace scanning and bell state management, while Telegram remains the control surface for threshold edits
+• Telegram handoff labels are now state-specific, which reduces ambiguity between first-time bell setup and later threshold tuning
+
 # Watchlist Mobile Compression Pass (2026-04-30)
 
 Live mobile QA showed that `/watchlist` still behaved too much like a long explainer page after the workspace, especially for logged-out users.

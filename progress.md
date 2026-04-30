@@ -1,3 +1,24 @@
+# Watchlist Bell Threshold Visibility Pass (2026-04-30)
+
+Applied a compact follow-up pass to make bell-enabled rows easier to understand at a glance.
+
+Files updated:
+
+• `api/web/watchlist-client.js`
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• bell-enabled mobile watchlist cards now surface threshold earlier instead of hiding it in secondary context
+• the Telegram handoff CTA is now state-aware:
+  - `Set threshold in Telegram` when the bell is still off
+  - `Edit threshold in Telegram` when the bell is already on
+• saved-but-bell-off rows still stay visually lighter, so the workspace keeps the distinction between saving a market and arming its alert
+
 # Watchlist Mobile Compression Pass (2026-04-30)
 
 Applied a compact follow-up pass after live mobile QA on the homepage and `/watchlist`.
