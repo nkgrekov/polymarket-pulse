@@ -2508,6 +2508,13 @@ def _watchlist_coverage_line(locale: str, *, ready_count: int, partial_count: in
     return f"Покрытие сейчас: ready {ready_count} · partial {partial_count} · no_quotes {no_quotes_count} · closed {closed_count}"
 
 
+def _bell_state_line(locale: str, *, saved_total: int, alert_on_total: int, alert_paused_total: int) -> str:
+    bell_off_total = max(0, saved_total - alert_on_total - alert_paused_total)
+    if locale == "en":
+        return f"Bell state now: on {alert_on_total} · paused {alert_paused_total} · off {bell_off_total}"
+    return f"Bell сейчас: on {alert_on_total} · paused {alert_paused_total} · off {bell_off_total}"
+
+
 def quiet_followup_text(
     locale: str,
     *,
@@ -2521,8 +2528,15 @@ def quiet_followup_text(
     watchlist_count = int(user_ctx.get("watchlist_count") or 0)
     closed_count = int(user_ctx.get("watchlist_closed_count") or 0)
     threshold = _fmt_num(user_ctx.get("threshold"), 3)
+    saved_total = int(alert_overview.get("saved_total") or watchlist_count)
     alert_on_total = int(alert_overview.get("alert_on_total") or 0)
     alert_paused_total = int(alert_overview.get("alert_paused_total") or 0)
+    bell_state_line = _bell_state_line(
+        locale,
+        saved_total=saved_total,
+        alert_on_total=alert_on_total,
+        alert_paused_total=alert_paused_total,
+    )
     if view == "inbox":
         total = int(diag.get("candidates_total") or 0)
         over = int(diag.get("over_threshold") or 0)
@@ -2562,9 +2576,9 @@ def quiet_followup_text(
                 f"Сейчас тихо: {quiet_bits}.\n" if quiet_bits else ""
             )
             return (
-                f"{prefix}Best next step: lower threshold below {threshold} if you want more sensitivity, or wait for the next live window."
+                f"{bell_state_line}\n{prefix}Best next step: lower threshold below {threshold} if you want more sensitivity, or wait for the next live window."
                 if locale == "en"
-                else f"{prefix}Лучший следующий шаг: опустите threshold ниже {threshold}, если хотите больше чувствительности, или дождитесь следующего live-окна."
+                else f"{bell_state_line}\n{prefix}Лучший следующий шаг: опустите threshold ниже {threshold}, если хотите больше чувствительности, или дождитесь следующего live-окна."
             )
         if quiet_bits:
             return (

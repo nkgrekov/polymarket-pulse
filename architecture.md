@@ -1,3 +1,21 @@
+# Bot Bell-State Quiet Copy Pass (2026-04-30)
+
+Quiet-state explanations in the bot now expose bell posture directly, instead of forcing users to infer it from separate plan/watchlist surfaces.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• bot quiet diagnostics now include a normalized bell-state summary line:
+  - on
+  - paused
+  - off
+• the same bell model now appears in both Inbox quiet follow-ups and watchlist quiet follow-ups, making those surfaces more semantically aligned
+
 # Watchlist Paused Bell Control Pass (2026-04-30)
 
 Paused bell rows now expose a complete control set without collapsing threshold editing into an off-state shortcut.

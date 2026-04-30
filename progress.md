@@ -1,3 +1,22 @@
+# Bot Bell-State Quiet Copy Pass (2026-04-30)
+
+Applied a compact trust-copy pass so quiet bot states explain bell posture more explicitly.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• Inbox quiet follow-ups now surface a human-readable bell-state line:
+  - bell on
+  - bell paused
+  - bell off
+• watchlist quiet states now repeat the same bell-state model before the next-step advice
+• this makes a quiet feed easier to read as product behavior instead of as a possible bug
+
 # Watchlist Paused Bell Control Pass (2026-04-30)
 
 Applied a small but important workspace control fix for paused bell rows.
