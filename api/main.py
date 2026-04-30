@@ -545,7 +545,7 @@ class WatchlistAlertStateRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260429h"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260430a"
 WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
@@ -1397,6 +1397,51 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         for name in related_page_slugs
         if name in SEO_PAGES and name != slug and name != "trader-bot"
     )
+    links_block = f"""
+    <section class="links-wrap reveal delay-4">
+      <p class="links-title">{links_head}</p>
+      <div class="links" aria-label="{links_head}">
+        {links}
+      </div>
+    </section>
+""" if links else ""
+    if slug == "watchlist":
+        watchlist_support_parts: list[str] = []
+        if faq_items:
+            watchlist_support_parts.append(
+                f"""
+          <section class="watchlist-support-slab">
+            <p class="links-title">{faq_head}</p>
+            <div class="faq-grid">
+              {faq_cards}
+            </div>
+          </section>
+"""
+            )
+        if links:
+            watchlist_support_parts.append(
+                f"""
+          <section class="watchlist-support-slab">
+            <p class="links-title">{links_head}</p>
+            <div class="links" aria-label="{links_head}">
+              {links}
+            </div>
+          </section>
+"""
+            )
+        faq_block = (
+            f"""
+    <details class="hero-drawer support-drawer reveal delay-4">
+      <summary>Watchlist help, answers, and related pages</summary>
+      <div class="hero-drawer-body">
+        {''.join(watchlist_support_parts)}
+      </div>
+    </details>
+"""
+            if watchlist_support_parts
+            else ""
+        )
+        links_block = ""
     guide_href = f"/how-it-works?placement=seo_{slug}_guide"
     backup_href = f"/?placement=seo_{slug}_backup#waitlist-form"
     guide_cta = f'<a id="guide-link" class="cta-secondary" href="{guide_href}">{cta_guide_text}</a>'
@@ -2279,7 +2324,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     .watchlist-workspace-head {{
       display: flex;
       justify-content: space-between;
-      align-items: end;
+      align-items: start;
       gap: 12px;
       margin-bottom: 12px;
     }}
@@ -2463,7 +2508,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       margin-top: 12px;
       width: 236px;
       max-width: 100%;
-      height: 64px;
+      height: 76px;
       display: block;
     }}
     .watchlist-spark .spark-frame {{
@@ -2562,15 +2607,17 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       gap: 10px;
     }}
     .watchlist-card-compact {{
-      padding-top: 20px;
-      padding-bottom: 20px;
+      padding-top: 18px;
+      padding-bottom: 18px;
     }}
     .watchlist-card-compact h1 {{
-      font-size: clamp(30px, 5vw, 48px);
+      font-size: clamp(28px, 4.4vw, 42px);
+      line-height: 0.95;
+      max-width: 12ch;
     }}
     .watchlist-card-compact .intro {{
-      max-width: 980px;
-      font-size: clamp(14px, 1.6vw, 18px);
+      max-width: 760px;
+      font-size: clamp(13px, 1.35vw, 16px);
     }}
     .watchlist-card {{
       border: 1px solid var(--line);
@@ -2613,6 +2660,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       font-family: "JetBrains Mono", monospace;
       font-size: 12px;
       line-height: 1.55;
+    }}
+    .watchlist-support-slab + .watchlist-support-slab {{
+      margin-top: 16px;
     }}
     .links-title {{
       margin: 0 0 8px;
@@ -2686,6 +2736,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .live-signal-side {{ align-items: start; }}
       .live-signal-actions {{ justify-content: flex-start; }}
       .watchlist-workspace {{ padding: 12px; }}
+      .watchlist-login-inline {{ display: none; }}
       .watchlist-workspace-copy,
       .watchlist-login-copy {{ display: none; }}
       .watchlist-summary {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
@@ -2700,7 +2751,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       .watchlist-card {{ padding: 12px; gap: 12px; }}
       .watchlist-card-top {{ display: grid; gap: 8px; }}
       .watchlist-card-top .watchlist-chip {{ justify-self: start; }}
-      .watchlist-card .watchlist-spark {{ height: 104px; }}
+      .watchlist-card .watchlist-spark {{ height: 124px; }}
       .watchlist-card-statband {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
       .watchlist-card-stat {{ padding: 9px; }}
       .watchlist-card-stat strong {{ font-size: 15px; }}
@@ -2723,6 +2774,27 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         padding: 8px 10px;
         text-align: center;
       }}
+      .watchlist-card-compact {{
+        padding: 14px;
+        gap: 10px;
+      }}
+      .watchlist-card-compact .badge-row .badge:last-child,
+      .watchlist-card-compact .cta-secondary,
+      .watchlist-card-compact .cta-trust,
+      .watchlist-card-compact .cta-note,
+      .watchlist-card-compact .cta-backup-note,
+      .watchlist-card-compact .cta-backup-link-wrap {{
+        display: none;
+      }}
+      .watchlist-card-compact h1 {{
+        font-size: clamp(24px, 10vw, 34px);
+        max-width: 11ch;
+      }}
+      .watchlist-card-compact .intro {{
+        font-size: 13px;
+        max-width: none;
+      }}
+      .watchlist-card-compact .cta-row {{ margin-top: 12px; }}
     }}
     @media (max-width: 420px) {{
       .watchlist-summary {{ grid-template-columns: 1fr; }}
@@ -2777,12 +2849,7 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
     {compare_block}
     {bridge_block}
     {faq_block}
-    <section class="links-wrap reveal delay-4">
-      <p class="links-title">{links_head}</p>
-      <div class="links" aria-label="{links_head}">
-        {links}
-      </div>
-    </section>
+    {links_block}
       <a class="back" href="/">{back_text}</a>
   </div>
   <script>
@@ -4130,14 +4197,14 @@ def update_site_watchlist_alert_state(
 def _render_watchlist_workspace_block(lang: Literal["ru", "en"]) -> str:
     title = "Watchlist" if lang == "en" else "Watchlist"
     subtitle = (
-        "Sort saved markets fast. Turn bells on, pause them, or keep rows quiet without losing the market."
+        "Saved markets stay here. Bell state stays editable here. Telegram stays the login and alert layer."
         if lang == "en"
-        else "Здесь живёт ваш реальный watchlist: быстро сортируйте рынки, ставьте bell на паузу и сохраняйте тихие строки без потери контекста."
+        else "Сохранённые рынки живут здесь. Bell-состояние редактируется здесь. Telegram остаётся login- и alert-слоем."
     )
     login_copy = (
-        "Telegram links this watchlist across devices."
+        "Telegram syncs this watchlist across devices."
         if lang == "en"
-        else "Telegram связывает этот watchlist между устройствами."
+        else "Telegram синхронизирует этот watchlist между устройствами."
     )
     login_cta = "Open Telegram Bot" if lang == "en" else "Открыть Telegram-бота"
     return f"""

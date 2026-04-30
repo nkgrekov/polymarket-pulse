@@ -29,7 +29,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="shortcut icon" href="/favicon.ico" />
-  <script defer src="/api/watchlist-client?v=20260429h"></script>
+  <script defer src="/api/watchlist-client?v=20260430a"></script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -1336,26 +1336,6 @@
       line-height: 1.4;
     }
 
-    .sticky-tg {
-      position: fixed;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      z-index: 20;
-      display: none;
-      text-align: center;
-      border: 1px solid var(--accent);
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(0, 255, 136, 0.96) 0%, rgba(0, 216, 116, 0.96) 100%);
-      color: var(--bg-2);
-      text-decoration: none;
-      font-family: "JetBrains Mono", monospace;
-      font-weight: 700;
-      min-height: 50px;
-      padding: 14px 10px;
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
-    }
-
     .intent-links {
       margin-top: 16px;
       border: 1px solid var(--line);
@@ -1497,9 +1477,10 @@
       .signal-badge:last-child { display: none; }
       .eyebrow { margin-bottom: 10px; font-size: 11px; }
       .hero-actions { grid-template-columns: 1fr; }
+      .hero-actions .guide-link { display: none; }
       .scarcity { display: none; }
       .trust-rail { margin-top: 10px; }
-      .trust-pill:nth-child(n+3) { display: none; }
+      .trust-pill:nth-child(n+2) { display: none; }
       .trust-note { display: none; }
       .spark,
       .spark svg { height: 84px; }
@@ -1520,8 +1501,6 @@
       .pro-layout { grid-template-columns: 1fr; }
       .pro-inner { padding: 24px; margin: 24px auto; }
       .pro-stars { width: 100%; }
-      .sticky-tg { display: block; }
-      body { padding-bottom: 74px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1870,8 +1849,6 @@
       </details>
     </section>
   </div>
-  <a id="tg-link-sticky" class="sticky-tg" target="_blank" rel="noopener noreferrer" href="https://t.me/polymarket_pulse_bot?start=site_en_sticky">Open Telegram Bot</a>
-
   <script>
     document.body.classList.add('ready');
 
@@ -1880,7 +1857,6 @@
     const emailInput = document.getElementById('email');
     const tgLinkTop = document.getElementById('tg-link-top');
     const viewMoversLink = document.getElementById('view-movers-link');
-    const tgLinkSticky = document.getElementById('tg-link-sticky');
     const guideLink = document.getElementById('guide-link-main');
     const heroPanel = document.getElementById('hero-panel');
     const pricingSection = document.getElementById('pricing');
@@ -2170,9 +2146,6 @@
     });
     viewMoversLink?.addEventListener('click', () => {
       trackEvent('market_click', { ...getAttribution(), placement: 'hero_intro', action: 'view_live_movers_page' });
-    });
-    tgLinkSticky?.addEventListener('click', () => {
-      trackEvent('tg_click', { ...getAttribution(), placement: 'mobile_sticky' });
     });
     guideLink?.addEventListener('click', () => {
       trackEvent('waitlist_intent', { ...getAttribution(), placement: 'how_it_works_link' });

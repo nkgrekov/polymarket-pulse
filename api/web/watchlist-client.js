@@ -17,7 +17,7 @@
       bellLogin: "🔒 Log in",
       watchlist: "Watchlist",
       emptyTitle: "No saved markets yet.",
-      emptyCopy: "Start from Live Movers or Signals, save one market, then shape your watchlist here.",
+      emptyCopy: "Start from Live Movers, save one market on the site, then come back here to manage bells and sort the list.",
       openMovers: "Open Live Movers",
       openBot: "Open Telegram Bot",
       loginTitle: "Log in with Telegram to save your watchlist.",
@@ -128,7 +128,7 @@
       bellLogin: "🔒 Войти",
       watchlist: "Watchlist",
       emptyTitle: "Сохранённых рынков пока нет.",
-      emptyCopy: "Начните с Live Movers или Signals, сохраните один рынок и затем собирайте workspace здесь.",
+      emptyCopy: "Начните с Live Movers, сохраните один рынок на сайте и затем возвращайтесь сюда, чтобы управлять bell и сортировкой.",
       openMovers: "Открыть Live Movers",
       openBot: "Открыть Telegram-бота",
       loginTitle: "Войдите через Telegram, чтобы сохранить watchlist.",
@@ -1050,8 +1050,8 @@
           copy.emptyCopy,
           [
             '<div class="watchlist-banner-actions">',
-            `<a class="watchlist-action" href="/top-movers">${esc(copy.openMovers)}</a>`,
-            `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">${esc(copy.openBot)}</a>`,
+            `<a class="watchlist-action primary" href="/top-movers">${esc(copy.openMovers)}</a>`,
+            `<a class="watchlist-action" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer" data-watchlist-auth="login" data-watchlist-return="/watchlist">${esc(copy.openBot)}</a>`,
             "</div>",
           ].join("")
         );
@@ -1065,8 +1065,8 @@
           copy.unavailableCopy,
           [
             '<div class="watchlist-banner-actions">',
-            `<a class="watchlist-action" href="/top-movers">${esc(copy.openMovers)}</a>`,
-            `<a class="watchlist-action primary" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer">${esc(copy.openBot)}</a>`,
+            `<a class="watchlist-action primary" href="/top-movers">${esc(copy.openMovers)}</a>`,
+            `<a class="watchlist-action" href="${DEFAULT_TELEGRAM_URL}" target="_blank" rel="noopener noreferrer">${esc(copy.openBot)}</a>`,
             "</div>",
           ].join("")
         );

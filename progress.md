@@ -1,3 +1,33 @@
+# Watchlist Mobile Compression Pass (2026-04-30)
+
+Applied a compact follow-up pass after live mobile QA on the homepage and `/watchlist`.
+
+Files updated:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• homepage mobile hero now spends less height before the first usable live row:
+  - the secondary `View live movers` button is hidden on small screens
+  - the trust rail collapses to a single strongest cue instead of two chips
+  - the fixed bottom Telegram CTA was removed because it was covering the first live row
+• `/watchlist` mobile now gets to the actual workspace faster:
+  - the header-side Telegram CTA is hidden on small screens because the empty-state and row actions already expose it
+  - the watchlist hero is compressed on mobile by removing secondary trust/back-up copy and the secondary CTA
+  - watchlist sparklines are taller in the card view
+• the logged-out empty state is now more site-first:
+  - `Open Live Movers` is the primary action
+  - Telegram stays available as the identity/bell action, but no longer hijacks the first next step
+• watchlist support content is now collapsed into one drawer:
+  - FAQ
+  - related pages
+  - this removes a long wall of post-workspace content from the default scroll path
+
 # Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
 
 Applied one joint pass across the bot and the site to make quiet states more trustworthy and mobile workspaces easier to scan.

@@ -1,3 +1,28 @@
+# Watchlist Mobile Compression Pass (2026-04-30)
+
+Live mobile QA showed that `/watchlist` still behaved too much like a long explainer page after the workspace, especially for logged-out users.
+
+Updated artifacts:
+
+• `api/web/index.en.html`
+• `api/main.py`
+• `api/web/watchlist-client.js`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• homepage mobile first-screen hierarchy is now stricter:
+  - one primary CTA
+  - one trust cue
+  - faster arrival at the first market row
+  - no fixed bottom CTA competing with the same action or covering the board
+• `/watchlist` now treats the workspace as the only default surface and pushes secondary education into a collapsed support drawer
+• logged-out watchlist empty states now reinforce the product doctrine:
+  - site first for discovery
+  - Telegram second for identity and bell behavior
+• mobile watchlist cards now give more visual weight to the sparkline itself, making the card feel more like a live market surface than a status dump
+
 # Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
 
 The product now explains quiet states with more operational honesty in the bot, while the website spends less mobile viewport on repeated explanation.
