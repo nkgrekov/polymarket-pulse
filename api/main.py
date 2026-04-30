@@ -2548,6 +2548,38 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       flex-wrap: wrap;
       gap: 6px;
     }}
+    .watchlist-card-more {{
+      border: 1px solid rgba(42, 51, 43, 0.72);
+      border-radius: 12px;
+      background: rgba(19, 23, 20, 0.56);
+      overflow: hidden;
+    }}
+    .watchlist-card-more summary {{
+      list-style: none;
+      cursor: pointer;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }}
+    .watchlist-card-more summary::-webkit-details-marker {{
+      display: none;
+    }}
+    .watchlist-card-more summary::after {{
+      content: "+";
+      float: right;
+      color: var(--accent);
+      font-size: 14px;
+      line-height: 1;
+    }}
+    .watchlist-card-more[open] summary::after {{
+      content: "−";
+    }}
+    .watchlist-chip-row-secondary {{
+      padding: 0 12px 12px;
+    }}
     .watchlist-chip {{
       display: inline-flex;
       align-items: center;
@@ -2763,6 +2795,9 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
         text-align: left;
         line-height: 1.3;
         justify-content: flex-start;
+      }}
+      .watchlist-card-more summary {{
+        padding: 11px 12px;
       }}
       .watchlist-card .watchlist-action-row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }}
       .watchlist-card .watchlist-action-row > :first-child {{ grid-column: 1 / -1; }}

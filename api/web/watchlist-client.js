@@ -97,6 +97,7 @@
       unavailableCopy: "The workspace API did not return cleanly. Retry in a few seconds or continue in Telegram.",
       filteredEmptyTitle: "No markets match these filters.",
       filteredEmptyCopy: "Clear one filter or open Live Movers to save a different market.",
+      moreSignal: "More signal context",
       summarySaved: "saved",
       summaryBellOn: "bell on",
       summaryPaused: "paused",
@@ -208,6 +209,7 @@
       unavailableCopy: "Workspace API сейчас ответил неудачно. Повторите через несколько секунд или продолжайте через Telegram.",
       filteredEmptyTitle: "Под эти фильтры ничего не подходит.",
       filteredEmptyCopy: "Снимите один фильтр или откройте Live Movers и сохраните другой рынок.",
+      moreSignal: "Больше signal context",
       summarySaved: "saved",
       summaryBellOn: "bell on",
       summaryPaused: "paused",
@@ -919,6 +921,18 @@
   function cardRow(row) {
     const alertState = String(row.alert_state || "off");
     const lastAlert = formatLastAlert(row.last_alert_at);
+    const primaryChips = [
+      chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", ""),
+      chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", ""),
+      chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : ""),
+      chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : ""),
+    ].join("");
+    const secondaryChips = [
+      chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", ""),
+      chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", ""),
+      chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", ""),
+      chipWithTitle(lastAlert, "Last alert for this row.", ""),
+    ].join("");
     return [
       '<article class="watchlist-card">',
       '<div class="watchlist-card-top">',
@@ -928,7 +942,8 @@
       `<p class="watchlist-question-meta">market ${esc(row.market_id)} · ${esc(copy[row.category] || row.category || "other")}</p>`,
       `<div class="watchlist-card-statband"><div class="watchlist-card-stat"><span>${esc(copy.colMid)}</span><strong>${esc(formatPct(row.yes_mid_now))}</strong></div><div class="watchlist-card-stat"><span>${esc(copy.colDelta)}</span><strong>${esc(formatPp(row.delta_primary))}</strong></div><div class="watchlist-card-stat"><span>${esc(copy.colFreshness)}</span><strong>${esc(formatFreshness(row.freshness_seconds))}</strong></div></div>`,
       sparkSvg(row),
-      `<div class="watchlist-chip-row">${chipWithTitle(formatPp(row.delta_1m), "1 minute cue for urgency.", "")}${chipWithTitle(formatPp(row.delta_5m), "5 minute move for context.", "")}${chipWithTitle(`${formatLiq(row.liquidity)} ${copy.liqUnit}`, "Higher liquidity usually means cleaner execution.", "")}${chipWithTitle(`${formatSpread(row.spread)} ${copy.spreadUnit}`, "Lower spread is better.", "")}${chipWithTitle(statusLabel(row.status), statusTooltip(row.status), row.status === "saved" ? "strong" : "")}${chipWithTitle(qualityLabel(row.signal_quality), qualityTooltip(row.signal_quality), row.signal_quality === "live_quality_gated" ? "strong" : "")}${chipWithTitle(row.effective_threshold_value != null ? sensitivityLabel(row.effective_threshold_value) : "--", "Current bell threshold for this market.", "")}${chipWithTitle(lastAlert, "Last alert for this row.", "")}</div>`,
+      `<div class="watchlist-chip-row watchlist-chip-row-primary">${primaryChips}</div>`,
+      `<details class="watchlist-card-more"><summary>${esc(copy.moreSignal)}</summary><div class="watchlist-chip-row watchlist-chip-row-secondary">${secondaryChips}</div></details>`,
       actionRow(row),
       "</article>",
     ].join("");

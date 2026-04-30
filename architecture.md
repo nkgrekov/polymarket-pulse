@@ -22,6 +22,9 @@ Architectural changes:
   - site first for discovery
   - Telegram second for identity and bell behavior
 • mobile watchlist cards now give more visual weight to the sparkline itself, making the card feel more like a live market surface than a status dump
+• logged-in mobile watchlist cards now use a two-layer information model:
+  - default visible chips for immediate scanning
+  - secondary signal context behind a compact details drawer
 
 # Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
 

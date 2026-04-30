@@ -28,6 +28,19 @@ What changed:
   - related pages
   - this removes a long wall of post-workspace content from the default scroll path
 
+## Follow-up: Logged-in Card Density
+
+• mobile watchlist cards now show only the highest-signal chips by default:
+  - `1m`
+  - `5m`
+  - status
+  - quality
+• secondary context is still available, but moved into a compact `More signal context` drawer:
+  - liquidity
+  - spread
+  - threshold
+  - last alert
+
 # Bot Quiet Diagnostics + Mobile Hierarchy Pass (2026-04-29)
 
 Applied one joint pass across the bot and the site to make quiet states more trustworthy and mobile workspaces easier to scan.
