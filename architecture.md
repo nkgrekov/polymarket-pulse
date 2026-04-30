@@ -1,3 +1,24 @@
+# Watchlist Paused Bell Control Pass (2026-04-30)
+
+Paused bell rows now expose a complete control set without collapsing threshold editing into an off-state shortcut.
+
+Updated artifacts:
+
+• `api/web/watchlist-client.js`
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• bell-state controls in the website workspace now distinguish between:
+  - temporary pause
+  - threshold tuning in Telegram
+  - full bell shutdown
+• paused rows therefore keep threshold tuning available while still exposing an explicit destructive `Bell off` action
+
 # Telegram Bell Return Loop Pass (2026-04-30)
 
 The site-to-Telegram bell flow now preserves the website completion path through the final sensitivity confirmation step.

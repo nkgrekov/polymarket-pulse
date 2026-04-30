@@ -464,7 +464,7 @@
       return { kind: "telegram", action: "configure_telegram", label: copy.thresholdTelegram, title: "Open Telegram to change threshold for this market bell." };
     }
     if (state === "paused") {
-      return { kind: "button", action: "off_alert", label: copy.turnOffBell, title: "Turn this bell fully off while keeping the market saved." };
+      return { kind: "telegram", action: "configure_telegram", label: copy.thresholdTelegram, title: "Open Telegram to change threshold for this market bell." };
     }
     return { kind: "telegram", action: "configure_telegram", label: copy.setThresholdTelegram, title: "Open Telegram to choose sensitivity and turn this bell on." };
   }
@@ -853,19 +853,37 @@
     ].join("");
   }
 
+  function renderActionControl(control, row) {
+    if (!control) return "";
+    const extraClass = control.extraClass ? ` ${control.extraClass}` : "";
+    if (control.kind === "telegram") {
+      return `<a class="watchlist-action${extraClass}" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="${esc(control.title)}" data-watchlist-action="${esc(control.action)}" data-market-id="${esc(row.market_id)}">${esc(control.label)}</a>`;
+    }
+    return `<button type="button" class="watchlist-action${extraClass}" title="${esc(control.title)}" data-watchlist-action="${esc(control.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(control.label)}</button>`;
+  }
+
+  function tertiaryBellControl(row) {
+    const state = String(row.alert_state || "off");
+    if (!SESSION.loggedIn) return null;
+    if (state === "paused") {
+      return { kind: "button", action: "off_alert", label: copy.turnOffBell, extraClass: "down", title: "Turn this bell fully off while keeping the market saved." };
+    }
+    return null;
+  }
+
   function actionRow(row) {
     const primary = primaryBellControl(row);
     const secondary = secondaryBellControl(row);
+    const tertiary = tertiaryBellControl(row);
     return [
       '<div class="watchlist-action-row">',
-      `<button type="button" class="watchlist-action${primary.extraClass ? ` ${primary.extraClass}` : ""}" title="${esc(primary.title)}" data-watchlist-action="${esc(primary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(primary.label)}</button>`,
-      secondary.kind === "button"
-        ? `<button type="button" class="watchlist-action" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}" data-market-question="${esc(row.question)}" data-market-url="${esc(row.market_url || "")}" data-track-url="${esc(row.track_url || defaultTrackUrl(row.market_id))}" data-market-slug="${esc(row.slug || "")}" data-market-source="workspace">${esc(secondary.label)}</button>`
-        : `<a class="watchlist-action" href="${esc(row.track_url || defaultTrackUrl(row.market_id))}" target="_blank" rel="noopener noreferrer" title="${esc(secondary.title)}" data-watchlist-action="${esc(secondary.action)}" data-market-id="${esc(row.market_id)}">${esc(secondary.label)}</a>`,
+      renderActionControl(primary, row),
+      renderActionControl(secondary, row),
+      renderActionControl(tertiary, row),
       row.market_url ? `<a class="watchlist-action" href="${esc(row.market_url)}" target="_blank" rel="noopener noreferrer" title="Open this market on Polymarket.">${esc(copy.openMarket)}</a>` : "",
       `<button type="button" class="watchlist-action" data-watchlist-action="remove" data-market-id="${esc(row.market_id)}">${esc(copy.remove)}</button>`,
       "</div>",
-    ].join("");
+    ].filter(Boolean).join("");
   }
 
   function sparkSvg(row) {

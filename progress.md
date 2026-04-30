@@ -1,3 +1,25 @@
+# Watchlist Paused Bell Control Pass (2026-04-30)
+
+Applied a small but important workspace control fix for paused bell rows.
+
+Files updated:
+
+• `api/web/watchlist-client.js`
+• `api/main.py`
+• `api/web/index.en.html`
+• `api/web/index.ru.html`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• paused rows no longer sacrifice threshold editing just to expose `Bell off`
+• the paused-row action stack is now complete:
+  - `Resume bell`
+  - `Edit threshold in Telegram`
+  - `Bell off`
+• this keeps the website in control of workspace operations without forcing users through awkward state toggles
+
 # Telegram Bell Return Loop Pass (2026-04-30)
 
 Applied a focused bot-side pass to reduce friction after the website sends a user into Telegram for bell setup.

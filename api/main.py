@@ -545,7 +545,7 @@ class WatchlistAlertStateRequest(BaseModel):
 HOT_PREVIEW_MAX_FRESHNESS_SECONDS = int(os.environ.get("HOT_PREVIEW_MAX_FRESHNESS_SECONDS", "120"))
 HOT_PREVIEW_MIN_LIQUIDITY = float(os.environ.get("HOT_PREVIEW_MIN_LIQUIDITY", "1000"))
 HOT_PREVIEW_MAX_SPREAD = float(os.environ.get("HOT_PREVIEW_MAX_SPREAD", "0.25"))
-WATCHLIST_CLIENT_ASSET_VERSION = "20260430b"
+WATCHLIST_CLIENT_ASSET_VERSION = "20260430c"
 WATCHLIST_CLIENT_ASSET_PATH = f"/api/watchlist-client?v={WATCHLIST_CLIENT_ASSET_VERSION}"
 WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_SNAPSHOTS", "14"))
 WATCHLIST_WORKSPACE_SPARK_POINTS = int(os.environ.get("WATCHLIST_WORKSPACE_SPARK_POINTS", "14"))
@@ -2632,6 +2632,10 @@ def render_seo_page(slug: str, lang: Literal["ru", "en"], *, noindex_override: b
       color: var(--text);
       border-color: rgba(0, 255, 136, 0.22);
       box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.12) inset;
+    }}
+    .watchlist-action.down {{
+      color: #ffd3d3;
+      border-color: rgba(255, 68, 68, 0.28);
     }}
     .watchlist-card-grid {{
       display: none;
