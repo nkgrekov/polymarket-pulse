@@ -1,3 +1,21 @@
+# Bot Trust Language + Delivery Ops Pass (2026-04-30)
+
+The bot's active signal surfaces and the offline delivery-diagnostics surface now share a more explicit trust model.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• active bot surfaces now expose the same quick trust vocabulary everywhere: freshness, liquidity, spread, threshold-cleared signal
+• delivery parity reporting now emits an `Operational Readout` layer on top of summary counts
+• recommendation logic is now allowed to pivot when quote coverage (`hot_missing_quote`) becomes the dominant blocker, instead of overfitting every decision to legacy shock semantics
+
 # Bot Active Alert Trust Pass (2026-04-30)
 
 Active signal surfaces in the bot now expose more of the same trust model used elsewhere, instead of making quality cues implicit.

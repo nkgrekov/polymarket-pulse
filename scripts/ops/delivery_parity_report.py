@@ -327,6 +327,85 @@ def build_decision_readout(summary: dict, classification_totals: Counter[str]) -
     return lines
 
 
+def build_operational_readout(top_mismatch_markets: list[dict], classification_totals: Counter[str]) -> list[str]:
+    lines = ["## Operational Readout", ""]
+    if not top_mismatch_markets:
+        lines.append("- No top mismatch markets in the selected window yet.")
+        return lines
+
+    def selected(side: str) -> list[dict]:
+        return [row for row in top_mismatch_markets if row.get("side") == side]
+
+    hot_rows = selected("hot_only")
+    legacy_rows = selected("legacy_only")
+
+    def count_if(rows: list[dict], *, lifecycle: str | None = None, candidate: str | None = None) -> int:
+        total = 0
+        for row in rows:
+            lifecycle_ok = lifecycle is None or str(row.get("current_lifecycle_state") or "") == lifecycle
+            candidate_ok = candidate is None or candidate in str(row.get("current_candidate_states") or "")
+            if lifecycle_ok and candidate_ok:
+                total += int(row.get("sample_count") or 0)
+        return total
+
+    hot_closed = count_if(hot_rows, lifecycle="closed")
+    legacy_closed = count_if(legacy_rows, lifecycle="closed")
+    hot_active_below = count_if(hot_rows, lifecycle="active", candidate="below_threshold")
+    legacy_active_below = count_if(legacy_rows, lifecycle="active", candidate="below_threshold")
+    hot_date_passed = count_if(hot_rows, lifecycle="date_passed_active")
+    legacy_date_passed = count_if(legacy_rows, lifecycle="date_passed_active")
+
+    all_ids = [str(row.get("market_id") or "") for row in top_mismatch_markets if row.get("market_id")]
+    unique_ids = len(set(all_ids))
+    top4_ids = set(all_ids[:4])
+
+    lines.extend(
+        [
+            bullet("hot_only_closed_samples", str(hot_closed)),
+            bullet("legacy_only_closed_samples", str(legacy_closed)),
+            bullet("hot_only_active_below_threshold_samples", str(hot_active_below)),
+            bullet("legacy_only_active_below_threshold_samples", str(legacy_active_below)),
+            bullet("hot_only_date_passed_active_samples", str(hot_date_passed)),
+            bullet("legacy_only_date_passed_active_samples", str(legacy_date_passed)),
+            bullet("distinct_top_mismatch_markets", str(unique_ids)),
+        ]
+    )
+
+    dominant_classification = classification_totals.most_common(1)[0][0] if classification_totals else ""
+
+    if dominant_classification == "hot_missing_quote":
+        recommendation = (
+            "Next safest investigation is hot quote coverage for live watchlist markets; delivery semantics should stay unchanged until `hot_missing_quote` stops dominating."
+        )
+    elif legacy_active_below > max(legacy_closed, 0):
+        recommendation = (
+            "Next safest runtime tightening is still legacy-shock recency/age semantics where hot currently says `below_threshold`."
+        )
+    elif legacy_closed > 0 or hot_closed > 0:
+        recommendation = (
+            "Closed-market suppression remains justified; keep legacy primary and continue avoiding stale closed-market wakeups."
+        )
+    else:
+        recommendation = (
+            "Mismatch is no longer dominated by closed markets; keep gathering parity evidence before touching delivery semantics."
+        )
+
+    concentration_note = (
+        f"Mismatch remains concentrated in a small set of recurring markets ({', '.join(sorted(top4_ids))})."
+        if top4_ids
+        else "Mismatch is not yet concentrated enough to name recurring markets."
+    )
+
+    lines.extend(
+        [
+            "",
+            f"- Recommendation: {recommendation}",
+            f"- Concentration: {concentration_note}",
+        ]
+    )
+    return lines
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Summarize hot-vs-legacy delivery parity history.")
     parser.add_argument("--hours", type=int, default=24)
@@ -427,6 +506,7 @@ def main() -> None:
         lines.append("- none")
 
     lines.extend(["", *build_decision_readout(summary, classification_totals)])
+    lines.extend(["", *build_operational_readout(top_mismatch_markets, classification_totals)])
 
     lines.extend(
         [

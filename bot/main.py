@@ -3097,7 +3097,12 @@ async def send_movers_view(message, *, locale: str = "ru", show_loader: bool = T
 
     if rows:
         await message.reply_text(
-            "Top live movers (up to 3):\n\n" + "\n\n".join(fmt_mover_row(r) for r in rows),
+            (
+                "Top live movers now. Use the quality line on each row to sanity-check freshness, liquidity, and spread:\n\n"
+                if locale == "en"
+                else "Топ live movers сейчас. Смотрите на quality line у каждой строки, чтобы быстро проверить freshness, liquidity и spread:\n\n"
+            )
+            + "\n\n".join(fmt_mover_row(r) for r in rows),
             reply_markup=movers_live_inline(locale),
         )
         return
@@ -3272,7 +3277,11 @@ async def send_inbox_view(
 
     header = "Inbox alerts:" if limit == 10 else ("Inbox alerts (20):" if locale == "en" else "Inbox alerts (20):")
     await message.reply_text(
-        header
+        (
+            header + "\nUse the quality line on each alert to sanity-check freshness, liquidity, and spread.\n\n"
+            if locale == "en"
+            else header + "\nСмотрите на quality line у каждого алерта, чтобы быстро проверить freshness, liquidity и spread.\n\n"
+        )
         + "\n\n"
         + "\n\n".join(fmt_alert_row(r) for r in rows)
         + "\n\n"
@@ -3434,6 +3443,11 @@ async def send_watchlist_view(
             if locale == "en"
             else "Live-изменения watchlist:\n"
             f"saved: {alert_overview.get('saved_total', 0)} | bell on: {alert_overview.get('alert_on_total', 0)} | bell paused: {alert_overview.get('alert_paused_total', 0)}\n\n"
+        )
+        + (
+            "Use the quality line on each row to sanity-check freshness, liquidity, and spread.\n\n"
+            if locale == "en"
+            else "Смотрите на quality line у каждой строки, чтобы быстро проверить freshness, liquidity и spread.\n\n"
         )
         + "\n\n".join(fmt_mover_row(r) for r in rows)
         + "\n\n"

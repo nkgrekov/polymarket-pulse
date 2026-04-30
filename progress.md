@@ -1,3 +1,22 @@
+# Bot Trust Language + Delivery Ops Pass (2026-04-30)
+
+Applied two parallel improvements: active bot surfaces now explain trust more consistently, and delivery diagnostics now produce a more operational recommendation from live mismatch data.
+
+Files updated:
+
+• `bot/main.py`
+• `scripts/ops/delivery_parity_report.py`
+• `docs/delivery_parity_latest.md`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• `/movers`, active `/watchlist`, and active `/inbox` now explicitly point users to the `quality:` line for freshness / liquidity / spread checks
+• active inbox alerts themselves now carry that `quality:` line
+• delivery parity reporting now adds `Operational Readout`, so the next safe move is derived from lifecycle split and dominant mismatch class, not only from raw sample counts
+• current live report now shows `hot_missing_quote` as the dominant mismatch driver in the sampled 168h window
+
 # Bot Active Alert Trust Pass (2026-04-30)
 
 Applied a joint pass to make active alert surfaces more interpretable without touching delivery semantics.
