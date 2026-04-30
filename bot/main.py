@@ -1969,7 +1969,8 @@ def _fmt_num(value: object, digits: int, signed: bool = False) -> str:
 def fmt_alert_row(row: dict) -> str:
     window = fmt_window(row.get("last_bucket"), row.get("prev_bucket"))
     threshold_value = row.get("alert_threshold_value") or row.get("hot_threshold_value")
-    return (
+    quality_line = fmt_mover_quality_line(row)
+    body = (
         f"[{row.get('alert_type')}] {row.get('question') or 'n/a'}\n"
         f"market: {row.get('market_id')}\n"
         f"mid: {_fmt_num(row.get('mid_now'), 3)} -> {_fmt_num(row.get('mid_prev'), 3)} | "
@@ -1977,6 +1978,7 @@ def fmt_alert_row(row: dict) -> str:
         f"threshold: {_fmt_num(threshold_value, 3)}\n"
         f"window: {window}"
     )
+    return f"{body}\n{quality_line}" if quality_line else body
 
 
 def fmt_mover_row(row: dict) -> str:
@@ -2649,32 +2651,32 @@ def active_followup_text(locale: str, *, user_ctx: dict, view: str, shown_count:
     if view == "watchlist":
         if watchlist_count > shown_count and closed_count > 0:
             return (
-                f"Start here: the first row is your strongest live delta now. {closed_count} tracked market(s) are already closed and hidden from this live list, so use Review list if the rest feels too quiet."
+                f"Start here: the first row is your strongest live delta now. Use the quality line on each row to sanity-check freshness, liquidity, and spread before you arm more bells. {closed_count} tracked market(s) are already closed and hidden from this live list, so use Review list if the rest feels too quiet."
                 if locale == "en"
-                else f"Начните с первой строки: это самая сильная live-дельта сейчас. {closed_count} рынка(ов) уже закрыты и не показываются в этом live-списке, так что откройте Проверить список, если остальное кажется слишком тихим."
+                else f"Начните с первой строки: это самая сильная live-дельта сейчас. Смотрите на quality line у каждой строки, чтобы быстро проверить freshness, liquidity и spread, прежде чем включать новые bell. {closed_count} рынка(ов) уже закрыты и не показываются в этом live-списке, так что откройте Проверить список, если остальное кажется слишком тихим."
             )
         if watchlist_count > shown_count:
             return (
-                "Start here: the first row is your strongest live delta now. Some tracked markets are quiet in this window, and that is normal."
+                "Start here: the first row is your strongest live delta now. Use the quality line to verify freshness, liquidity, and spread. Some tracked markets are quiet in this window, and that is normal."
                 if locale == "en"
-                else "Начните с первой строки: это самая сильная live-дельта сейчас. Часть рынков в этом окне тихая, и это нормально."
+                else "Начните с первой строки: это самая сильная live-дельта сейчас. Смотрите на quality line, чтобы быстро проверить freshness, liquidity и spread. Часть рынков в этом окне тихая, и это нормально."
             )
         return (
-            "Start here: the first row is your strongest live delta now. If this list feels thin later, add one more live market rather than chasing noise."
+            "Start here: the first row is your strongest live delta now. Use the quality line before you commit to tracking it. If this list feels thin later, add one more live market rather than chasing noise."
             if locale == "en"
-            else "Начните с первой строки: это самая сильная live-дельта сейчас. Если позже список покажется слишком тонким, лучше добавьте ещё один live-рынок, чем гоняться за шумом."
+            else "Начните с первой строки: это самая сильная live-дельта сейчас. Смотрите на quality line перед тем, как закреплять рынок в трекинге. Если позже список покажется слишком тонким, лучше добавьте ещё один live-рынок, чем гоняться за шумом."
         )
 
     if closed_count > 0:
         return (
-            f"Start here: the first alert is your strongest thresholded move now. If inbox goes quiet later, review the list first because {closed_count} tracked market(s) are already closed."
+            f"Start here: the first alert is your strongest thresholded move now. It already cleared your threshold; use the quality line to sanity-check freshness, liquidity, and spread. If inbox goes quiet later, review the list first because {closed_count} tracked market(s) are already closed."
             if locale == "en"
-            else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Если позже inbox затихнет, сначала проверьте список, потому что {closed_count} рынка(ов) уже закрыты."
+            else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Он уже прошёл ваш threshold; смотрите на quality line, чтобы быстро проверить freshness, liquidity и spread. Если позже inbox затихнет, сначала проверьте список, потому что {closed_count} рынка(ов) уже закрыты."
         )
     return (
-        f"Start here: the first alert is your strongest thresholded move now. If the feed feels noisy later, raise threshold above {threshold}; if it goes quiet, leave it alone before forcing more alerts."
+        f"Start here: the first alert is your strongest thresholded move now. It already cleared your threshold; use the quality line to sanity-check freshness, liquidity, and spread. If the feed feels noisy later, raise threshold above {threshold}; if it goes quiet, leave it alone before forcing more alerts."
         if locale == "en"
-        else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Если позже фид покажется шумным, поднимите threshold выше {threshold}; если он затихнет, не форсируйте алерты раньше времени."
+        else f"Начните с первого алерта: это самое сильное пороговое движение сейчас. Он уже прошёл ваш threshold; смотрите на quality line, чтобы быстро проверить freshness, liquidity и spread. Если позже фид покажется шумным, поднимите threshold выше {threshold}; если он затихнет, не форсируйте алерты раньше времени."
     )
 
 

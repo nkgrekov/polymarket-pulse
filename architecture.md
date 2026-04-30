@@ -1,3 +1,19 @@
+# Bot Active Alert Trust Pass (2026-04-30)
+
+Active signal surfaces in the bot now expose more of the same trust model used elsewhere, instead of making quality cues implicit.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• active inbox alerts now carry the shared `quality:` diagnostic line, aligning alert rows with mover rows
+• active follow-up copy now explicitly ties the shown alert to threshold-cleared semantics
+• watchlist and inbox active guidance now point to the same quick sanity-check model: freshness, liquidity, spread
+
 # Bot Bell-State Quiet Copy Pass (2026-04-30)
 
 Quiet-state explanations in the bot now expose bell posture directly, instead of forcing users to infer it from separate plan/watchlist surfaces.

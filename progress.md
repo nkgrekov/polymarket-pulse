@@ -1,3 +1,19 @@
+# Bot Active Alert Trust Pass (2026-04-30)
+
+Applied a joint pass to make active alert surfaces more interpretable without touching delivery semantics.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• active inbox alerts now include the same `quality:` line already used in mover rows
+• active follow-up copy now explicitly reminds the user that the shown alert already cleared threshold
+• watchlist active follow-up copy now points users to the same quality line for freshness / liquidity / spread checks
+
 # Bot Bell-State Quiet Copy Pass (2026-04-30)
 
 Applied a compact trust-copy pass so quiet bot states explain bell posture more explicitly.
