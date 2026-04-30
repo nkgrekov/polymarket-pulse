@@ -1,3 +1,21 @@
+# Telegram Bell Return Loop Pass (2026-04-30)
+
+The site-to-Telegram bell flow now preserves the website completion path through the final sensitivity confirmation step.
+
+Updated artifacts:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+Architectural changes:
+
+• when a user enters Telegram from a website bell-setup bridge, the bot now keeps the web return token alive until after sensitivity is selected
+• the final `bell enabled` state can therefore still surface a true `Return to site` button, instead of downgrading to a generic website link
+• copy in site-attributed Telegram bell setup is shorter and more explicit about the separation of concerns:
+  - website stores the row
+  - Telegram controls bell wake-up behavior
+
 # Watchlist Bell Threshold Visibility Pass (2026-04-30)
 
 The watchlist workspace now exposes bell sensitivity earlier in the mobile card scan path, without moving threshold control out of Telegram.

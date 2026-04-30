@@ -1871,14 +1871,13 @@ def alert_sensitivity_keyboard(locale: str, market_id: str) -> InlineKeyboardMar
     return InlineKeyboardMarkup(rows)
 
 
-def alert_enabled_inline(locale: str, market_id: str) -> InlineKeyboardMarkup:
+def alert_enabled_inline(locale: str, market_id: str, *, return_token: str | None = None) -> InlineKeyboardMarkup:
+    primary_url = web_auth_return_url(return_token) if return_token else site_watchlist_url(source="alert")
+    primary_label = (SITE_AUTH_RETURN_LABEL_EN if locale == "en" else SITE_AUTH_RETURN_LABEL_RU) if return_token else ("Back to website" if locale == "en" else "Назад на сайт")
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton(
-                    "Back to website" if locale == "en" else "Назад на сайт",
-                    url=site_watchlist_url(source="alert"),
-                ),
+                InlineKeyboardButton(primary_label, url=primary_url),
                 InlineKeyboardButton(
                     "Open market page" if locale == "en" else "Открыть рынок",
                     url=site_watchlist_url(market_id, source="alert"),
@@ -4211,19 +4210,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                 except Exception:
                     log.exception("alert_setup_started analytics insert failed")
+                context.user_data["site_return_token"] = str(site_start["token"])
                 combined_markup = merge_inline_markups(
                     alert_sensitivity_keyboard(locale, site_market_id),
                     return_markup,
                 )
                 await update.message.reply_text(
                     (
-                        "Site alert bridge confirmed.\n"
-                        "Choose sensitivity for this market. Watchlist stays saved separately; the bell decides if Telegram can wake you up."
-                        "\nAfter that, tap Return to site below to finish the website loop."
+                        "Bell setup for this market.\n"
+                        "Choose sensitivity below. The website keeps the saved row; Telegram decides when it can wake you up."
                         if locale == "en"
-                        else "Bridge для site alert подтверждён.\n"
-                        "Выберите чувствительность для этого рынка. Watchlist остаётся отдельным слоем; bell решает, может ли Telegram вас будить."
-                        "\nПосле этого нажмите Return to site ниже, чтобы завершить цикл сайта."
+                        else "Настройка bell для этого рынка.\n"
+                        "Выберите чувствительность ниже. Сайт хранит сохранённую строку, а Telegram решает, когда можно вас будить."
                     ),
                     reply_markup=combined_markup,
                 )
@@ -4273,9 +4271,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             log.exception("alert_setup_started direct analytics insert failed")
         await update.message.reply_text(
             (
-                "Manage bell for this market.\nChoose sensitivity now."
+                "Bell setup for this market.\nChoose sensitivity below."
                 if locale == "en"
-                else "Управляйте bell для этого рынка.\nТеперь выберите чувствительность."
+                else "Настройка bell для этого рынка.\nВыберите чувствительность ниже."
             ),
             reply_markup=alert_sensitivity_keyboard(locale, site_market_id),
         )
@@ -5004,6 +5002,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         threshold_value = ALERT_MAJOR_MOVES_THRESHOLD if threshold_token == "major" else Decimal(threshold_token)
         user_ctx = await resolve_user_context(update)
+        return_token = str((context.user_data or {}).pop("site_return_token", "") or "").strip() or None
         await asyncio.to_thread(
             save_watchlist_market_sync,
             user_ctx,
@@ -5035,15 +5034,31 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             log.exception("alert_enabled analytics insert failed")
         await query.message.reply_text(
             (
-                f"Alert enabled for market {market_id}.\n"
-                f"Sensitivity: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
-                "Website watchlist will now show this bell as ON after refresh."
+                (
+                    f"Bell ON for market {market_id}.\n"
+                    f"Sensitivity: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                    "Tap Return to site below to see this row update in your website watchlist."
+                )
+                if locale == "en" and return_token
+                else (
+                    f"Alert enabled for market {market_id}.\n"
+                    f"Sensitivity: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                    "Website watchlist will now show this bell as ON after refresh."
+                )
                 if locale == "en"
-                else f"Алерт включён для рынка {market_id}.\n"
-                f"Чувствительность: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
-                "После обновления сайта этот bell в watchlist будет показан как ON."
+                else (
+                    f"Bell включён для рынка {market_id}.\n"
+                    f"Чувствительность: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                    "Нажмите Return to site ниже, чтобы эта строка обновилась в website watchlist."
+                )
+                if return_token
+                else (
+                    f"Алерт включён для рынка {market_id}.\n"
+                    f"Чувствительность: {_fmt_num(threshold_value, 2)} ({_fmt_num(Decimal(str(threshold_value)) * Decimal('100'), 0)}pp).\n"
+                    "После обновления сайта этот bell в watchlist будет показан как ON."
+                )
             ),
-            reply_markup=alert_enabled_inline(locale, market_id),
+            reply_markup=alert_enabled_inline(locale, market_id, return_token=return_token),
         )
         return
 

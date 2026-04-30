@@ -1,3 +1,20 @@
+# Telegram Bell Return Loop Pass (2026-04-30)
+
+Applied a focused bot-side pass to reduce friction after the website sends a user into Telegram for bell setup.
+
+Files updated:
+
+• `bot/main.py`
+• `progress.md`
+• `architecture.md`
+
+What changed:
+
+• site-driven bell setup copy is now shorter and more direct
+• after sensitivity selection, the bot preserves the website return path for one more step
+• users who came from the site still see `Return to site` after bell activation instead of losing the web loop at the final confirmation
+• direct Telegram bell setup keeps the simpler copy, without pretending it is a website return flow
+
 # Watchlist Bell Threshold Visibility Pass (2026-04-30)
 
 Applied a compact follow-up pass to make bell-enabled rows easier to understand at a glance.
